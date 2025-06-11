@@ -1,3 +1,5 @@
+<?php
+
 // app/Models/Achievement.php
 namespace App\Models;
 
