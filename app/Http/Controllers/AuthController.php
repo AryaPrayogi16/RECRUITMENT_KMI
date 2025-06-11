@@ -1,11 +1,10 @@
 <?php
-
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Gate;
+use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -14,9 +13,8 @@ class AuthController extends Controller
      */
     public function showLogin()
     {
-        // Jika sudah login, redirect ke dashboard
         if (Auth::check()) {
-            return redirect()->route('dashboard');
+            return $this->redirectToDashboard(Auth::user());
         }
         
         return view('auth.login');
@@ -27,8 +25,7 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        // Validasi input
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'credential' => 'required|string',
             'password' => 'required|string|min:6',
         ], [
@@ -37,43 +34,39 @@ class AuthController extends Controller
             'password.min' => 'Password minimal 6 karakter',
         ]);
 
-        if ($validator->fails()) {
-            return back()
-                ->withErrors($validator)
-                ->withInput($request->except('password'));
-        }
-
         // Tentukan field login (email atau username)
-        $loginField = filter_var($request->credential, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+        $loginField = filter_var($validated['credential'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
         
         $credentials = [
-            $loginField => $request->credential,
-            'password' => $request->password,
-            'is_active' => true  // Hanya user yang aktif
+            $loginField => $validated['credential'],
+            'password' => $validated['password'],
+            'is_active' => true
         ];
 
-        // Attempt login
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
             
-            // Redirect berdasarkan role
-            $user = Auth::user();
-            switch ($user->role) {
-                case 'admin':
-                    return redirect()->intended('/admin/dashboard');
-                case 'hr':
-                    return redirect()->intended('/hr/dashboard');
-                case 'interviewer':
-                    return redirect()->intended('/interviewer/dashboard');
-                default:
-                    return redirect()->intended('/dashboard');
-            }
+            return $this->redirectToDashboard(Auth::user());
         }
 
-        // Login gagal
         return back()
-            ->withErrors(['credential' => 'Username/email atau password salah'])
+            ->withErrors(['credential' => 'Username/email atau password salah. Pastikan akun Anda aktif.'])
             ->withInput($request->except('password'));
+    }
+
+    /**
+     * Redirect based on role
+     */
+    private function redirectToDashboard($user)
+    {
+        $message = 'Selamat datang, ' . $user->full_name;
+        
+        return match($user->role) {
+            'admin' => redirect()->route('admin.dashboard')->with('success', $message),
+            'hr' => redirect()->route('hr.dashboard')->with('success', $message),
+            'interviewer' => redirect()->route('interviewer.dashboard')->with('success', $message),
+            default => redirect()->route('dashboard')->with('success', $message),
+        };
     }
 
     /**
@@ -87,5 +80,28 @@ class AuthController extends Controller
         
         return redirect()->route('login')->with('success', 'Berhasil logout');
     }
-}
 
+    /**
+     * Get demo users for development
+     */
+    public function getDemoUsers()
+    {
+        if (!app()->environment('local')) {
+            abort(403, 'Only available in development');
+        }
+        
+        $users = User::select('username', 'email', 'full_name', 'role')
+            ->where('is_active', true)
+            ->get()
+            ->groupBy('role');
+            
+        return response()->json([
+            'demo_users' => $users,
+            'passwords' => [
+                'admin' => 'admin123',
+                'hr' => 'hr1234', 
+                'interviewer' => 'int1234'
+            ]
+        ]);
+    }
+}
