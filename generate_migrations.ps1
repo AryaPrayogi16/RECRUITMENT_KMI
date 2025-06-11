@@ -1,0 +1,20 @@
+php artisan make:migration create_users_table
+php artisan make:migration create_positions_table
+php artisan make:migration create_candidates_table
+php artisan make:migration create_personal_data_table
+php artisan make:migration create_driving_licenses_table
+php artisan make:migration create_family_members_table
+php artisan make:migration create_formal_education_table
+php artisan make:migration create_non_formal_education_table
+php artisan make:migration create_language_skills_table
+php artisan make:migration create_computer_skills_table
+php artisan make:migration create_organizations_table
+php artisan make:migration create_achievements_table
+php artisan make:migration create_work_experiences_table
+php artisan make:migration create_general_information_table
+php artisan make:migration create_application_logs_table
+php artisan make:migration create_interviews_table
+php artisan make:migration create_document_uploads_table
+php artisan make:migration create_email_templates_table
+
+Write-Host "`n✅ Semua migration berhasil dibuat!"
