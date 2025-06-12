@@ -654,10 +654,9 @@
                     <i class="fas fa-user-tie"></i>
                 </div>
                 <div class="user-details">
-                    <div class="user-name">Dr. Michael Chen</div>
-                    <div class="user-role">Senior Interviewer</div>
+                    <div class="user-name">{{ Auth::user()->full_name }}</div>
+                    <div class="user-role">{{ ucfirst(Auth::user()->role) }}</div>
                 </div>
-            </div>
 
             <nav class="nav-menu">
                 <div class="nav-item">
@@ -723,10 +722,13 @@
                         <i class="fas fa-bell"></i>
                         <span class="notification-badge">3</span>
                     </button>
-                    <button class="logout-btn">
-                        <i class="fas fa-sign-out-alt"></i>
-                        Logout
-                    </button>
+                    <form action="{{ route('logout') }}" method="POST" id="logout-form" style="display: inline;">
+                        @csrf
+                        <button type="submit" class="logout-btn" onclick="return confirm('Apakah Anda yakin ingin logout?')">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Logout
+                        </button>
+                    </form>
                 </div>
             </header>
 
@@ -1015,12 +1017,12 @@
         });
 
         // Logout confirmation
-        document.querySelector('.logout-btn').addEventListener('click', () => {
-            if (confirm('Apakah Anda yakin ingin logout?')) {
-                console.log('Logout clicked');
-                // window.location.href = '/logout';
-            }
-        });
+        // document.querySelector('.logout-btn').addEventListener('click', () => {
+        //     if (confirm('Apakah Anda yakin ingin logout?')) {
+        //         console.log('Logout clicked');
+        //         // window.location.href = '/logout';
+        //     }
+        // });
 
         // Animate cards on load
         const observerOptions = {

@@ -73,13 +73,18 @@ class AuthController extends Controller
      * Handle logout
      */
     public function logout(Request $request)
-    {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        
-        return redirect()->route('login')->with('success', 'Berhasil logout');
-    }
+{
+    $userName = Auth::user()->full_name; // Simpan nama sebelum logout
+    
+    Auth::logout();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+    
+    // Custom message dengan nama user
+    return redirect()->route('login')
+        ->with('success', "Terima kasih {$userName}, Anda telah berhasil logout.")
+        ->with('alert-type', 'info'); // Untuk styling alert yang berbeda
+}
 
     /**
      * Get demo users for development

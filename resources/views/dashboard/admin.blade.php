@@ -460,8 +460,8 @@
                     <i class="fas fa-user-crown"></i>
                 </div>
                 <div class="user-details">
-                    <div class="user-name">Super Admin</div>
-                    <div class="user-role">Administrator</div>
+                    <div class="user-name">{{ Auth::user()->full_name }}</div>
+                    <div class="user-role">{{ ucfirst(Auth::user()->role) }}</div>
                 </div>
             </div>
 
@@ -532,16 +532,22 @@
                     </button>
                     <h1 class="page-title">Dashboard Admin</h1>
                 </div>
-                <div class="header-right">
+               <div class="header-right">
                     <button class="notification-btn">
                         <i class="fas fa-bell"></i>
                         <span class="notification-badge">5</span>
                     </button>
-                    <button class="logout-btn">
-                        <i class="fas fa-sign-out-alt"></i>
-                        Logout
-                    </button>
-                </div>
+                    
+                    <!-- Form Logout dengan CSRF Protection -->
+                    <form action="{{ route('logout') }}" method="POST" id="logout-form" style="display: inline;">
+                        @csrf
+                        <button type="submit" class="logout-btn" onclick="return confirm('Apakah Anda yakin ingin logout?')">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Logout
+                        </button>
+    </form>
+</div>
+
             </header>
 
             <div class="content">
