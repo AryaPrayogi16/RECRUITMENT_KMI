@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('driving_licenses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->enum('license_type', ['A', 'B1', 'B2', 'C']);
+            $table->enum('license_type', ['A', 'B1', 'B2', 'C'])->nullable();
             $table->timestamps();
             $table->softDeletes();            
             $table->unique(['candidate_id', 'license_type']);
