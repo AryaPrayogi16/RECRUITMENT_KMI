@@ -13,7 +13,8 @@ class DocumentUpload extends Model
     protected $fillable = [
         'candidate_id',
         'document_type',
-        'file_name',
+        'document_name',
+        'original_filename',
         'file_path',
         'file_size',
         'mime_type'
@@ -23,40 +24,22 @@ class DocumentUpload extends Model
         'file_size' => 'integer'
     ];
 
-    // Constants
-    const TYPE_CV = 'cv';
-    const TYPE_PHOTO = 'photo';
-    const TYPE_CERTIFICATE = 'certificate';
-    const TYPE_TRANSCRIPT = 'transcript';
-    const TYPE_PORTFOLIO = 'portfolio';
-
     // Relationships
     public function candidate()
     {
         return $this->belongsTo(Candidate::class);
     }
-
-    // Scopes
-    public function scopeByType($query, $type)
-    {
-        return $query->where('document_type', $type);
-    }
-
+    
     // Accessors
-    public function getFileSizeHumanAttribute()
+    public function getFileSizeFormattedAttribute()
     {
         $bytes = $this->file_size;
-        $units = ['B', 'KB', 'MB', 'GB'];
-        
-        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
-            $bytes /= 1024;
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2) . ' MB';
+        } elseif ($bytes >= 1024) {
+            return number_format($bytes / 1024, 2) . ' KB';
+        } else {
+            return $bytes . ' bytes';
         }
-        
-        return round($bytes, 2) . ' ' . $units[$i];
-    }
-
-    public function getFileUrlAttribute()
-    {
-        return asset('storage/' . $this->file_path);
     }
 }

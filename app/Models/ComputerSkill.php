@@ -12,9 +12,8 @@ class ComputerSkill extends Model
 
     protected $fillable = [
         'candidate_id',
-        'skill_type',
-        'skill_description',
-        'proficiency_level'
+        'hardware_skills',
+        'software_skills'
     ];
 
     // Relationships
@@ -22,20 +21,15 @@ class ComputerSkill extends Model
     {
         return $this->belongsTo(Candidate::class);
     }
-
-    // Scopes
-    public function scopeByType($query, $type)
+    
+    // Accessors
+    public function getHardwareSkillsArrayAttribute()
     {
-        return $query->where('skill_type', $type);
+        return $this->hardware_skills ? explode(',', $this->hardware_skills) : [];
     }
-
-    public function scopeHardware($query)
+    
+    public function getSoftwareSkillsArrayAttribute()
     {
-        return $query->where('skill_type', 'Hardware');
-    }
-
-    public function scopeSoftware($query)
-    {
-        return $query->where('skill_type', 'Software');
+        return $this->software_skills ? explode(',', $this->software_skills) : [];
     }
 }

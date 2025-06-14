@@ -1,6 +1,5 @@
 <?php
 
-// app/Models/Achievement.php
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +12,7 @@ class Achievement extends Model
 
     protected $fillable = [
         'candidate_id',
-        'achievement_name',
+        'achievement',
         'year',
         'description'
     ];
@@ -26,16 +25,5 @@ class Achievement extends Model
     public function candidate()
     {
         return $this->belongsTo(Candidate::class);
-    }
-
-    // Scopes
-    public function scopeByYear($query, $year)
-    {
-        return $query->where('year', $year);
-    }
-
-    public function scopeRecent($query)
-    {
-        return $query->orderBy('year', 'desc');
     }
 }

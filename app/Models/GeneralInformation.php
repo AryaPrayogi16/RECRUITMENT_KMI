@@ -10,29 +10,40 @@ class GeneralInformation extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'general_information';
+
     protected $fillable = [
         'candidate_id',
         'willing_to_travel',
         'has_vehicle',
         'vehicle_types',
         'motivation',
-        'weaknesses',
         'strengths',
-        'other_income_sources',
-        'criminal_record',
-        'medical_history',
+        'weaknesses',
+        'other_income',
+        'has_police_record',
+        'police_record_detail',
+        'has_serious_illness',
+        'illness_detail',
         'has_tattoo_piercing',
-        'other_company_ownership',
-        'annual_sick_days',
+        'tattoo_piercing_detail',
+        'has_other_business',
+        'other_business_detail',
+        'absence_days',
         'start_work_date',
-        'information_source'
+        'information_source',
+        'agreement'
     ];
 
     protected $casts = [
         'willing_to_travel' => 'boolean',
         'has_vehicle' => 'boolean',
+        'has_police_record' => 'boolean',
+        'has_serious_illness' => 'boolean',
         'has_tattoo_piercing' => 'boolean',
-        'annual_sick_days' => 'integer',
+        'has_other_business' => 'boolean',
+        'agreement' => 'boolean',
+        'absence_days' => 'integer',
         'start_work_date' => 'date'
     ];
 

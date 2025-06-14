@@ -6,18 +6,42 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
+    /**
+     * Seed the application's database.
+     */
     public function run(): void
     {
-        $this->call([
-            UserSeeder::class,
-            PositionSeeder::class,
-            CandidateSeeder::class,
-            PersonalDataSeeder::class,
-            WorkExperienceSeeder::class,
-            FormalEducationSeeder::class,
-            InterviewSeeder::class,
-            ApplicationLogSeeder::class,
-            EmailTemplateSeeder::class,
+        // Create default admin user
+        \App\Models\User::create([
+            'username' => 'admin',
+            'email' => 'admin@pawindo.com',
+            'password' => bcrypt('admin123'),
+            'full_name' => 'Administrator',
+            'role' => 'admin',
+            'is_active' => true,
         ]);
+
+        // Create HR user
+        \App\Models\User::create([
+            'username' => 'hr_manager',
+            'email' => 'hr@pawindo.com',
+            'password' => bcrypt('hr123'),
+            'full_name' => 'HR Manager',
+            'role' => 'hr',
+            'is_active' => true,
+        ]);
+
+        // Create Interviewer user
+        \App\Models\User::create([
+            'username' => 'interviewer',
+            'email' => 'interviewer@pawindo.com',
+            'password' => bcrypt('int123'),
+            'full_name' => 'Interviewer',
+            'role' => 'interviewer',
+            'is_active' => true,
+        ]);
+
+        // Seed positions
+        $this->call(PositionsTableSeeder::class);
     }
 }

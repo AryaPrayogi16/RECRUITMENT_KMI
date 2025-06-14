@@ -12,34 +12,51 @@ class Candidate extends Model
 
     protected $fillable = [
         'candidate_code',
+        'position_id',
         'position_applied',
         'expected_salary',
-        'application_status'
+        'application_status',
+        'application_date'
     ];
 
     protected $casts = [
-        'expected_salary' => 'decimal:2'
+        'expected_salary' => 'decimal:2',
+        'application_date' => 'date',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     // Constants for application status
-    const STATUS_PENDING = 'pending';
-    const STATUS_REVIEWING = 'reviewing';
+    const STATUS_DRAFT = 'draft';
+    const STATUS_SUBMITTED = 'submitted';
+    const STATUS_SCREENING = 'screening';
     const STATUS_INTERVIEW = 'interview';
+    const STATUS_OFFERED = 'offered';
     const STATUS_ACCEPTED = 'accepted';
     const STATUS_REJECTED = 'rejected';
+    const STATUS_WITHDRAWN = 'withdrawn';
 
     public static function getStatuses()
     {
         return [
-            self::STATUS_PENDING => 'Pending',
-            self::STATUS_REVIEWING => 'Under Review',
+            self::STATUS_DRAFT => 'Draft',
+            self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_SCREENING => 'Screening',
             self::STATUS_INTERVIEW => 'Interview',
+            self::STATUS_OFFERED => 'Offered',
             self::STATUS_ACCEPTED => 'Accepted',
-            self::STATUS_REJECTED => 'Rejected'
+            self::STATUS_REJECTED => 'Rejected',
+            self::STATUS_WITHDRAWN => 'Withdrawn'
         ];
     }
 
     // Relationships
+    public function position()
+    {
+        return $this->belongsTo(Position::class);
+    }
+    
     public function personalData()
     {
         return $this->hasOne(PersonalData::class);
@@ -72,12 +89,17 @@ class Candidate extends Model
 
     public function computerSkills()
     {
-        return $this->hasMany(ComputerSkill::class);
+        return $this->hasOne(ComputerSkill::class);
+    }
+    
+    public function otherSkills()
+    {
+        return $this->hasOne(OtherSkill::class);
     }
 
-    public function organizations()
+    public function socialActivities()
     {
-        return $this->hasMany(Organization::class);
+        return $this->hasMany(SocialActivity::class);
     }
 
     public function achievements()
@@ -110,25 +132,20 @@ class Candidate extends Model
         return $this->hasMany(DocumentUpload::class);
     }
 
-    public function position()
-    {
-        return $this->belongsTo(Position::class, 'position_applied', 'position_name');
-    }
-
     // Scopes
     public function scopeByStatus($query, $status)
     {
         return $query->where('application_status', $status);
     }
 
-    public function scopePending($query)
+    public function scopeSubmitted($query)
     {
-        return $query->where('application_status', self::STATUS_PENDING);
+        return $query->where('application_status', self::STATUS_SUBMITTED);
     }
 
     public function scopeActive($query)
     {
-        return $query->whereNotIn('application_status', [self::STATUS_REJECTED]);
+        return $query->whereNotIn('application_status', [self::STATUS_REJECTED, self::STATUS_WITHDRAWN]);
     }
 
     public function scopeByPosition($query, $position)
@@ -139,16 +156,31 @@ class Candidate extends Model
     // Accessors
     public function getFullNameAttribute()
     {
-        return $this->personalData?->full_name ?? '';
+        return $this->personalData?->full_name ?? 'N/A';
     }
 
     public function getEmailAttribute()
     {
-        return $this->personalData?->email ?? '';
+        return $this->personalData?->email ?? 'N/A';
     }
 
     public function getPhoneAttribute()
     {
-        return $this->personalData?->phone_number ?? '';
+        return $this->personalData?->phone_number ?? 'N/A';
+    }
+    
+    public function getStatusBadgeClassAttribute()
+    {
+        return match($this->application_status) {
+            'draft' => 'status-draft',
+            'submitted' => 'status-submitted',
+            'screening' => 'status-screening',
+            'interview' => 'status-interview',
+            'offered' => 'status-offered',
+            'accepted' => 'status-accepted',
+            'rejected' => 'status-rejected',
+            'withdrawn' => 'status-withdrawn',
+            default => 'status-pending'
+        };
     }
 }

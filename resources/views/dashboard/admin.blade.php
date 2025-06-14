@@ -58,7 +58,7 @@
 
         .logo i {
             font-size: 2rem;
-            color: #4f46e5;
+            color: #46e54e;
         }
 
         .logo-text {
@@ -479,7 +479,7 @@
                     </a>
                 </div>
                 <div class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="{{ route('candidates.index') }}" class="nav-link {{ request()->routeIs('candidates.*') ? 'active' : '' }}">
                         <i class="fas fa-user-tie"></i>
                         <span>Kandidat</span>
                     </a>
@@ -685,11 +685,9 @@
         }
 
         // Nav link active state
-        document.querySelectorAll('.nav-link').forEach(link => {
+        document.querySelectorAll('.nav-link[href="#"]').forEach(link => {
             link.addEventListener('click', (e) => {
-                e.preventDefault();
-                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-                link.classList.add('active');
+            e.preventDefault();
             });
         });
 

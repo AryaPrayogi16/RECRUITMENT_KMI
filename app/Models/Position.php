@@ -17,19 +17,42 @@ class Position extends Model
         'requirements',
         'salary_range_min',
         'salary_range_max',
-        'is_active'
+        'is_active',
+        'location',
+        'employment_type',
+        'posted_date',
+        'closing_date',
     ];
 
     protected $casts = [
+        'is_active' => 'boolean',
+        'posted_date' => 'date',
+        'closing_date' => 'date',
         'salary_range_min' => 'decimal:2',
         'salary_range_max' => 'decimal:2',
-        'is_active' => 'boolean'
     ];
 
     // Relationships
     public function candidates()
     {
-        return $this->hasMany(Candidate::class, 'position_applied', 'position_name');
+        return $this->hasMany(Candidate::class);
+    }
+
+    // Accessors
+    public function getSalaryRangeAttribute()
+    {
+        if ($this->salary_range_min && $this->salary_range_max) {
+            return 'Rp ' . number_format($this->salary_range_min, 0, ',', '.') . 
+                   ' - Rp ' . number_format($this->salary_range_max, 0, ',', '.');
+        }
+        return 'Negotiable';
+    }
+
+    public function getIsOpenAttribute()
+    {
+        return $this->is_active && 
+               $this->closing_date && 
+               $this->closing_date->isFuture();
     }
 
     // Scopes
@@ -38,23 +61,19 @@ class Position extends Model
         return $query->where('is_active', true);
     }
 
+    public function scopeOpen($query)
+    {
+        return $query->active()
+                     ->where('closing_date', '>=', now());
+    }
+
     public function scopeByDepartment($query, $department)
     {
         return $query->where('department', $department);
     }
 
-    // Accessors
-    public function getSalaryRangeAttribute()
+    public function scopeByLocation($query, $location)
     {
-        if ($this->salary_range_min && $this->salary_range_max) {
-            return 'Rp ' . number_format($this->salary_range_min, 0, ',', '.') . ' - Rp ' . 
-                   number_format($this->salary_range_max, 0, ',', '.');
-        }
-        return 'Negotiable';
-    }
-
-    public function getCandidateCountAttribute()
-    {
-        return $this->candidates()->count();
+        return $query->where('location', $location);
     }
 }

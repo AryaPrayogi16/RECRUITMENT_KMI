@@ -16,17 +16,19 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #66ea66 0%, #4ba28f 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            overflow: hidden;
+            /* Removed overflow: hidden to allow scrolling */
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .background-animation {
-            position: absolute;
+            position: fixed; /* Changed from absolute to fixed */
             top: 0;
             left: 0;
             width: 100%;
@@ -39,11 +41,24 @@
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
             animation: backgroundMove 20s linear infinite;
             opacity: 0.3;
+            z-index: 0;
         }
 
         @keyframes backgroundMove {
             0% { transform: translateX(0); }
             100% { transform: translateX(20px); }
+        }
+
+        /* Main container with better responsive handling */
+        .main-wrapper {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
         }
 
         .login-container {
@@ -54,35 +69,35 @@
             overflow: hidden;
             width: 100%;
             max-width: 900px;
-            min-height: 500px;
             display: flex;
             position: relative;
             z-index: 10;
-            margin: 20px;
+            /* Removed fixed min-height to allow content-based sizing */
         }
 
         .login-left {
             flex: 1;
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            background: linear-gradient(135deg, #00ff00 0%, #00a581 100%);
             color: white;
-            padding: 60px 40px;
+            padding: 40px 30px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
             position: relative;
+            min-height: 400px;
         }
 
         .company-logo {
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 30px;
+            margin: 0 auto 20px;
             backdrop-filter: blur(10px);
         }
 
@@ -92,53 +107,55 @@
         }
 
         .login-left h1 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
+            font-size: 2rem;
+            margin-bottom: 15px;
             font-weight: 700;
         }
 
         .login-left p {
-            font-size: 1.1rem;
+            font-size: 1rem;
             opacity: 0.9;
-            line-height: 1.6;
+            line-height: 1.5;
         }
 
         .login-right {
             flex: 1;
-            padding: 60px 40px;
+            padding: 40px 30px;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            max-height: 100vh;
+            overflow-y: auto;
         }
 
         .login-header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 15px;
         }
 
         .login-header h2 {
             color: #1f2937;
-            font-size: 2rem;
-            margin-bottom: 10px;
+            font-size: 1.75rem;
+            margin-bottom: 3px;
             font-weight: 600;
         }
 
         .login-header p {
             color: #6b7280;
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             position: relative;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: #374151;
             font-weight: 500;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
 
         .input-wrapper {
@@ -147,10 +164,10 @@
 
         .form-group input {
             width: 100%;
-            padding: 15px 20px 15px 50px;
+            padding: 12px 16px 12px 45px;
             border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 1rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
             transition: all 0.3s ease;
             background: #f9fafb;
         }
@@ -164,25 +181,27 @@
 
         .input-icon {
             position: absolute;
-            left: 18px;
+            left: 16px;
             top: 50%;
             transform: translateY(-50%);
             color: #9ca3af;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         .form-options {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            font-size: 0.9rem;
+            margin-bottom: 25px;
+            font-size: 0.85rem;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .remember-me {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .remember-me input[type="checkbox"] {
@@ -196,9 +215,9 @@
             background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
             color: white;
             border: none;
-            padding: 16px;
-            border-radius: 12px;
-            font-size: 1.1rem;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -220,69 +239,68 @@
             opacity: 0.8;
         }
 
+        .error-message,
+        .success-message {
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .error-message {
             background: #fef2f2;
             color: #dc2626;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
             border-left: 4px solid #dc2626;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
 
         .success-message {
             background: #f0fdf4;
             color: #16a34a;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
             border-left: 4px solid #16a34a;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
 
         .demo-accounts {
-            margin-top: 30px;
-            padding: 20px;
+            margin-top: 20px;
+            padding: 16px;
             background: rgba(79, 70, 229, 0.1);
-            border-radius: 12px;
-            font-size: 0.9rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
         }
 
         .demo-accounts h4 {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             color: #4f46e5;
             text-align: center;
+            font-size: 1rem;
         }
 
         .demo-account {
-            margin-bottom: 10px;
-            padding: 8px 12px;
+            margin-bottom: 8px;
+            padding: 6px 10px;
             background: rgba(255, 255, 255, 0.7);
             border-radius: 6px;
             display: flex;
             justify-content: space-between;
+            font-size: 0.8rem;
         }
 
         .quick-login-btns {
-            margin-top: 20px;
+            margin-top: 16px;
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
         }
 
         .quick-login-btn {
             flex: 1;
-            min-width: 120px;
-            padding: 8px 12px;
+            min-width: 100px;
+            padding: 8px 10px;
             border: none;
             border-radius: 6px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             cursor: pointer;
             transition: all 0.3s ease;
             color: white;
@@ -298,134 +316,227 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
+        .footer-info {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 0.75rem;
+        }
+
+        /* Enhanced Mobile Responsiveness */
         @media (max-width: 768px) {
+            .main-wrapper {
+                padding: 10px;
+            }
+
             .login-container {
                 flex-direction: column;
-                max-width: 400px;
+                max-width: 100%;
+                border-radius: 16px;
             }
 
             .login-left {
-                padding: 40px 30px;
-                min-height: 200px;
+                padding: 30px 20px;
+                min-height: auto;
+            }
+
+            .company-logo {
+                width: 50px;
+                height: 500px;
+                margin-bottom: 15px;
+            }
+
+            .company-logo i {
+                font-size: 30px;
             }
 
             .login-left h1 {
-                font-size: 2rem;
+                font-size: 1.5rem;
+                margin-bottom: 10px;
+            }
+
+            .login-left p {
+                font-size: 0.9rem;
+                display: none; /* Hide on very small screens to save space */
             }
 
             .login-right {
-                padding: 40px 30px;
+                padding: 30px 20px;
+            }
+
+            .login-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .login-header p {
+                font-size: 0.85rem;
+            }
+
+            .form-group {
+                margin-bottom: 16px;
+            }
+
+            .form-group input {
+                padding: 10px 14px 10px 40px;
+                font-size: 0.9rem;
+            }
+
+            .quick-login-btns {
+                gap: 6px;
+            }
+
+            .quick-login-btn {
+                font-size: 0.7rem;
+                padding: 6px 8px;
+            }
+
+            .demo-accounts {
+                padding: 12px;
+            }
+
+            .demo-account {
+                flex-direction: column;
+                gap: 4px;
+                text-align: center;
             }
         }
 
-        .footer-info {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            color: #6b7280;
-            font-size: 0.85rem;
+        /* Extra small devices */
+        @media (max-width: 480px) {
+            .login-left p {
+                display: block; /* Show back but with smaller font */
+                font-size: 0.8rem;
+                line-height: 1.3;
+            }
+
+            .form-options {
+                font-size: 0.8rem;
+            }
+
+            .remember-me span {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Handle very tall screens */
+        @media (min-height: 900px) {
+            .login-container {
+                min-height: 500px;
+            }
+        }
+
+        /* Ensure content is visible on landscape mobile */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .main-wrapper {
+                padding: 10px;
+            }
+
+            .login-left {
+                min-height: auto;
+                padding: 20px;
+            }
+
+            .login-right {
+                padding: 20px;
+            }
+
+            .company-logo {
+                width: 60px;
+                height: 60px;
+            }
+
+            .demo-accounts {
+                margin-top: 10px;
+                padding: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="background-animation"></div>
     
-    <div class="login-container">
-        <div class="login-left">
-            <div class="company-logo">
-                <i class="fas fa-building"></i>
-            </div>
-            <h1>HR Recruitment</h1>
-            <p>Sistem manajemen recruitment modern untuk mengelola kandidat dan proses interview secara efisien</p>
-        </div>
-
-        <div class="login-right">
-            <div class="login-header">
-                <h2>Selamat Datang</h2>
-                <p>Silakan login untuk mengakses sistem</p>
+    <div class="main-wrapper">
+        <div class="login-container">
+            <div class="login-left">
+                <div class="company-logo">
+                    <x-company-logo />
+                </div>
+                <h1>HR Recruitment</h1>
+                <p>Sistem manajemen recruitment modern untuk mengelola kandidat dan proses interview secara efisien</p>
             </div>
 
-            @if ($errors->any())
-                <div class="error-message">
+            <div class="login-right">
+                <div class="login-header">
+                    <h2>Selamat Datang</h2>
+                    <p>Silakan login untuk mengakses sistem</p>
+                </div>
+
+                <!-- Error Message Example -->
+                <!-- <div class="error-message">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <span>{{ $errors->first() }}</span>
-                </div>
-            @endif
+                    <span>Username atau password salah</span>
+                </div> -->
 
-            @if (session('success'))
-                <div class="success-message">
+                <!-- Success Message Example -->
+                <!-- <div class="success-message">
                     <i class="fas fa-check-circle"></i>
-                    <span>{{ session('success') }}</span>
-                </div>
-            @endif
+                    <span>Registrasi berhasil! Silakan login</span>
+                </div> -->
 
-            <form method="POST" action="{{ route('login') }}" id="loginForm">
-                @csrf
-                
-                <div class="form-group">
-                    <label for="credential">Username atau Email</label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-user input-icon"></i>
-                        <input type="text" id="credential" name="credential" 
-                               placeholder="Masukkan username atau email" 
-                               value="{{ old('credential') }}" required>
+                <form method="POST" action="{{ route('login') }}" id="loginForm">
+                    @csrf
+                    
+                    <div class="form-group">
+                        <label for="credential">Username atau Email</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user input-icon"></i>
+                            <input type="text" id="credential" name="credential" 
+                                   placeholder="Masukkan username atau email" 
+                                   value="{{ old('credential') }}" required>
+                        </div>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-lock input-icon"></i>
-                        <input type="password" id="password" name="password" 
-                               placeholder="Masukkan password" required>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="password" name="password" 
+                                   placeholder="Masukkan password" required>
+                        </div>
                     </div>
-                </div>
 
-                <div class="form-options">
-                    <label class="remember-me">
-                        <input type="checkbox" name="remember" {{ old('remember') ? 'checked' : '' }}>
-                        <span>Ingat saya</span>
-                    </label>
-                    <a href="#" style="color: #4f46e5; text-decoration: none;">Lupa password?</a>
-                </div>
+                    <div class="form-options">
+                        <label class="remember-me">
+                            <input type="checkbox" name="remember" {{ old('remember') ? 'checked' : '' }}>
+                            <span>Ingat saya</span>
+                        </label>
+                        <a href="#" style="color: #4f46e5; text-decoration: none;">Lupa password?</a>
+                    </div>
 
-                <button type="submit" class="login-btn" id="loginBtn">
-                    <span class="btn-text">Masuk</span>
-                </button>
-
-                <!-- Quick Login Buttons for Demo -->
-                <div class="quick-login-btns">
-                    <button type="button" class="quick-login-btn admin" onclick="fillCredentials('admin@company.com', 'admin123')">
-                        👑 Admin
+                    <button type="submit" class="login-btn" id="loginBtn">
+                        <span class="btn-text">Masuk</span>
                     </button>
-                    <button type="button" class="quick-login-btn hr" onclick="fillCredentials('sarah@company.com', 'hr1234')">
-                        👥 HR
-                    </button>
-                    <button type="button" class="quick-login-btn interviewer" onclick="fillCredentials('michael@company.com', 'int1234')">
-                        🎯 Interviewer
-                    </button>
-                </div>
-            </form>
 
-            <div class="demo-accounts">
-                <h4>🔐 Demo Accounts</h4>
-                <div class="demo-account">
-                    <strong>👑 Admin:</strong>
-                    <span>admin@company.com / admin123</span>
-                </div>
-                <div class="demo-account">
-                    <strong>👥 HR Staff:</strong>
-                    <span>sarah@company.com / hr1234</span>
-                </div>
-                <div class="demo-account">
-                    <strong>🎯 Interviewer:</strong>
-                    <span>michael@company.com / int1234</span>
-                </div>
-            </div>
+                    <!-- Quick Login Buttons for Demo -->
+                    <div class="quick-login-btns">
+                        <button type="button" class="quick-login-btn admin" onclick="fillCredentials('admin@pawindo.com', 'admin123')">
+                            👑 Admin
+                        </button>
+                        <button type="button" class="quick-login-btn hr" onclick="fillCredentials('hr@company.com', 'hr1234')">
+                            👥 HR
+                        </button>
+                        <button type="button" class="quick-login-btn interviewer" onclick="fillCredentials('interviewer@company.com', 'int1234')">
+                            🎯 Interviewer
+                        </button>
+                    </div>
+                </form>
 
-            <div class="footer-info">
-                <p>&copy; 2025 HR Recruitment System. All rights reserved.</p>
+
+                <div class="footer-info">
+                    <p>&copy; 2025 PT. Kayu Mebel Indonesia. All rights reserved.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -444,10 +555,7 @@
             
             // Show loading state
             loginBtn.classList.add('loading');
-            btnText.textContent = 'Masuk...';
-            
-            // Let the form submit normally to Laravel
-            // No e.preventDefault() here - we want Laravel to handle it
+            btnText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Masuk...';
         });
 
         // Input focus effects
@@ -471,6 +579,22 @@
                 this.style.transform = 'translateY(0)';
             });
         });
+
+        // Adjust layout based on viewport height
+        function adjustLayout() {
+            const vh = window.innerHeight;
+            const mainWrapper = document.querySelector('.main-wrapper');
+            
+            if (vh < 600) {
+                mainWrapper.style.alignItems = 'flex-start';
+            } else {
+                mainWrapper.style.alignItems = 'center';
+            }
+        }
+
+        // Call on load and resize
+        window.addEventListener('load', adjustLayout);
+        window.addEventListener('resize', adjustLayout);
     </script>
 </body>
 </html>

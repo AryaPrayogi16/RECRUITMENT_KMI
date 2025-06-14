@@ -6,22 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class NonFormalEducation extends Model
+class SocialActivity extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'non_formal_education';
-
     protected $fillable = [
         'candidate_id',
-        'course_name',
-        'organizer',
-        'date',
+        'organization_name',
+        'field',
+        'period',
         'description'
-    ];
-
-    protected $casts = [
-        'date' => 'date'
     ];
 
     // Relationships

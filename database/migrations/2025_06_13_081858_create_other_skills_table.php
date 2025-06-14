@@ -11,13 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('computer_skills', function (Blueprint $table) {
+        Schema::create('other_skills', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->unique()->constrained('candidates')->onDelete('cascade');
-            $table->text('hardware_skills')->nullable(); // Comma separated as per form
-            $table->text('software_skills')->nullable(); // Comma separated as per form
+            $table->text('other_skills')->nullable();
             $table->timestamps();
-            $table->softDeletes();    
+            $table->softDeletes();  
             $table->index('candidate_id');
         });
     }
@@ -27,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('computer_skills');
+        Schema::dropIfExists('other_skills');
     }
 };

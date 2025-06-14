@@ -1,21 +1,17 @@
 <?php
 
-use App\Http\Controllers\{AuthController, DashboardController};
+use App\Http\Controllers\{AuthController, DashboardController, JobApplicationController, CandidateController};
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
-// Define Gates (Laravel 11 style - bisa juga di AppServiceProvider)
-Gate::define('admin-access', function ($user) {
-    return $user->role === 'admin';
-});
+// PUBLIC ROUTES - Job Application Form
+Route::get('/job-application-form', [JobApplicationController::class, 'showForm'])->name('job.application.form');
+Route::post('/job-application-form', [JobApplicationController::class, 'submitApplication'])->name('job.application.submit');
+Route::get('/job-application-success', [JobApplicationController::class, 'success'])->name('job.application.success');
 
-Gate::define('hr-access', function ($user) {
-    return in_array($user->role, ['admin', 'hr']);
-});
-
-Gate::define('interviewer-access', function ($user) {
-    return in_array($user->role, ['admin', 'hr', 'interviewer']);
-});
+// Get available positions for dropdown
+Route::get('/api/positions', [JobApplicationController::class, 'getPositions'])->name('api.positions');
 
 // Authentication Routes
 Route::middleware('guest')->group(function () {
@@ -30,6 +26,78 @@ Route::middleware('auth')->group(function () {
     // General Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
+    // ===== DEBUG ROUTES - TAMBAHKAN INI =====
+    Route::prefix('debug')->group(function () {
+        Route::get('/step1-auth', function() {
+            return response()->json([
+                'step' => '1. Authentication Check',
+                'authenticated' => Auth::check(),
+                'user' => Auth::user() ? [
+                    'id' => Auth::id(),
+                    'name' => Auth::user()->full_name ?? 'N/A',
+                    'role' => Auth::user()->role ?? 'N/A',
+                    'is_active' => Auth::user()->is_active ?? 'N/A'
+                ] : null,
+                'status' => Auth::check() ? '✅ AUTHENTICATED' : '❌ NOT AUTHENTICATED'
+            ]);
+        });
+        
+        Route::get('/step2-gates', function() {
+            $user = Auth::user();
+            return response()->json([
+                'step' => '2. Gates Check',
+                'user_role' => $user?->role,
+                'gates' => [
+                    'admin_access' => Gate::allows('admin-access'),
+                    'hr_access' => Gate::allows('hr-access'),
+                    'interviewer_access' => Gate::allows('interviewer-access')
+                ],
+                'status' => Gate::allows('hr-access') ? '✅ HR ACCESS GRANTED' : '❌ HR ACCESS DENIED'
+            ]);
+        });
+        
+        Route::get('/step3-middleware', function() {
+            return response()->json([
+                'step' => '3. Role Middleware Test',
+                'message' => 'Role middleware works!',
+                'user_role' => Auth::user()?->role,
+                'status' => '✅ ROLE MIDDLEWARE WORKS'
+            ]);
+        })->middleware('role:admin,hr');
+        
+        Route::get('/step4-database', function() {
+            try {
+                $candidateCount = \App\Models\Candidate::count();
+                $positionCount = \App\Models\Position::count();
+                $userCount = \App\Models\User::count();
+                
+                return response()->json([
+                    'step' => '4. Database Check',
+                    'database' => [
+                        'users' => "✅ {$userCount} records",
+                        'candidates' => "✅ {$candidateCount} records",
+                        'positions' => "✅ {$positionCount} records"
+                    ],
+                    'status' => '✅ DATABASE OK'
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'step' => '4. Database Check',
+                    'error' => $e->getMessage(),
+                    'status' => '❌ DATABASE ERROR'
+                ]);
+            }
+        });
+        
+        Route::get('/simple', function() {
+            return response()->json([
+                'message' => 'Debug routes working!',
+                'user' => Auth::user()?->full_name ?? 'Not authenticated',
+                'timestamp' => now()
+            ]);
+        });
+    });
+    
     // Admin Routes
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
@@ -41,9 +109,19 @@ Route::middleware('auth')->group(function () {
     // HR Routes  
     Route::middleware('role:admin,hr')->group(function () {
         Route::get('/hr/dashboard', [DashboardController::class, 'hr'])->name('hr.dashboard');
-        Route::get('/hr/candidates', function() {
-            return 'Candidate Management - Coming Soon';
-        })->name('hr.candidates');
+        
+        // Candidate Management Routes
+        Route::prefix('candidates')->name('candidates.')->group(function () {
+            Route::get('/', [CandidateController::class, 'index'])->name('index');
+            Route::get('/search', [CandidateController::class, 'search'])->name('search');
+            Route::get('/export', [CandidateController::class, 'export'])->name('export');
+            Route::post('/bulk-action', [CandidateController::class, 'bulkAction'])->name('bulk-action');
+            Route::get('/{id}', [CandidateController::class, 'show'])->name('show');
+            Route::get('/{id}/edit', [CandidateController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [CandidateController::class, 'update'])->name('update');
+            Route::patch('/{id}/status', [CandidateController::class, 'updateStatus'])->name('update-status');
+            Route::get('/{id}/schedule-interview', [CandidateController::class, 'scheduleInterview'])->name('schedule-interview');
+        });
     });
     
     // Interviewer Routes
@@ -55,7 +133,7 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// Demo API untuk development (Laravel 11 style)
+// Demo API untuk development
 Route::prefix('api')->middleware(['throttle:10,1'])->group(function () {
     Route::get('/demo-users', [AuthController::class, 'getDemoUsers'])->name('api.demo-users');
 });

@@ -16,29 +16,16 @@ class FamilyMember extends Model
         'name',
         'age',
         'education',
-        'occupation',
-        'sequence_number'
+        'occupation'
     ];
 
     protected $casts = [
-        'age' => 'integer',
-        'sequence_number' => 'integer'
+        'age' => 'integer'
     ];
 
     // Relationships
     public function candidate()
     {
         return $this->belongsTo(Candidate::class);
-    }
-
-    // Scopes
-    public function scopeByRelationship($query, $relationship)
-    {
-        return $query->where('relationship', $relationship);
-    }
-
-    public function scopeOrdered($query)
-    {
-        return $query->orderBy('sequence_number');
     }
 }

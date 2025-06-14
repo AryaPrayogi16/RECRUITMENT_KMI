@@ -11,19 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('document_uploads', function (Blueprint $table) {
+        Schema::create('social_activities', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->enum('document_type', ['cv', 'photo', 'certificates', 'transcript']);
-            $table->string('document_name');
-            $table->string('original_filename');
-            $table->string('file_path');
-            $table->integer('file_size')->nullable();
-            $table->string('mime_type')->nullable();
+            $table->string('organization_name')->nullable();
+            $table->string('field')->nullable();
+            $table->string('period')->nullable();
+            $table->text('description')->nullable();
             $table->timestamps();
-            $table->softDeletes(); 
+            $table->softDeletes();   
             $table->index('candidate_id');
-            $table->index('document_type');
         });
     }
 
@@ -32,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('document_uploads');
+        Schema::dropIfExists('social_activities');
     }
 };
