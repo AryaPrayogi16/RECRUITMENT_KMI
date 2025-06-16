@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SocialActivity extends Model
 {
-    use HasFactory, SoftDeletes;
+    use SoftDeletes;
+
+    protected $table = 'social_activities';
 
     protected $fillable = [
         'candidate_id',
@@ -18,7 +19,6 @@ class SocialActivity extends Model
         'description'
     ];
 
-    // Relationships
     public function candidate()
     {
         return $this->belongsTo(Candidate::class);

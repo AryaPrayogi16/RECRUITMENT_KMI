@@ -172,7 +172,17 @@
     </div>
 
     <!-- Copy to clipboard functionality -->
+
+
     <script>
+         // Clear localStorage after successful submission
+        document.addEventListener('DOMContentLoaded', function() {
+            // Clear the saved form data from localStorage
+            if (localStorage.getItem('jobApplicationFormData')) {
+                localStorage.removeItem('jobApplicationFormData');
+                console.log('Form data cleared from localStorage');
+            }
+        });
         // Auto-select candidate code when clicked
         @if($candidateCode)
         document.addEventListener('DOMContentLoaded', function() {

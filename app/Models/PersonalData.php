@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes; // ✅ Ditambahkan
 
 class PersonalData extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes; // ✅ Ditambahkan SoftDeletes
 
     protected $table = 'personal_data';
 

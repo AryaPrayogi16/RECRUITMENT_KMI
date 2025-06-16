@@ -524,10 +524,10 @@
                         <button type="button" class="quick-login-btn admin" onclick="fillCredentials('admin@pawindo.com', 'admin123')">
                             👑 Admin
                         </button>
-                        <button type="button" class="quick-login-btn hr" onclick="fillCredentials('hr@company.com', 'hr1234')">
+                        <button type="button" class="quick-login-btn hr" onclick="fillCredentials('hr@pawindo.com', 'hr123')">
                             👥 HR
                         </button>
-                        <button type="button" class="quick-login-btn interviewer" onclick="fillCredentials('interviewer@company.com', 'int1234')">
+                        <button type="button" class="quick-login-btn interviewer" onclick="fillCredentials('interviewer@pawindo.com', 'int123')">
                             🎯 Interviewer
                         </button>
                     </div>

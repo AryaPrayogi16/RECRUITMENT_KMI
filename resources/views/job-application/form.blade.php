@@ -67,6 +67,11 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
+        .btn-primary:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
         .btn-secondary {
             background-color: #6b7280;
             color: white;
@@ -157,34 +162,122 @@
             max-height: 80px;
             margin: 0 auto;
         }
-        .file-input-container {
+        
+        /* Enhanced File Upload Styles */
+        .file-upload-wrapper {
             position: relative;
             display: inline-block;
+            cursor: pointer;
+            width: 100%;
         }
-        .file-list {
+        
+        .file-upload-input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            background-color: #f3f4f6;
+            border: 2px dashed #d1d5db;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .file-upload-label:hover {
+            background-color: #e5e7eb;
+            border-color: #9ca3af;
+        }
+        
+        .file-upload-label.has-file {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+            border-style: solid;
+        }
+        
+        .file-upload-label.error {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+        
+        .file-preview {
             margin-top: 8px;
-            font-size: 12px;
-            color: #6b7280;
+            padding: 8px;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 14px;
         }
-        .file-item {
+        
+        .file-preview-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+        
+        .file-preview-info {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-top: 4px;
-            padding: 4px 8px;
-            background: #f3f4f6;
-            border-radius: 4px;
         }
-        .file-item .remove-file {
+        
+        .file-size {
+            color: #6b7280;
+            font-size: 12px;
+        }
+        
+        .file-remove {
             color: #ef4444;
             cursor: pointer;
             font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
         }
+        
+        .file-remove:hover {
+            background-color: #fee2e2;
+        }
+        
         .validation-message {
             color: #ef4444;
             font-size: 12px;
             margin-top: 4px;
+            display: none;
         }
+        
+        .validation-message.show {
+            display: block;
+        }
+        
+        .upload-progress {
+            width: 100%;
+            height: 4px;
+            background-color: #e5e7eb;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .upload-progress.show {
+            display: block;
+        }
+        
+        .upload-progress-bar {
+            height: 100%;
+            background-color: #3b82f6;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
         .custom-alert {
             position: fixed;
             top: 20px;
@@ -203,13 +296,31 @@
         .custom-alert.warning {
             background: #f59e0b;
         }
+        
+        .file-icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f4f6;
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <div class="max-w-4xl mx-auto py-8 px-4">
         <!-- Header with Logo -->
         <div class="text-center mb-8">
-            <x-company-logo class="company-logo mb-4" />
             <h1 class="text-3xl font-bold text-gray-900 mb-2">Form Lamaran Kerja</h1>
             <p class="text-lg text-gray-600">PT Kayu Mebel Indonesia</p>
             <p class="text-sm text-gray-500 mt-2">Silakan lengkapi semua data dengan benar. Field dengan tanda <span class="required-star">*</span> wajib diisi.</p>
@@ -715,26 +826,68 @@
                 <p class="text-sm text-gray-600 mb-4">Format yang diterima: PDF, JPG, PNG (Maksimal 2MB per file)</p>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- CV Upload -->
                     <div class="form-group">
                         <label class="form-label" for="cv">CV/Resume <span class="required-star">*</span></label>
-                        <input type="file" name="documents[cv]" id="cv" class="form-input" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <div class="file-upload-wrapper">
+                            <input type="file" name="cv" id="cv" class="file-upload-input" accept=".pdf" required>
+                            <label for="cv" class="file-upload-label" id="cv-label">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <span>Pilih file PDF</span>
+                            </label>
+                            <div class="validation-message" id="cv-error"></div>
+                            <div class="file-preview" id="cv-preview" style="display: none;"></div>
+                        </div>
                     </div>
                     
+                    <!-- Photo Upload -->
                     <div class="form-group">
                         <label class="form-label" for="photo">Foto <span class="required-star">*</span></label>
-                        <input type="file" name="documents[photo]" id="photo" class="form-input" accept=".jpg,.jpeg,.png" required>
+                        <div class="file-upload-wrapper">
+                            <input type="file" name="photo" id="photo" class="file-upload-input" accept=".jpg,.jpeg,.png" required>
+                            <label for="photo" class="file-upload-label" id="photo-label">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <span>Pilih file JPG/PNG</span>
+                            </label>
+                            <div class="validation-message" id="photo-error"></div>
+                            <div class="file-preview" id="photo-preview" style="display: none;"></div>
+                        </div>
                     </div>
                     
+                    <!-- Transcript Upload -->
                     <div class="form-group">
                         <label class="form-label" for="transcript">Transkrip Nilai <span class="required-star">*</span></label>
-                        <input type="file" name="documents[transcript]" id="transcript" class="form-input" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <div class="file-upload-wrapper">
+                            <input type="file" name="transcript" id="transcript" class="file-upload-input" accept=".pdf" required>
+                            <label for="transcript" class="file-upload-label" id="transcript-label">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <span>Pilih file PDF</span>
+                            </label>
+                            <div class="validation-message" id="transcript-error"></div>
+                            <div class="file-preview" id="transcript-preview" style="display: none;"></div>
+                        </div>
                     </div>
                     
+                    <!-- Certificates Upload (Multiple) -->
                     <div class="form-group">
                         <label class="form-label" for="certificates">Sertifikat (opsional - bisa lebih dari satu)</label>
-                        <input type="file" name="documents[certificates][]" id="certificates" class="form-input" 
-                               accept=".pdf,.jpg,.jpeg,.png" multiple>
-                        <div class="file-list" id="certificateList"></div>
+                        <div class="file-upload-wrapper">
+                            <input type="file" name="certificates[]" id="certificates" class="file-upload-input" accept=".pdf" multiple>
+                            <label for="certificates" class="file-upload-label" id="certificates-label">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                </svg>
+                                <span>Pilih file PDF (dapat lebih dari 1)</span>
+                            </label>
+                            <div class="validation-message" id="certificates-error"></div>
+                            <div class="file-preview" id="certificates-preview" style="display: none;"></div>
+                        </div>
                     </div>
                 </div>
                 
@@ -758,7 +911,7 @@
 
             <!-- Submit Button -->
             <div class="text-center mt-8">
-                <button type="submit" class="btn-primary px-8 py-3 text-lg">
+                <button type="submit" class="btn-primary px-8 py-3 text-lg" id="submitBtn">
                     Kirim Lamaran
                 </button>
                 <p class="text-sm text-gray-500 mt-2">
@@ -777,6 +930,280 @@
     </div>
 
     <script>
+        // Check if form was successfully submitted (for clearing localStorage)
+        @if(session('form_submitted'))
+            localStorage.removeItem('jobApplicationFormData');
+        @endif
+
+        // Enhanced File Upload System
+        const fileValidation = {
+            cv: {
+                types: ['application/pdf'],
+                extensions: ['pdf'],
+                maxSize: 2 * 1024 * 1024,
+                required: true
+            },
+            photo: {
+                types: ['image/jpeg', 'image/jpg', 'image/png'],
+                extensions: ['jpg', 'jpeg', 'png'],
+                maxSize: 2 * 1024 * 1024,
+                required: true
+            },
+            transcript: {
+                types: ['application/pdf'],
+                extensions: ['pdf'],
+                maxSize: 2 * 1024 * 1024,
+                required: true
+            },
+            certificates: {
+                types: ['application/pdf'],
+                extensions: ['pdf'],
+                maxSize: 2 * 1024 * 1024,
+                required: false
+            }
+        };
+
+        // File upload handlers
+        document.getElementById('cv').addEventListener('change', function(e) {
+            handleFileUpload(e, 'cv');
+        });
+
+        document.getElementById('photo').addEventListener('change', function(e) {
+            handleFileUpload(e, 'photo');
+        });
+
+        document.getElementById('transcript').addEventListener('change', function(e) {
+            handleFileUpload(e, 'transcript');
+        });
+
+        document.getElementById('certificates').addEventListener('change', function(e) {
+            handleMultipleFileUpload(e, 'certificates');
+        });
+
+        function handleFileUpload(event, fieldName) {
+            const file = event.target.files[0];
+            const validation = fileValidation[fieldName];
+            const label = document.getElementById(`${fieldName}-label`);
+            const preview = document.getElementById(`${fieldName}-preview`);
+            const error = document.getElementById(`${fieldName}-error`);
+
+            // Reset states
+            label.classList.remove('has-file', 'error');
+            preview.style.display = 'none';
+            error.textContent = '';
+            error.classList.remove('show');
+
+            if (!file) {
+                label.innerHTML = getDefaultLabelContent(fieldName);
+                return;
+            }
+
+            // Validate file
+            const validationResult = validateFile(file, validation);
+            
+            if (!validationResult.valid) {
+                showFileError(fieldName, validationResult.error);
+                event.target.value = '';
+                return;
+            }
+
+            // Show preview
+            showFilePreview(fieldName, file);
+        }
+
+        function handleMultipleFileUpload(event, fieldName) {
+            const files = Array.from(event.target.files);
+            const validation = fileValidation[fieldName];
+            const label = document.getElementById(`${fieldName}-label`);
+            const preview = document.getElementById(`${fieldName}-preview`);
+            const error = document.getElementById(`${fieldName}-error`);
+
+            // Reset states
+            label.classList.remove('has-file', 'error');
+            preview.style.display = 'none';
+            preview.innerHTML = '';
+            error.textContent = '';
+            error.classList.remove('show');
+
+            if (files.length === 0) {
+                label.innerHTML = getDefaultLabelContent(fieldName);
+                return;
+            }
+
+            let validFiles = [];
+            let errors = [];
+
+            files.forEach((file, index) => {
+                const validationResult = validateFile(file, validation);
+                if (validationResult.valid) {
+                    validFiles.push(file);
+                } else {
+                    errors.push(`File ${index + 1} (${file.name}): ${validationResult.error}`);
+                }
+            });
+
+            if (errors.length > 0) {
+                showFileError(fieldName, errors.join('<br>'));
+                event.target.value = '';
+                return;
+            }
+
+            // Show preview for multiple files
+            showMultipleFilePreview(fieldName, validFiles);
+        }
+
+        function validateFile(file, validation) {
+            // Check file type
+            if (!validation.types.includes(file.type)) {
+                const allowedExtensions = validation.extensions.join(', ').toUpperCase();
+                return { valid: false, error: `Format file harus ${allowedExtensions}` };
+            }
+
+            // Check file size
+            if (file.size > validation.maxSize) {
+                return { valid: false, error: 'Ukuran file maksimal 2MB' };
+            }
+
+            return { valid: true };
+        }
+
+        function showFileError(fieldName, errorMessage) {
+            const label = document.getElementById(`${fieldName}-label`);
+            const error = document.getElementById(`${fieldName}-error`);
+            
+            label.classList.add('error');
+            error.innerHTML = errorMessage;
+            error.classList.add('show');
+        }
+
+        function showFilePreview(fieldName, file) {
+            const label = document.getElementById(`${fieldName}-label`);
+            const preview = document.getElementById(`${fieldName}-preview`);
+            
+            label.classList.add('has-file');
+            label.innerHTML = `
+                <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span>File dipilih</span>
+            `;
+
+            preview.innerHTML = `
+                <div class="file-preview-item">
+                    <div class="file-preview-info">
+                        ${getFileIcon(file.type)}
+                        <span>${file.name}</span>
+                        <span class="file-size">(${formatFileSize(file.size)})</span>
+                    </div>
+                    <span class="file-remove" onclick="removeFile('${fieldName}')">×</span>
+                </div>
+            `;
+            preview.style.display = 'block';
+        }
+
+        function showMultipleFilePreview(fieldName, files) {
+            const label = document.getElementById(`${fieldName}-label`);
+            const preview = document.getElementById(`${fieldName}-preview`);
+            
+            label.classList.add('has-file');
+            label.innerHTML = `
+                <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span>${files.length} file dipilih</span>
+            `;
+
+            let previewHtml = '';
+            files.forEach((file, index) => {
+                previewHtml += `
+                    <div class="file-preview-item">
+                        <div class="file-preview-info">
+                            ${getFileIcon(file.type)}
+                            <span>${file.name}</span>
+                            <span class="file-size">(${formatFileSize(file.size)})</span>
+                        </div>
+                        <span class="file-remove" onclick="removeMultipleFile('${fieldName}', ${index})">×</span>
+                    </div>
+                `;
+            });
+            
+            preview.innerHTML = previewHtml;
+            preview.style.display = 'block';
+        }
+
+        function removeFile(fieldName) {
+            const input = document.getElementById(fieldName);
+            const label = document.getElementById(`${fieldName}-label`);
+            const preview = document.getElementById(`${fieldName}-preview`);
+            
+            input.value = '';
+            label.classList.remove('has-file');
+            label.innerHTML = getDefaultLabelContent(fieldName);
+            preview.style.display = 'none';
+        }
+
+        function removeMultipleFile(fieldName, indexToRemove) {
+            const input = document.getElementById(fieldName);
+            const dt = new DataTransfer();
+            const files = input.files;
+            
+            for (let i = 0; i < files.length; i++) {
+                if (i !== indexToRemove) {
+                    dt.items.add(files[i]);
+                }
+            }
+            
+            input.files = dt.files;
+            
+            if (dt.files.length === 0) {
+                removeFile(fieldName);
+            } else {
+                handleMultipleFileUpload({ target: input }, fieldName);
+            }
+        }
+
+        function getDefaultLabelContent(fieldName) {
+            const contents = {
+                cv: `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                     </svg>
+                     <span>Pilih file PDF</span>`,
+                photo: `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                     </svg>
+                     <span>Pilih file JPG/PNG</span>`,
+                transcript: `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                         </svg>
+                         <span>Pilih file PDF</span>`,
+                certificates: `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                           </svg>
+                           <span>Pilih file PDF (dapat lebih dari 1)</span>`
+            };
+            return contents[fieldName];
+        }
+
+        function getFileIcon(fileType) {
+            if (fileType.includes('image')) {
+                return `<svg class="file-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>`;
+            } else {
+                return `<svg class="file-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>`;
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
         // Form State Preservation
         const STORAGE_KEY = 'jobApplicationFormData';
         const form = document.getElementById('applicationForm');
@@ -796,7 +1223,7 @@
             loadFormData();
             
             // Add event listeners for auto-save
-            const inputs = form.querySelectorAll('input, select, textarea');
+            const inputs = form.querySelectorAll('input:not([type="file"]), select, textarea');
             inputs.forEach(input => {
                 input.addEventListener('change', function() {
                     saveFormData();
@@ -805,52 +1232,7 @@
                     saveFormData();
                 }, 1000));
             });
-            
-            // Certificate file input handler
-            const certificateInput = document.getElementById('certificates');
-            certificateInput.addEventListener('change', function(e) {
-                updateCertificateList();
-            });
         });
-        
-        // Update certificate list display
-        function updateCertificateList() {
-            const certificateInput = document.getElementById('certificates');
-            const fileList = document.getElementById('certificateList');
-            fileList.innerHTML = '';
-            
-            if (certificateInput.files.length > 0) {
-                fileList.innerHTML = '<p class="text-sm text-gray-600 mt-2">File sertifikat yang dipilih:</p>';
-                Array.from(certificateInput.files).forEach((file, index) => {
-                    const fileItem = document.createElement('div');
-                    fileItem.className = 'file-item';
-                    fileItem.innerHTML = `
-                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        <span>${file.name}</span>
-                        <span class="remove-file" onclick="removeCertificateFile(${index})">&times;</span>
-                    `;
-                    fileList.appendChild(fileItem);
-                });
-            }
-        }
-        
-        // Remove certificate file
-        function removeCertificateFile(index) {
-            const certificateInput = document.getElementById('certificates');
-            const dt = new DataTransfer();
-            const files = certificateInput.files;
-            
-            for (let i = 0; i < files.length; i++) {
-                if (i !== index) {
-                    dt.items.add(files[i]);
-                }
-            }
-            
-            certificateInput.files = dt.files;
-            updateCertificateList();
-        }
         
         // Save form data to localStorage
         function saveFormData() {
@@ -859,7 +1241,7 @@
             
             // Handle regular inputs
             for (let [key, value] of formData.entries()) {
-                if (!key.includes('documents[')) { // Skip file inputs
+                if (!key.includes('cv') && !key.includes('photo') && !key.includes('transcript') && !key.includes('certificates')) {
                     if (data[key]) {
                         if (!Array.isArray(data[key])) {
                             data[key] = [data[key]];
@@ -927,31 +1309,6 @@
                 
             } catch (e) {
                 console.error('Error loading form data:', e);
-            }
-        }
-        
-        // Clear form data
-        function clearFormData() {
-            if (confirm('Apakah Anda yakin ingin menghapus semua data yang telah diisi?')) {
-                localStorage.removeItem(STORAGE_KEY);
-                form.reset();
-                // Reset dynamic sections
-                document.getElementById('familyMembers').innerHTML = getDefaultFamilyMember(0);
-                document.getElementById('formalEducation').innerHTML = getDefaultEducation(0);
-                document.getElementById('languageSkills').innerHTML = getDefaultLanguageSkill(0);
-                // Clear optional sections
-                document.getElementById('nonFormalEducation').innerHTML = '';
-                document.getElementById('workExperiences').innerHTML = '';
-                document.getElementById('socialActivities').innerHTML = '';
-                document.getElementById('achievements').innerHTML = '';
-                // Reset counters
-                familyIndex = 0;
-                educationIndex = 0;
-                languageIndex = 0;
-                nonFormalEducationIndex = 0;
-                workIndex = 0;
-                socialActivityIndex = 0;
-                achievementIndex = 0;
             }
         }
         
@@ -1357,7 +1714,7 @@
 
         // Attach event listeners to newly added dynamic fields
         function attachEventListeners() {
-            const newInputs = form.querySelectorAll('input:not([data-listener]), select:not([data-listener]), textarea:not([data-listener])');
+            const newInputs = form.querySelectorAll('input:not([data-listener]):not([type="file"]), select:not([data-listener]), textarea:not([data-listener])');
             newInputs.forEach(input => {
                 input.setAttribute('data-listener', 'true');
                 input.addEventListener('change', function() {
@@ -1423,6 +1780,9 @@
                 if (input && (!input.value || input.value.trim() === '')) {
                     hasError = true;
                     input.classList.add('error');
+                    if (input.type === 'file') {
+                        document.getElementById(`${fieldId}-label`).classList.add('error');
+                    }
                     errors.push(`${input.previousElementSibling.textContent.replace(' *', '')} harus diisi`);
                 }
             });
@@ -1472,6 +1832,23 @@
                 errors.push('Anda harus menyetujui pernyataan untuk melanjutkan');
             }
             
+            // Validate file uploads
+            const fileInputs = ['cv', 'photo', 'transcript'];
+            fileInputs.forEach(fieldName => {
+                const input = document.getElementById(fieldName);
+                if (input && input.files.length > 0) {
+                    const file = input.files[0];
+                    const validation = fileValidation[fieldName];
+                    const validationResult = validateFile(file, validation);
+                    
+                    if (!validationResult.valid) {
+                        hasError = true;
+                        errors.push(`${fieldName.toUpperCase()}: ${validationResult.error}`);
+                        showFileError(fieldName, validationResult.error);
+                    }
+                }
+            });
+            
             if (hasError) {
                 let errorMessage = 'Harap lengkapi data berikut:\n\n';
                 errors.slice(0, 10).forEach((error, index) => {
@@ -1484,20 +1861,24 @@
                 showAlert(errorMessage.replace(/\n/g, '<br>'), 'error');
                 
                 // Scroll to first error
-                const firstError = form.querySelector('.form-input.error');
+                const firstError = form.querySelector('.form-input.error, .file-upload-label.error');
                 if (firstError) {
                     firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    firstError.focus();
+                    if (firstError.classList.contains('form-input')) {
+                        firstError.focus();
+                    }
                 }
             } else {
-                // Clear localStorage on successful submission
-                localStorage.removeItem(STORAGE_KEY);
-                showAlert('Semua data telah terisi dengan benar. Mengirim lamaran...', 'success');
+                // Disable submit button to prevent double submission
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="loading-spinner mr-2"></span> Mengirim...';
                 
-                // Submit form
-                setTimeout(() => {
-                    this.submit();
-                }, 1000);
+                // Clear localStorage only after successful backend submission
+                // Don't show success message here, let the backend handle it
+                
+                // Submit form directly without delay
+                this.submit();
             }
         });
 

@@ -577,8 +577,8 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <i class="fas fa-user-tie"></i>
-                    <span class="logo-text">HR Portal</span>
+                    <i class="fas fa-building"></i>
+                    <span class="logo-text">HR System</span>
                 </div>
             </div>
 
@@ -601,44 +601,50 @@
                 </div>
                 <div class="nav-item">
                     <a href="#" class="nav-link">
-                        <i class="fas fa-user-plus"></i>
-                        <span>Kandidat Baru</span>
+                        <i class="fas fa-users"></i>
+                        <span>User Management</span>
                     </a>
                 </div>
                 <div class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-users"></i>
-                        <span>Kelola Kandidat</span>
+                    <a href="{{ route('candidates.index') }}" class="nav-link {{ request()->routeIs('candidates.*') ? 'active' : '' }}">
+                        <i class="fas fa-user-tie"></i>
+                        <span>Kandidat</span>
                     </a>
                 </div>
                 <div class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="fas fa-briefcase"></i>
-                        <span>Kelola Posisi</span>
+                        <span>Posisi</span>
                     </a>
                 </div>
                 <div class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="fas fa-calendar-alt"></i>
-                        <span>Jadwal Interview</span>
+                        <span>Interview</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Analytics</span>
                     </a>
                 </div>
                 <div class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="fas fa-envelope"></i>
-                        <span>Email Kandidat</span>
+                        <span>Email Templates</span>
                     </a>
                 </div>
                 <div class="nav-item">
                     <a href="#" class="nav-link">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Reports</span>
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
                     </a>
                 </div>
                 <div class="nav-item">
                     <a href="#" class="nav-link">
-                        <i class="fas fa-file-export"></i>
-                        <span>Export Data</span>
+                        <i class="fas fa-history"></i>
+                        <span>Audit Logs</span>
                     </a>
                 </div>
             </nav>
@@ -688,7 +694,7 @@
                                 <i class="fas fa-file-plus"></i>
                             </div>
                         </div>
-                        <div class="stat-value">23</div>
+                        <div class="stat-value">{{ $stats['new_applications'] ?? 23 }}</div>
                         <div class="stat-change">Menunggu review</div>
                     </div>
 
@@ -699,7 +705,7 @@
                                 <i class="fas fa-clock"></i>
                             </div>
                         </div>
-                        <div class="stat-value">45</div>
+                        <div class="stat-value">{{ $stats['pending_review'] ?? 45 }}</div>
                         <div class="stat-change">Perlu tindak lanjut</div>
                     </div>
 
@@ -710,7 +716,7 @@
                                 <i class="fas fa-calendar-day"></i>
                             </div>
                         </div>
-                        <div class="stat-value">8</div>
+                        <div class="stat-value">{{ $stats['interviews_today'] ?? 8 }}</div>
                         <div class="stat-change">4 sudah selesai</div>
                     </div>
 
@@ -721,7 +727,7 @@
                                 <i class="fas fa-handshake"></i>
                             </div>
                         </div>
-                        <div class="stat-value">3</div>
+                        <div class="stat-value">{{ $stats['offers_pending'] ?? 3 }}</div>
                         <div class="stat-change">Menunggu respon</div>
                     </div>
                 </div>
@@ -735,16 +741,31 @@
                             <a href="#" class="view-all-btn">Lihat Semua</a>
                         </div>
                         <div class="task-content">
-                            <div class="task-item">
-                                <div class="task-priority high"></div>
-                                <div class="task-info">
-                                    <div class="task-name">Review CV Sales Manager</div>
-                                    <div class="task-details">5 kandidat menunggu review</div>
+                            @if(isset($priority_tasks['candidates_to_review']) && $priority_tasks['candidates_to_review']->count() > 0)
+                                @foreach($priority_tasks['candidates_to_review'] as $candidate)
+                                <div class="task-item">
+                                    <div class="task-priority high"></div>
+                                    <div class="task-info">
+                                        <div class="task-name">Review CV {{ $candidate->personalData->full_name ?? 'Unknown' }}</div>
+                                        <div class="task-details">Status: {{ $candidate->application_status }}</div>
+                                    </div>
+                                    <div class="task-action">
+                                        <button class="task-btn">Review</button>
+                                    </div>
                                 </div>
-                                <div class="task-action">
-                                    <button class="task-btn">Review</button>
+                                @endforeach
+                            @else
+                                <div class="task-item">
+                                    <div class="task-priority high"></div>
+                                    <div class="task-info">
+                                        <div class="task-name">Review CV Sales Manager</div>
+                                        <div class="task-details">5 kandidat menunggu review</div>
+                                    </div>
+                                    <div class="task-action">
+                                        <button class="task-btn">Review</button>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                             <div class="task-item">
                                 <div class="task-priority medium"></div>
                                 <div class="task-info">
@@ -836,46 +857,61 @@
                         <a href="#" class="view-all-btn">Lihat Kalender</a>
                     </div>
                     <div class="task-content">
-                        <div class="schedule-item">
-                            <div class="schedule-time">09:00</div>
-                            <div class="schedule-content">
-                                <div class="schedule-info">
-                                    <h4>Interview - Frontend Developer</h4>
-                                    <p>Kandidat: Siti Nurhaliza • Interviewer: John Doe</p>
+                        @if(isset($todays_schedule) && $todays_schedule->count() > 0)
+                            @foreach($todays_schedule as $interview)
+                            <div class="schedule-item">
+                                <div class="schedule-time">{{ \Carbon\Carbon::parse($interview->interview_time)->format('H:i') }}</div>
+                                <div class="schedule-content">
+                                    <div class="schedule-info">
+                                        <h4>Interview - {{ $interview->candidate->personalData->full_name ?? 'Unknown' }}</h4>
+                                        <p>Interviewer: {{ $interview->interviewer->full_name ?? 'TBD' }}</p>
+                                    </div>
+                                    <div class="schedule-status upcoming">{{ ucfirst($interview->status ?? 'Mendatang') }}</div>
                                 </div>
-                                <div class="schedule-status completed">Selesai</div>
                             </div>
-                        </div>
-                        <div class="schedule-item">
-                            <div class="schedule-time">11:00</div>
-                            <div class="schedule-content">
-                                <div class="schedule-info">
-                                    <h4>Phone Interview - Marketing Manager</h4>
-                                    <p>Kandidat: Ahmad Rizki • Interviewer: Sarah Wilson</p>
+                            @endforeach
+                        @else
+                            <div class="schedule-item">
+                                <div class="schedule-time">09:00</div>
+                                <div class="schedule-content">
+                                    <div class="schedule-info">
+                                        <h4>Interview - Frontend Developer</h4>
+                                        <p>Kandidat: Siti Nurhaliza • Interviewer: John Doe</p>
+                                    </div>
+                                    <div class="schedule-status completed">Selesai</div>
                                 </div>
-                                <div class="schedule-status in-progress">Berlangsung</div>
                             </div>
-                        </div>
-                        <div class="schedule-item">
-                            <div class="schedule-time">14:00</div>
-                            <div class="schedule-content">
-                                <div class="schedule-info">
-                                    <h4>Team Meeting - Recruitment Review</h4>
-                                    <p>Review progress dan diskusi kandidat prioritas</p>
+                            <div class="schedule-item">
+                                <div class="schedule-time">11:00</div>
+                                <div class="schedule-content">
+                                    <div class="schedule-info">
+                                        <h4>Phone Interview - Marketing Manager</h4>
+                                        <p>Kandidat: Ahmad Rizki • Interviewer: Sarah Wilson</p>
+                                    </div>
+                                    <div class="schedule-status in-progress">Berlangsung</div>
                                 </div>
-                                <div class="schedule-status upcoming">Mendatang</div>
                             </div>
-                        </div>
-                        <div class="schedule-item">
-                            <div class="schedule-time">16:00</div>
-                            <div class="schedule-content">
-                                <div class="schedule-info">
-                                    <h4>Final Interview - Senior Developer</h4>
-                                    <p>Kandidat: Maya Putri • Interviewer: Tech Lead</p>
+                            <div class="schedule-item">
+                                <div class="schedule-time">14:00</div>
+                                <div class="schedule-content">
+                                    <div class="schedule-info">
+                                        <h4>Team Meeting - Recruitment Review</h4>
+                                        <p>Review progress dan diskusi kandidat prioritas</p>
+                                    </div>
+                                    <div class="schedule-status upcoming">Mendatang</div>
                                 </div>
-                                <div class="schedule-status upcoming">Mendatang</div>
                             </div>
-                        </div>
+                            <div class="schedule-item">
+                                <div class="schedule-time">16:00</div>
+                                <div class="schedule-content">
+                                    <div class="schedule-info">
+                                        <h4>Final Interview - Senior Developer</h4>
+                                        <p>Kandidat: Maya Putri • Interviewer: Tech Lead</p>
+                                    </div>
+                                    <div class="schedule-status upcoming">Mendatang</div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -903,9 +939,11 @@
         // Nav link active state
         document.querySelectorAll('.nav-link').forEach(link => {
             link.addEventListener('click', (e) => {
-                e.preventDefault();
-                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-                link.classList.add('active');
+                if (link.getAttribute('href') === '#') {
+                    e.preventDefault();
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                }
             });
         });
 
@@ -928,14 +966,6 @@
                 console.log('Quick action:', btn.textContent.trim());
             });
         });
-
-        // Logout confirmation
-        // document.querySelector('.logout-btn').addEventListener('click', () => {
-        //     if (confirm('Apakah Anda yakin ingin logout?')) {
-        //         console.log('Logout clicked');
-        //         // window.location.href = '/logout';
-        //     }
-        // });
 
         // Animate cards on load
         const observerOptions = {

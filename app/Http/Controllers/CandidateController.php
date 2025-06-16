@@ -244,7 +244,8 @@ class CandidateController extends Controller
             
             // Update skills
             if ($request->has('hardware_skills') || $request->has('software_skills')) {
-                $computerSkill = $candidate->computerSkills()->first();
+                // DIPERBAIKI: Tidak perlu first() untuk hasOne relationship
+                $computerSkill = $candidate->computerSkills;
                 if ($computerSkill) {
                     $computerSkill->update([
                         'hardware_skills' => $request->hardware_skills,
@@ -258,9 +259,9 @@ class CandidateController extends Controller
                     ]);
                 }
             }
-            
             if ($request->has('other_skills')) {
-                $otherSkill = $candidate->otherSkills()->first();
+                // DIPERBAIKI: Tidak perlu first() untuk hasOne relationship
+                $otherSkill = $candidate->otherSkills;
                 if ($otherSkill) {
                     $otherSkill->update([
                         'other_skills' => $request->other_skills

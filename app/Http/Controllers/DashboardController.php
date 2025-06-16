@@ -101,9 +101,15 @@ class DashboardController extends Controller
                 ->where('status', 'completed')
                 ->whereMonth('created_at', now()->month)
                 ->count(),
+            // Fixed: Changed from 'score' to 'feedback' or 'notes' field
             'pending_feedback' => Interview::where('interviewer_id', $user->id)
                 ->where('status', 'completed')
-                ->whereNull('score')
+                ->where(function($query) {
+                    $query->whereNull('feedback')
+                          ->orWhere('feedback', '')
+                          ->orWhereNull('notes')
+                          ->orWhere('notes', '');
+                })
                 ->count(),
         ];
         
@@ -113,10 +119,16 @@ class DashboardController extends Controller
             ->orderBy('interview_time')
             ->get();
         
+        // Fixed: Changed from 'score' to 'feedback' field
         $pending_feedback = Interview::with(['candidate.personalData'])
             ->where('interviewer_id', $user->id)
             ->where('status', 'completed')
-            ->whereNull('score')
+            ->where(function($query) {
+                $query->whereNull('feedback')
+                      ->orWhere('feedback', '')
+                      ->orWhereNull('notes')
+                      ->orWhere('notes', '');
+            })
             ->latest()
             ->take(5)
             ->get();

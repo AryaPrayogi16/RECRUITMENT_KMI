@@ -27,42 +27,42 @@ class JobApplicationRequest extends FormRequest
             'agreement' => 'required|accepted',
             
             // Personal Data
-            'expected_salary' => 'nullable|numeric|min:0',
-            'phone_number' => 'nullable|string|max:20',
-            'phone_alternative' => 'nullable|string|max:20',
-            'birth_place' => 'nullable|string|max:100',
-            'birth_date' => 'nullable|date|before:today',
-            'gender' => 'nullable|in:Laki-laki,Perempuan',
-            'religion' => 'nullable|string|max:50',
-            'marital_status' => 'nullable|in:Lajang,Menikah,Janda,Duda',
-            'ethnicity' => 'nullable|string|max:50',
-            'current_address' => 'nullable|string',
-            'current_address_status' => 'nullable|in:Milik Sendiri,Orang Tua,Kontrak,Sewa',
-            'ktp_address' => 'nullable|string',
-            'height_cm' => 'nullable|integer|min:100|max:250',
-            'weight_kg' => 'nullable|integer|min:30|max:200',
+            'expected_salary' => 'required|numeric|min:0',
+            'phone_number' => 'required|string|max:20',
+            'phone_alternative' => 'required|string|max:20',
+            'birth_place' => 'required|string|max:100',
+            'birth_date' => 'required|date|before:today',
+            'gender' => 'required|in:Laki-laki,Perempuan',
+            'religion' => 'required|string|max:50',
+            'marital_status' => 'required|in:Lajang,Menikah,Janda,Duda',
+            'ethnicity' => 'required|string|max:50',
+            'current_address' => 'required|string',
+            'current_address_status' => 'required|in:Milik Sendiri,Orang Tua,Kontrak,Sewa',
+            'ktp_address' => 'required|string',
+            'height_cm' => 'required|integer|min:100|max:250',
+            'weight_kg' => 'required|integer|min:30|max:200',
             'vaccination_status' => 'nullable|in:Vaksin 1,Vaksin 2,Vaksin 3,Booster',
             
-            // Family Members
-            'family_members' => 'nullable|array',
-            'family_members.*.relationship' => 'nullable|in:Pasangan,Anak,Ayah,Ibu,Saudara',
-            'family_members.*.name' => 'nullable|string|max:255',
-            'family_members.*.age' => 'nullable|integer|min:0|max:120',
-            'family_members.*.education' => 'nullable|string|max:100',
-            'family_members.*.occupation' => 'nullable|string|max:100',
+            // Family Members - At least one required
+            'family_members' => 'required|array|min:1',
+            'family_members.*.relationship' => 'required|in:Pasangan,Anak,Ayah,Ibu,Saudara',
+            'family_members.*.name' => 'required|string|max:255',
+            'family_members.*.age' => 'required|integer|min:0|max:120',
+            'family_members.*.education' => 'required|string|max:100',
+            'family_members.*.occupation' => 'required|string|max:100',
             
-            // Formal Education
-            'formal_education' => 'nullable|array',
-            'formal_education.*.education_level' => 'nullable|in:SMA/SMK,Diploma,S1,S2,S3',
-            'formal_education.*.institution_name' => 'nullable|string|max:255',
-            'formal_education.*.major' => 'nullable|string|max:100',
-            'formal_education.*.start_year' => 'nullable|integer|min:1950|max:2030',
-            'formal_education.*.end_year' => 'nullable|integer|min:1950|max:2030',
-            'formal_education.*.gpa' => 'nullable|numeric|min:0|max:4',
+            // Formal Education - At least one required
+            'formal_education' => 'required|array|min:1',
+            'formal_education.*.education_level' => 'required|in:SMA/SMK,Diploma,S1,S2,S3',
+            'formal_education.*.institution_name' => 'required|string|max:255',
+            'formal_education.*.major' => 'required|string|max:100',
+            'formal_education.*.start_year' => 'required|integer|min:1950|max:2030',
+            'formal_education.*.end_year' => 'required|integer|min:1950|max:2030',
+            'formal_education.*.gpa' => 'required|numeric|min:0|max:4',
             
-            // Non-Formal Education
+            // Non-Formal Education - Optional
             'non_formal_education' => 'nullable|array',
-            'non_formal_education.*.course_name' => 'nullable|string|max:255',
+            'non_formal_education.*.course_name' => 'required_with:non_formal_education.*|string|max:255',
             'non_formal_education.*.organizer' => 'nullable|string|max:255',
             'non_formal_education.*.date' => 'nullable|date',
             'non_formal_education.*.description' => 'nullable|string',
@@ -74,15 +74,15 @@ class JobApplicationRequest extends FormRequest
             'software_skills' => 'nullable|string',
             'other_skills' => 'nullable|string',
             
-            // Language Skills
-            'language_skills' => 'nullable|array',
-            'language_skills.*.language' => 'nullable|string|max:50',
-            'language_skills.*.speaking_level' => 'nullable|in:Pemula,Menengah,Mahir',
-            'language_skills.*.writing_level' => 'nullable|in:Pemula,Menengah,Mahir',
+            // Language Skills - At least one required
+            'language_skills' => 'required|array|min:1',
+            'language_skills.*.language' => 'required|string|max:50',
+            'language_skills.*.speaking_level' => 'required|in:Pemula,Menengah,Mahir',
+            'language_skills.*.writing_level' => 'required|in:Pemula,Menengah,Mahir',
             
-            // Work Experiences
+            // Work Experiences - Optional
             'work_experiences' => 'nullable|array',
-            'work_experiences.*.company_name' => 'nullable|string|max:255',
+            'work_experiences.*.company_name' => 'required_with:work_experiences.*|string|max:255',
             'work_experiences.*.company_address' => 'nullable|string|max:255',
             'work_experiences.*.company_field' => 'nullable|string|max:100',
             'work_experiences.*.position' => 'nullable|string|max:100',
@@ -92,16 +92,16 @@ class JobApplicationRequest extends FormRequest
             'work_experiences.*.reason_for_leaving' => 'nullable|string|max:255',
             'work_experiences.*.supervisor_contact' => 'nullable|string|max:255',
             
-            // Social Activities
+            // Social Activities - Optional
             'social_activities' => 'nullable|array',
-            'social_activities.*.organization_name' => 'nullable|string|max:255',
+            'social_activities.*.organization_name' => 'required_with:social_activities.*|string|max:255',
             'social_activities.*.field' => 'nullable|string|max:100',
             'social_activities.*.period' => 'nullable|string|max:50',
             'social_activities.*.description' => 'nullable|string',
             
-            // Achievements
+            // Achievements - Optional
             'achievements' => 'nullable|array',
-            'achievements.*.achievement' => 'nullable|string|max:255',
+            'achievements.*.achievement' => 'required_with:achievements.*|string|max:255',
             'achievements.*.year' => 'nullable|integer|min:1950|max:2030',
             'achievements.*.description' => 'nullable|string',
             
@@ -109,28 +109,28 @@ class JobApplicationRequest extends FormRequest
             'willing_to_travel' => 'nullable|boolean',
             'has_vehicle' => 'nullable|boolean',
             'vehicle_types' => 'nullable|string|max:100',
-            'motivation' => 'nullable|string',
-            'strengths' => 'nullable|string',
-            'weaknesses' => 'nullable|string',
+            'motivation' => 'required|string',
+            'strengths' => 'required|string',
+            'weaknesses' => 'required|string',
             'other_income' => 'nullable|string|max:255',
             'has_police_record' => 'nullable|boolean',
-            'police_record_detail' => 'nullable|string|max:255',
+            'police_record_detail' => 'nullable|required_if:has_police_record,1|string|max:255',
             'has_serious_illness' => 'nullable|boolean',
-            'illness_detail' => 'nullable|string|max:255',
+            'illness_detail' => 'nullable|required_if:has_serious_illness,1|string|max:255',
             'has_tattoo_piercing' => 'nullable|boolean',
-            'tattoo_piercing_detail' => 'nullable|string|max:255',
+            'tattoo_piercing_detail' => 'nullable|required_if:has_tattoo_piercing,1|string|max:255',
             'has_other_business' => 'nullable|boolean',
-            'other_business_detail' => 'nullable|string|max:255',
+            'other_business_detail' => 'nullable|required_if:has_other_business,1|string|max:255',
             'absence_days' => 'nullable|integer|min:0|max:365',
-            'start_work_date' => 'nullable|date|after:today',
-            'information_source' => 'nullable|string|max:255',
+            'start_work_date' => 'required|date|after:today',
+            'information_source' => 'required|string|max:255',
             
-            // Document Uploads
-            'documents.cv' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
-            'documents.photo' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
-            'documents.certificates' => 'nullable|array',
-            'documents.certificates.*' => 'file|mimes:pdf,jpg,jpeg,png|max:2048',
-            'documents.transcript' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            // Document Uploads - Fixed validation
+            'cv' => 'required|file|mimes:pdf|max:2048',
+            'photo' => 'required|file|mimes:jpg,jpeg,png|max:2048',
+            'transcript' => 'required|file|mimes:pdf|max:2048',
+            'certificates' => 'nullable|array',
+            'certificates.*' => 'file|mimes:pdf|max:2048',
         ];
     }
 
@@ -140,6 +140,7 @@ class JobApplicationRequest extends FormRequest
     public function messages(): array
     {
         return [
+            // Basic required fields
             'position_applied.required' => 'Posisi yang dilamar harus dipilih.',
             'full_name.required' => 'Nama lengkap harus diisi.',
             'email.required' => 'Email harus diisi.',
@@ -147,10 +148,89 @@ class JobApplicationRequest extends FormRequest
             'email.unique' => 'Email sudah terdaftar dalam sistem.',
             'agreement.required' => 'Anda harus menyetujui pernyataan.',
             'agreement.accepted' => 'Anda harus menyetujui pernyataan.',
+            
+            // Personal data
+            'expected_salary.required' => 'Gaji yang diharapkan harus diisi.',
+            'expected_salary.numeric' => 'Gaji yang diharapkan harus berupa angka.',
+            'phone_number.required' => 'Nomor telepon harus diisi.',
+            'phone_alternative.required' => 'Telepon alternatif harus diisi.',
+            'birth_place.required' => 'Tempat lahir harus diisi.',
+            'birth_date.required' => 'Tanggal lahir harus diisi.',
             'birth_date.before' => 'Tanggal lahir tidak valid.',
+            'gender.required' => 'Jenis kelamin harus dipilih.',
+            'religion.required' => 'Agama harus diisi.',
+            'marital_status.required' => 'Status pernikahan harus dipilih.',
+            'ethnicity.required' => 'Suku bangsa harus diisi.',
+            'current_address.required' => 'Alamat tempat tinggal saat ini harus diisi.',
+            'current_address_status.required' => 'Status tempat tinggal harus dipilih.',
+            'ktp_address.required' => 'Alamat sesuai KTP harus diisi.',
+            'height_cm.required' => 'Tinggi badan harus diisi.',
+            'weight_kg.required' => 'Berat badan harus diisi.',
+            
+            // Family members
+            'family_members.required' => 'Data keluarga harus diisi minimal 1 anggota.',
+            'family_members.min' => 'Data keluarga harus diisi minimal 1 anggota.',
+            'family_members.*.relationship.required' => 'Hubungan keluarga harus dipilih.',
+            'family_members.*.name.required' => 'Nama anggota keluarga harus diisi.',
+            'family_members.*.age.required' => 'Usia anggota keluarga harus diisi.',
+            'family_members.*.education.required' => 'Pendidikan anggota keluarga harus diisi.',
+            'family_members.*.occupation.required' => 'Pekerjaan anggota keluarga harus diisi.',
+            
+            // Formal education
+            'formal_education.required' => 'Pendidikan formal harus diisi minimal 1 pendidikan.',
+            'formal_education.min' => 'Pendidikan formal harus diisi minimal 1 pendidikan.',
+            'formal_education.*.education_level.required' => 'Jenjang pendidikan harus dipilih.',
+            'formal_education.*.institution_name.required' => 'Nama institusi harus diisi.',
+            'formal_education.*.major.required' => 'Jurusan harus diisi.',
+            'formal_education.*.start_year.required' => 'Tahun mulai harus diisi.',
+            'formal_education.*.end_year.required' => 'Tahun selesai harus diisi.',
+            'formal_education.*.gpa.required' => 'IPK/Nilai harus diisi.',
+            
+            // Language skills
+            'language_skills.required' => 'Kemampuan bahasa harus diisi minimal 1 bahasa.',
+            'language_skills.min' => 'Kemampuan bahasa harus diisi minimal 1 bahasa.',
+            'language_skills.*.language.required' => 'Bahasa harus dipilih.',
+            'language_skills.*.speaking_level.required' => 'Kemampuan berbicara harus dipilih.',
+            'language_skills.*.writing_level.required' => 'Kemampuan menulis harus dipilih.',
+            
+            // General information
+            'motivation.required' => 'Motivasi bergabung harus diisi.',
+            'strengths.required' => 'Kelebihan Anda harus diisi.',
+            'weaknesses.required' => 'Kekurangan Anda harus diisi.',
+            'start_work_date.required' => 'Tanggal mulai kerja harus diisi.',
             'start_work_date.after' => 'Tanggal mulai kerja harus setelah hari ini.',
-            'documents.*.mimes' => 'Format file harus PDF, JPG, atau PNG.',
-            'documents.*.max' => 'Ukuran file maksimal 2MB.',
+            'information_source.required' => 'Sumber informasi lowongan harus diisi.',
+            
+            // File uploads
+            'cv.required' => 'CV/Resume harus diupload.',
+            'cv.file' => 'CV/Resume harus berupa file.',
+            'cv.mimes' => 'CV/Resume harus berformat PDF.',
+            'cv.max' => 'Ukuran CV/Resume maksimal 2MB.',
+            'photo.required' => 'Foto harus diupload.',
+            'photo.file' => 'Foto harus berupa file.',
+            'photo.mimes' => 'Foto harus berformat JPG atau PNG.',
+            'photo.max' => 'Ukuran foto maksimal 2MB.',
+            'transcript.required' => 'Transkrip nilai harus diupload.',
+            'transcript.file' => 'Transkrip nilai harus berupa file.',
+            'transcript.mimes' => 'Transkrip nilai harus berformat PDF.',
+            'transcript.max' => 'Ukuran transkrip nilai maksimal 2MB.',
+            'certificates.*.file' => 'Sertifikat harus berupa file.',
+            'certificates.*.mimes' => 'Sertifikat harus berformat PDF.',
+            'certificates.*.max' => 'Ukuran sertifikat maksimal 2MB.',
+        ];
+    }
+
+    /**
+     * Get custom attributes for validator errors.
+     */
+    public function attributes(): array
+    {
+        return [
+            'cv' => 'CV/Resume',
+            'photo' => 'Foto',
+            'transcript' => 'Transkrip Nilai',
+            'certificates' => 'Sertifikat',
+            'certificates.*' => 'Sertifikat',
         ];
     }
 }
