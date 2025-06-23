@@ -929,13 +929,13 @@
         <span>Data tersimpan otomatis</span>
     </div>
 
-    <script>
+<script>
         // Check if form was successfully submitted (for clearing localStorage)
         @if(session('form_submitted'))
             localStorage.removeItem('jobApplicationFormData');
         @endif
 
-        // Enhanced File Upload System
+        // Enhanced File Upload System dengan validasi foto yang diperbaiki
         const fileValidation = {
             cv: {
                 types: ['application/pdf'],
@@ -944,7 +944,7 @@
                 required: true
             },
             photo: {
-                types: ['image/jpeg', 'image/jpg', 'image/png'],
+                types: ['image/jpeg', 'image/jpg', 'image/png', 'image/pjpeg', 'image/x-png'],
                 extensions: ['jpg', 'jpeg', 'png'],
                 maxSize: 2 * 1024 * 1024,
                 required: true
@@ -963,13 +963,113 @@
             }
         };
 
-        // File upload handlers
+        // Enhanced file validation function
+        async function validateFile(file, validation) {
+            console.log('Validating file:', {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                lastModified: file.lastModified
+            });
+
+            // Check if file is valid
+            if (!file || file.size === 0) {
+                return { valid: false, error: 'File tidak valid atau kosong' };
+            }
+
+            // Get file extension
+            const extension = file.name.toLowerCase().split('.').pop();
+            
+            // Check file extension first
+            if (!validation.extensions.includes(extension)) {
+                const allowedExtensions = validation.extensions.join(', ').toUpperCase();
+                return { valid: false, error: `Format file harus ${allowedExtensions}. File Anda: ${extension.toUpperCase()}` };
+            }
+
+            // Check file size
+            if (file.size > validation.maxSize) {
+                return { valid: false, error: 'Ukuran file maksimal 2MB' };
+            }
+
+            // For photo files, do additional image validation
+            if (validation.extensions.includes('jpg') || validation.extensions.includes('jpeg') || validation.extensions.includes('png')) {
+                return await validateImageFile(file, validation);
+            }
+
+            // Check MIME type for non-image files
+            if (!validation.types.includes(file.type)) {
+                console.warn('MIME type mismatch:', {
+                    detected: file.type,
+                    allowed: validation.types
+                });
+                const allowedExtensions = validation.extensions.join(', ').toUpperCase();
+                return { valid: false, error: `Format file harus ${allowedExtensions}. Tipe file terdeteksi: ${file.type}` };
+            }
+
+            return { valid: true };
+        }
+
+        // Enhanced image validation function
+        function validateImageFile(file, validation) {
+            return new Promise((resolve) => {
+                // Check MIME type first, but be more lenient for images
+                const extension = file.name.toLowerCase().split('.').pop();
+                
+                if (!validation.types.includes(file.type)) {
+                    console.warn('MIME type mismatch for image:', {
+                        detected: file.type,
+                        allowed: validation.types,
+                        extension: extension
+                    });
+                    
+                    // If extension is correct but MIME type is wrong, try to validate as image anyway
+                    if (!validation.extensions.includes(extension)) {
+                        resolve({ valid: false, error: `Format file harus JPG atau PNG. Tipe file terdeteksi: ${file.type}` });
+                        return;
+                    }
+                }
+
+                // Try to load as image to verify it's actually a valid image
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const img = new Image();
+                    
+                    img.onload = function() {
+                        console.log('Image validation successful:', {
+                            width: img.width,
+                            height: img.height,
+                            size: file.size,
+                            type: file.type
+                        });
+                        resolve({ valid: true });
+                    };
+                    
+                    img.onerror = function() {
+                        console.error('Image validation failed - not a valid image');
+                        resolve({ valid: false, error: 'File bukan gambar yang valid atau file rusak' });
+                    };
+                    
+                    img.src = e.target.result;
+                };
+                
+                reader.onerror = function() {
+                    console.error('FileReader error');
+                    resolve({ valid: false, error: 'Tidak dapat membaca file. File mungkin rusak.' });
+                };
+                
+                // Read as data URL to validate image
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Enhanced file upload handlers
         document.getElementById('cv').addEventListener('change', function(e) {
             handleFileUpload(e, 'cv');
         });
 
         document.getElementById('photo').addEventListener('change', function(e) {
-            handleFileUpload(e, 'photo');
+            handlePhotoUpload(e, 'photo');
         });
 
         document.getElementById('transcript').addEventListener('change', function(e) {
@@ -980,7 +1080,8 @@
             handleMultipleFileUpload(e, 'certificates');
         });
 
-        function handleFileUpload(event, fieldName) {
+        // Standard file upload handler
+        async function handleFileUpload(event, fieldName) {
             const file = event.target.files[0];
             const validation = fileValidation[fieldName];
             const label = document.getElementById(`${fieldName}-label`);
@@ -998,17 +1099,83 @@
                 return;
             }
 
-            // Validate file
-            const validationResult = validateFile(file, validation);
-            
-            if (!validationResult.valid) {
-                showFileError(fieldName, validationResult.error);
+            try {
+                // Validate file
+                const validationResult = await validateFile(file, validation);
+                
+                if (!validationResult.valid) {
+                    showFileError(fieldName, validationResult.error);
+                    event.target.value = '';
+                    return;
+                }
+
+                // Show preview
+                showFilePreview(fieldName, file);
+            } catch (error) {
+                console.error('File validation error:', error);
+                showFileError(fieldName, 'Terjadi kesalahan saat memvalidasi file. Silakan coba lagi.');
                 event.target.value = '';
+            }
+        }
+
+        // Enhanced photo upload handler
+        async function handlePhotoUpload(event, fieldName) {
+            const file = event.target.files[0];
+            const validation = fileValidation[fieldName];
+            const label = document.getElementById(`${fieldName}-label`);
+            const preview = document.getElementById(`${fieldName}-preview`);
+            const error = document.getElementById(`${fieldName}-error`);
+
+            // Reset states
+            label.classList.remove('has-file', 'error');
+            preview.style.display = 'none';
+            error.textContent = '';
+            error.classList.remove('show');
+
+            if (!file) {
+                label.innerHTML = getDefaultLabelContent(fieldName);
                 return;
             }
 
-            // Show preview
-            showFilePreview(fieldName, file);
+            // Show loading state
+            label.innerHTML = `
+                <div class="loading-spinner mr-2"></div>
+                <span>Memvalidasi foto...</span>
+            `;
+
+            try {
+                // Debug file info
+                console.log('Photo upload debug:', {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    lastModified: new Date(file.lastModified).toISOString()
+                });
+
+                // Validate file (this returns a Promise for images)
+                const validationResult = await validateFile(file, validation);
+                
+                if (!validationResult.valid) {
+                    showFileError(fieldName, validationResult.error);
+                    event.target.value = '';
+                    return;
+                }
+
+                // Show preview
+                showFilePreview(fieldName, file);
+                
+                // Log successful validation
+                console.log('Photo validation successful:', {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size
+                });
+                
+            } catch (error) {
+                console.error('Photo validation error:', error);
+                showFileError(fieldName, 'Terjadi kesalahan saat memvalidasi file. Silakan coba lagi.');
+                event.target.value = '';
+            }
         }
 
         function handleMultipleFileUpload(event, fieldName) {
@@ -1033,46 +1200,53 @@
             let validFiles = [];
             let errors = [];
 
-            files.forEach((file, index) => {
-                const validationResult = validateFile(file, validation);
-                if (validationResult.valid) {
-                    validFiles.push(file);
-                } else {
-                    errors.push(`File ${index + 1} (${file.name}): ${validationResult.error}`);
+            // Process files sequentially to avoid Promise issues
+            Promise.all(files.map(async (file, index) => {
+                try {
+                    const validationResult = await validateFile(file, validation);
+                    if (validationResult.valid) {
+                        validFiles.push(file);
+                    } else {
+                        errors.push(`File ${index + 1} (${file.name}): ${validationResult.error}`);
+                    }
+                } catch (error) {
+                    errors.push(`File ${index + 1} (${file.name}): Gagal memvalidasi`);
                 }
+            })).then(() => {
+                if (errors.length > 0) {
+                    showFileError(fieldName, errors.join('<br>'));
+                    event.target.value = '';
+                    return;
+                }
+
+                // Show preview for multiple files
+                showMultipleFilePreview(fieldName, validFiles);
             });
-
-            if (errors.length > 0) {
-                showFileError(fieldName, errors.join('<br>'));
-                event.target.value = '';
-                return;
-            }
-
-            // Show preview for multiple files
-            showMultipleFilePreview(fieldName, validFiles);
         }
 
-        function validateFile(file, validation) {
-            // Check file type
-            if (!validation.types.includes(file.type)) {
-                const allowedExtensions = validation.extensions.join(', ').toUpperCase();
-                return { valid: false, error: `Format file harus ${allowedExtensions}` };
-            }
-
-            // Check file size
-            if (file.size > validation.maxSize) {
-                return { valid: false, error: 'Ukuran file maksimal 2MB' };
-            }
-
-            return { valid: true };
-        }
-
+        // Enhanced error display
         function showFileError(fieldName, errorMessage) {
             const label = document.getElementById(`${fieldName}-label`);
             const error = document.getElementById(`${fieldName}-error`);
             
             label.classList.add('error');
-            error.innerHTML = errorMessage;
+            label.innerHTML = `
+                <svg class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+                <span>File tidak valid</span>
+            `;
+            
+            error.innerHTML = `
+                <div class="text-red-600 font-medium">Error:</div>
+                <div>${errorMessage}</div>
+                <div class="text-xs mt-1 text-gray-600">
+                    ${fieldName === 'photo' ? 
+                        'Pastikan file yang Anda upload adalah foto dengan format JPG atau PNG dan ukuran maksimal 2MB.' :
+                        'Pastikan file sesuai dengan format yang diminta dan ukuran maksimal 2MB.'
+                    }
+                </div>
+            `;
             error.classList.add('show');
         }
 
@@ -1759,8 +1933,8 @@
             });
         }
 
-        // Form validation
-        document.getElementById('applicationForm').addEventListener('submit', function(e) {
+        // Enhanced form validation dengan async file validation
+        document.getElementById('applicationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             let errors = [];
@@ -1832,22 +2006,32 @@
                 errors.push('Anda harus menyetujui pernyataan untuk melanjutkan');
             }
             
-            // Validate file uploads
+            // Enhanced file validation with async
             const fileInputs = ['cv', 'photo', 'transcript'];
-            fileInputs.forEach(fieldName => {
+            for (const fieldName of fileInputs) {
                 const input = document.getElementById(fieldName);
                 if (input && input.files.length > 0) {
                     const file = input.files[0];
                     const validation = fileValidation[fieldName];
-                    const validationResult = validateFile(file, validation);
                     
-                    if (!validationResult.valid) {
+                    try {
+                        const validationResult = await validateFile(file, validation);
+                        
+                        if (!validationResult.valid) {
+                            hasError = true;
+                            errors.push(`${fieldName.toUpperCase()}: ${validationResult.error}`);
+                            showFileError(fieldName, validationResult.error);
+                        }
+                    } catch (error) {
                         hasError = true;
-                        errors.push(`${fieldName.toUpperCase()}: ${validationResult.error}`);
-                        showFileError(fieldName, validationResult.error);
+                        errors.push(`${fieldName.toUpperCase()}: Gagal memvalidasi file`);
+                        console.error(`Validation error for ${fieldName}:`, error);
                     }
+                } else if (fileValidation[fieldName].required) {
+                    hasError = true;
+                    errors.push(`${fieldName.toUpperCase()}: File harus diupload`);
                 }
-            });
+            }
             
             if (hasError) {
                 let errorMessage = 'Harap lengkapi data berikut:\n\n';
@@ -1874,10 +2058,8 @@
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="loading-spinner mr-2"></span> Mengirim...';
                 
-                // Clear localStorage only after successful backend submission
-                // Don't show success message here, let the backend handle it
-                
-                // Submit form directly without delay
+                // Submit form
+                console.log('All validations passed, submitting form...');
                 this.submit();
             }
         });

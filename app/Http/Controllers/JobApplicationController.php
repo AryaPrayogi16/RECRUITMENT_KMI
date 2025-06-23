@@ -18,7 +18,9 @@ use App\Models\{
     GeneralInformation,
     DocumentUpload,
     ApplicationLog,
-    OtherSkill
+    OtherSkill,
+    KraeplinTestSession,
+    DiscTestSession
 };
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -152,8 +154,9 @@ class JobApplicationController extends Controller
             // Clear form data from session/cache after successful submission
             session()->flash('form_submitted', true);
             
-            return redirect()->route('job.application.success')
-                ->with('candidate_code', $candidate->candidate_code);
+            // REDIRECT TO KRAEPLIN TEST - First test in the flow
+            return redirect()->route('kraeplin.instructions', $candidate->candidate_code)
+                ->with('success', 'Form lamaran berhasil dikirim. Silakan lanjutkan dengan mengerjakan Test Kraeplin.');
                 
         } catch (QueryException $e) {
             DB::rollback();
@@ -223,6 +226,47 @@ class JobApplicationController extends Controller
             
             return back()->withErrors(['error' => 'Terjadi kesalahan sistem. Silakan coba lagi atau hubungi administrator.'])->withInput();
         }
+    }
+
+    public function success()
+    {
+        // Get candidate code from URL parameter (from DISC test completion)
+        $candidateCode = request()->get('candidate_code') ?: session('candidate_code');
+        
+        if (!$candidateCode) {
+            return redirect()->route('job.application.form')
+                ->with('error', 'Sesi tidak valid. Silakan isi form lamaran kembali.');
+        }
+        
+        // Verify candidate exists
+        $candidate = \App\Models\Candidate::where('candidate_code', $candidateCode)->first();
+        if (!$candidate) {
+            return redirect()->route('job.application.form')
+                ->with('error', 'Data kandidat tidak ditemukan.');
+        }
+        
+        // Check test completion status
+        $kraeplinTest = KraeplinTestSession::where('candidate_id', $candidate->id)
+            ->where('status', 'completed')
+            ->first();
+            
+        $discTest = DiscTestSession::where('candidate_id', $candidate->id)
+            ->where('status', 'completed')
+            ->first();
+        
+        // NEW: Determine where to redirect based on test completion
+        if (!$kraeplinTest) {
+            return redirect()->route('kraeplin.instructions', $candidateCode)
+                ->with('warning', 'Anda perlu menyelesaikan Test Kraeplin terlebih dahulu.');
+        }
+        
+        if (!$discTest) {
+            return redirect()->route('disc.instructions', $candidateCode)
+                ->with('warning', 'Anda perlu menyelesaikan Test DISC untuk melengkapi proses lamaran.');
+        }
+        
+        // Both tests completed - show success page
+        return view('job-application.success', compact('candidateCode', 'candidate', 'kraeplinTest', 'discTest'));
     }
 
     private function getSpecificErrorMessage(QueryException $e): string
@@ -747,15 +791,5 @@ class JobApplicationController extends Controller
         }
         
         return $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
-    }
-
-    public function success()
-    {
-        $candidateCode = session('candidate_code');
-        if (!$candidateCode) {
-            return redirect()->route('job.application.form');
-        }
-        
-        return view('job-application.success', compact('candidateCode'));
     }
 }

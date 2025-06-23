@@ -25,6 +25,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 
 class CandidateController extends Controller
 {
@@ -98,18 +100,45 @@ class CandidateController extends Controller
             'documentUploads',
             'applicationLogs.user',
             'interviews.interviewer',
-            'position'
+            'position',
+            'kraeplinTestResult',
+            'kraeplinTestResult.testSession',
+            'latestKraeplinTest'
         ])->findOrFail($id);
         
+         // Debug Kraeplin data dengan detail
+            if ($candidate->kraeplinTestResult) {
+                $testResult = $candidate->kraeplinTestResult;
+                
+                // Log raw data from database
+                $rawData = DB::table('kraeplin_test_results')
+                    ->where('id', $testResult->id)
+                    ->first();
+                    
+                Log::info('Kraeplin Raw DB Data', [
+                    'raw_column_correct_count' => $rawData->column_correct_count,
+                    'is_string' => is_string($rawData->column_correct_count)
+                ]);
+                
+                // Log after model processing
+                Log::info('Kraeplin Model Data', [
+                    'column_correct_count' => $testResult->column_correct_count,
+                    'type' => gettype($testResult->column_correct_count),
+                    'is_array' => is_array($testResult->column_correct_count)
+                ]);
+                
+                // Force refresh jika perlu
+                $testResult->refresh();
+            }
         // Log view action
-        ApplicationLog::create([
-            'candidate_id' => $candidate->id,
-            'user_id' => Auth::id(),
-            'action_type' => 'data_update',
-            'action_description' => 'Profile viewed by ' . Auth::user()->full_name
-        ]);
+            ApplicationLog::create([
+                'candidate_id' => $candidate->id,
+                'user_id' => Auth::id(),
+                'action_type' => 'data_update',
+                'action_description' => 'Profile viewed by ' . Auth::user()->full_name
+            ]);
         
-        return view('candidates.show', compact('candidate'));
+         return view('candidates.show', compact('candidate'));
     }
 
     /**
@@ -372,65 +401,137 @@ class CandidateController extends Controller
     }
 
     /**
-     * Export candidates to Excel/PDF
+     * Show preview page
      */
-    public function export(Request $request)
+    public function preview($id)
     {
         Gate::authorize('hr-access');
         
-        // Implementation for export functionality
-        // You can use Laravel Excel or similar package
+        $candidate = Candidate::with([
+            'personalData',
+            'familyMembers',
+            'formalEducation',
+            'nonFormalEducation', 
+            'workExperiences',
+            'languageSkills',
+            'computerSkills',
+            'otherSkills',
+            'socialActivities',
+            'achievements',
+            'drivingLicenses',
+            'generalInformation',
+            'position'
+        ])->findOrFail($id);
         
-        return response()->json([
-            'message' => 'Export functionality coming soon'
-        ]);
+        return view('candidates.preview', compact('candidate'));
     }
 
-    /**
-     * Bulk actions on candidates
+      /* Generate PDF for preview
      */
-    public function bulkAction(Request $request)
+    public function previewPdf($id)
     {
         Gate::authorize('hr-access');
         
-        $request->validate([
-            'candidate_ids' => 'required|array',
-            'action' => 'required|in:delete,update_status,export'
+        $candidate = Candidate::with([
+            'personalData',
+            'familyMembers',
+            'formalEducation',
+            'nonFormalEducation',
+            'workExperiences',
+            'languageSkills',
+            'computerSkills',
+            'otherSkills',
+            'socialActivities',
+            'achievements',
+            'drivingLicenses',
+            'generalInformation',
+            'position'
+        ])->findOrFail($id);
+        
+        $pdf = PDF::loadView('candidates.pdf.complete', compact('candidate'));
+        $pdf->setPaper('A4', 'portrait');
+        
+        // Alternative approach: Use stream() instead of output()
+        return $pdf->stream('preview.pdf', array('Attachment' => false));
+    }
+    
+    /**
+     * Generate HTML preview (alternative to PDF preview)
+     */
+    public function previewHtml($id)
+    {
+        Gate::authorize('hr-access');
+        
+        $candidate = Candidate::with([
+            'personalData',
+            'familyMembers',
+            'formalEducation',
+            'nonFormalEducation',
+            'workExperiences',
+            'languageSkills',
+            'computerSkills',
+            'otherSkills',
+            'socialActivities',
+            'achievements',
+            'drivingLicenses',
+            'generalInformation',
+            'position',
+            'documentUploads'
+        ])->findOrFail($id);
+        
+        return view('candidates.preview-html', compact('candidate'));
+    }
+    /**
+     * Export single candidate to PDF
+     */
+    public function exportSingle($id)
+    {
+        Gate::authorize('hr-access');
+        
+        $candidate = Candidate::with([
+            'personalData',
+            'familyMembers',
+            'formalEducation',
+            'nonFormalEducation',
+            'workExperiences',
+            'languageSkills',
+            'computerSkills',
+            'otherSkills',
+            'socialActivities',
+            'achievements',
+            'drivingLicenses',
+            'generalInformation',
+            'position'
+        ])->findOrFail($id);
+        
+        // Log export action
+        ApplicationLog::create([
+            'candidate_id' => $candidate->id,
+            'user_id' => Auth::id(),
+            'action_type' => 'export',
+            'action_description' => 'Profile exported to PDF by ' . Auth::user()->full_name
         ]);
         
-        switch ($request->action) {
-            case 'delete':
-                Candidate::whereIn('id', $request->candidate_ids)->delete();
-                $message = 'Kandidat berhasil dihapus';
-                break;
-                
-            case 'update_status':
-                Candidate::whereIn('id', $request->candidate_ids)
-                    ->update(['application_status' => $request->new_status]);
-                $message = 'Status kandidat berhasil diperbarui';
-                break;
-                
-            default:
-                $message = 'Aksi tidak valid';
-        }
+        $pdf = PDF::loadView('candidates.pdf.complete', compact('candidate'));
+        $pdf->setPaper('A4', 'portrait');
         
-        return response()->json([
-            'success' => true,
-            'message' => $message
-        ]);
+        $filename = 'FLK_' . str_replace(' ', '_', $candidate->personalData->full_name ?? 'Kandidat') . '_' . date('Ymd') . '.pdf';
+        
+        return $pdf->download($filename);
     }
 
     /**
-     * Search candidates (AJAX)
+     * Export multiple candidates to PDF (summary)
      */
-    public function search(Request $request)
+    public function exportMultiple(Request $request)
     {
         Gate::authorize('hr-access');
         
         $query = Candidate::with(['personalData', 'position']);
         
-        if ($request->filled('q')) {
-            $search = $request->q;
+        // Apply the same filters as index
+        if ($request->filled('search')) {
+            $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('candidate_code', 'like', "%{$search}%")
                   ->orWhereHas('personalData', function ($q) use ($search) {
@@ -440,18 +541,108 @@ class CandidateController extends Controller
             });
         }
         
-        $candidates = $query->limit(10)->get();
+        if ($request->filled('status')) {
+            $query->where('application_status', $request->status);
+        }
         
-        return response()->json([
-            'results' => $candidates->map(function ($candidate) {
-                return [
-                    'id' => $candidate->id,
-                    'text' => $candidate->candidate_code . ' - ' . 
-                             ($candidate->personalData->full_name ?? 'N/A'),
-                    'email' => $candidate->personalData->email ?? '',
-                    'position' => $candidate->position_applied
-                ];
-            })
+        if ($request->filled('position')) {
+            $query->where('position_applied', $request->position);
+        }
+        
+        // Get selected candidates or all filtered
+        if ($request->filled('selected_ids')) {
+            $query->whereIn('id', $request->selected_ids);
+        }
+        
+        $candidates = $query->orderBy('created_at', 'desc')->get();
+        
+        $pdf = PDF::loadView('candidates.pdf.multiple', compact('candidates'));
+        $pdf->setPaper('A4', 'landscape');
+        
+        $filename = 'Kandidat_Summary_' . date('Ymd_His') . '.pdf';
+        
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Export to Word format (using HTML)
+     */
+    public function exportWord($id)
+    {
+        Gate::authorize('hr-access');
+        
+        $candidate = Candidate::with([
+            'personalData',
+            'familyMembers',
+            'formalEducation',
+            'nonFormalEducation',
+            'workExperiences',
+            'languageSkills',
+            'computerSkills',
+            'otherSkills',
+            'generalInformation',
+            'position'
+        ])->findOrFail($id);
+        
+        // Log export action
+        ApplicationLog::create([
+            'candidate_id' => $candidate->id,
+            'user_id' => Auth::id(),
+            'action_type' => 'export',
+            'action_description' => 'Profile exported to Word by ' . Auth::user()->full_name
         ]);
+        
+        $filename = 'FLK_' . str_replace(' ', '_', $candidate->personalData->full_name ?? 'Kandidat') . '_' . date('Ymd') . '.doc';
+        
+        $headers = [
+            "Content-type" => "text/html",
+            "Content-Disposition" => "attachment;Filename={$filename}"
+        ];
+        
+        $content = view('candidates.word.single', compact('candidate'))->render();
+        
+        return response($content, 200, $headers);
+    }
+
+    public function discResult($id)
+    {
+        try {
+            $candidate = Candidate::with([
+                'personalData',
+                'position',
+                'discTestSessions' => function($query) {
+                    $query->latest();
+                },
+                'discTestResults' => function($query) {
+                    $query->latest();
+                }
+            ])->findOrFail($id);
+            
+            // Get latest DISC test result
+            $discResult = $candidate->discTestResults()->latest()->first();
+            
+            if (!$discResult) {
+                return redirect()->route('candidates.show', $id)
+                    ->with('error', 'Kandidat belum menyelesaikan test DISC.');
+            }
+            
+            // Get DISC profile descriptions
+            $profiles = \App\Models\DiscProfileDescription::all()->keyBy('dimension');
+            
+            // Get test session info
+            $discSession = $candidate->discTestSessions()->latest()->first();
+            
+            return view('hr.candidates.disc-result', compact('candidate', 'discResult', 'profiles', 'discSession'));
+            
+        } catch (\Exception $e) {
+            Log::error('Error displaying DISC result for HR', [
+                'candidate_id' => $id,
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+            
+            return redirect()->route('candidates.index')
+                ->with('error', 'Terjadi kesalahan saat menampilkan hasil DISC test.');
+        }
     }
 }

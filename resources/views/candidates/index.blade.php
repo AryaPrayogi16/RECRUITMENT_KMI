@@ -26,7 +26,7 @@
 
         /* Sidebar Styles (sama dengan admin.blade.php) */
         .sidebar {
-            width: 280px;
+            width: 230px;
             background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
             color: white;
             position: fixed;
@@ -1121,6 +1121,22 @@
             // Redirect to interview scheduling page
             window.location.href = `/candidates/${candidateId}/schedule-interview`;
         }
+
+          document.querySelector('.btn-export').addEventListener('click', function() {
+        const params = new URLSearchParams(window.location.search);
+        
+        // Optional: Jika ingin export hanya yang dipilih
+        const selectedIds = [];
+        document.querySelectorAll('input[name="candidate_ids[]"]:checked').forEach(cb => {
+            selectedIds.push(cb.value);
+        });
+        
+        if (selectedIds.length > 0) {
+            params.append('selected_ids', selectedIds.join(','));
+        }
+        
+        window.location.href = `{{ route('candidates.export.multiple') }}?${params.toString()}`;
+    });
     </script>
 </body>
 </html>

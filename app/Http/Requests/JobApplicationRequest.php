@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 
 class JobApplicationRequest extends FormRequest
 {
@@ -125,13 +126,100 @@ class JobApplicationRequest extends FormRequest
             'start_work_date' => 'required|date|after:today',
             'information_source' => 'required|string|max:255',
             
-            // Document Uploads - Fixed validation
+            // Document Uploads - Enhanced validation with custom rule
             'cv' => 'required|file|mimes:pdf|max:2048',
-            'photo' => 'required|file|mimes:jpg,jpeg,png|max:2048',
+            'photo' => ['required', 'file', 'max:2048', function ($attribute, $value, $fail) {
+                $this->validateImageFile($attribute, $value, $fail);
+            }],
             'transcript' => 'required|file|mimes:pdf|max:2048',
             'certificates' => 'nullable|array',
             'certificates.*' => 'file|mimes:pdf|max:2048',
         ];
+    }
+
+    /**
+     * Custom validation for image files
+     */
+    private function validateImageFile($attribute, $value, $fail)
+    {
+        if (!$value || !$value->isValid()) {
+            $fail("File {$attribute} tidak valid atau rusak.");
+            return;
+        }
+
+        // Get file info
+        $originalName = $value->getClientOriginalName();
+        $mimeType = $value->getMimeType();
+        $extension = strtolower($value->getClientOriginalExtension());
+        $realPath = $value->getRealPath();
+
+        // Log file details for debugging
+        Log::info("File validation for {$attribute}", [
+            'original_name' => $originalName,
+            'mime_type' => $mimeType,
+            'extension' => $extension,
+            'size' => $value->getSize(),
+            'real_path' => $realPath
+        ]);
+
+        // Valid extensions
+        $validExtensions = ['jpg', 'jpeg', 'png'];
+        
+        // Valid MIME types (including variations)
+        $validMimeTypes = [
+            'image/jpeg',
+            'image/jpg', 
+            'image/png',
+            'image/pjpeg', // IE JPEG
+            'image/x-png'  // Some browsers
+        ];
+
+        // Check extension
+        if (!in_array($extension, $validExtensions)) {
+            Log::warning("Invalid extension for {$attribute}", [
+                'extension' => $extension,
+                'valid_extensions' => $validExtensions
+            ]);
+            $fail("File {$attribute} harus berformat JPG atau PNG (ekstensi file: {$extension}).");
+            return;
+        }
+
+        // Check MIME type
+        if (!in_array($mimeType, $validMimeTypes)) {
+            Log::warning("Invalid MIME type for {$attribute}", [
+                'mime_type' => $mimeType,
+                'valid_mime_types' => $validMimeTypes
+            ]);
+            $fail("File {$attribute} harus berformat JPG atau PNG (tipe file terdeteksi: {$mimeType}).");
+            return;
+        }
+
+        // Additional check: Try to verify if it's actually an image
+        if (function_exists('getimagesize')) {
+            $imageInfo = @getimagesize($realPath);
+            if ($imageInfo === false) {
+                Log::warning("File is not a valid image for {$attribute}", [
+                    'file' => $originalName
+                ]);
+                $fail("File {$attribute} bukan gambar yang valid atau file rusak.");
+                return;
+            }
+
+            // Check image type from getimagesize
+            $imageType = $imageInfo[2];
+            $validImageTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG];
+            
+            if (!in_array($imageType, $validImageTypes)) {
+                Log::warning("Invalid image type for {$attribute}", [
+                    'image_type' => $imageType,
+                    'valid_types' => $validImageTypes
+                ]);
+                $fail("File {$attribute} harus berupa gambar JPG atau PNG yang valid.");
+                return;
+            }
+        }
+
+        Log::info("File validation passed for {$attribute}");
     }
 
     /**
@@ -208,7 +296,6 @@ class JobApplicationRequest extends FormRequest
             'cv.max' => 'Ukuran CV/Resume maksimal 2MB.',
             'photo.required' => 'Foto harus diupload.',
             'photo.file' => 'Foto harus berupa file.',
-            'photo.mimes' => 'Foto harus berformat JPG atau PNG.',
             'photo.max' => 'Ukuran foto maksimal 2MB.',
             'transcript.required' => 'Transkrip nilai harus diupload.',
             'transcript.file' => 'Transkrip nilai harus berupa file.',

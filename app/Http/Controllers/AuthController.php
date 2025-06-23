@@ -62,7 +62,7 @@ class AuthController extends Controller
         $message = 'Selamat datang, ' . $user->full_name;
         
         return match($user->role) {
-            'admin' => redirect()->route('admin.dashboard')->with('success', $message),
+            'admin' => redirect()->route('candidates.index')->with('success', $message),
             'hr' => redirect()->route('hr.dashboard')->with('success', $message),
             'interviewer' => redirect()->route('interviewer.dashboard')->with('success', $message),
             default => redirect()->route('dashboard')->with('success', $message),
