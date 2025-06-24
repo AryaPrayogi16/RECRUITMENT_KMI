@@ -22,13 +22,12 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            /* Removed overflow: hidden to allow scrolling */
             overflow-x: hidden;
             overflow-y: auto;
         }
 
         .background-animation {
-            position: fixed; /* Changed from absolute to fixed */
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -72,7 +71,6 @@
             display: flex;
             position: relative;
             z-index: 10;
-            /* Removed fixed min-height to allow content-based sizing */
         }
 
         .login-left {
@@ -343,8 +341,8 @@
             }
 
             .company-logo {
-                width: 50px;
-                height: 500px;
+                width: 80px;
+                height: 80px;
                 margin-bottom: 15px;
             }
 
@@ -359,7 +357,6 @@
 
             .login-left p {
                 font-size: 0.9rem;
-                display: none; /* Hide on very small screens to save space */
             }
 
             .login-right {
@@ -406,9 +403,10 @@
         /* Extra small devices */
         @media (max-width: 480px) {
             .login-left p {
-                display: block; /* Show back but with smaller font */
                 font-size: 0.8rem;
                 line-height: 1.3;
+                /* Always show the text but make it smaller */
+                display: block;
             }
 
             .form-options {
@@ -417,6 +415,12 @@
 
             .remember-me span {
                 font-size: 0.8rem;
+            }
+            
+            /* Make sure the company logo is not too big on very small screens */
+            .company-logo {
+                width: 60px;
+                height: 60px;
             }
         }
 
@@ -431,6 +435,8 @@
         @media (max-height: 600px) and (orientation: landscape) {
             .main-wrapper {
                 padding: 10px;
+                min-height: auto;
+                height: auto;
             }
 
             .login-left {
@@ -450,6 +456,47 @@
             .demo-accounts {
                 margin-top: 10px;
                 padding: 10px;
+            }
+        }
+        
+        /* Fix for very small screens in portrait orientation */
+        @media (max-width: 360px) {
+            .login-container {
+                border-radius: 12px;
+            }
+            
+            .login-left, .login-right {
+                padding: 20px 15px;
+            }
+            
+            .company-logo {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .login-left h1 {
+                font-size: 1.3rem;
+            }
+            
+            .login-header h2 {
+                font-size: 1.3rem;
+            }
+            
+            .form-group input {
+                padding: 8px 12px 8px 36px;
+            }
+            
+            .input-icon {
+                left: 12px;
+            }
+            
+            .quick-login-btns {
+                flex-direction: column;
+            }
+            
+            .quick-login-btn {
+                width: 100%;
+                margin-bottom: 5px;
             }
         }
     </style>
@@ -587,14 +634,46 @@
             
             if (vh < 600) {
                 mainWrapper.style.alignItems = 'flex-start';
+                mainWrapper.style.paddingTop = '10px';
+                mainWrapper.style.paddingBottom = '10px';
             } else {
                 mainWrapper.style.alignItems = 'center';
+                mainWrapper.style.paddingTop = '20px';
+                mainWrapper.style.paddingBottom = '20px';
+            }
+        }
+
+        // Check for very small screens and adjust quick login buttons
+        function adjustForSmallScreens() {
+            const width = window.innerWidth;
+            const quickLoginBtns = document.querySelector('.quick-login-btns');
+            
+            if (width <= 360) {
+                quickLoginBtns.style.flexDirection = 'column';
+            } else {
+                quickLoginBtns.style.flexDirection = 'row';
             }
         }
 
         // Call on load and resize
-        window.addEventListener('load', adjustLayout);
-        window.addEventListener('resize', adjustLayout);
+        window.addEventListener('load', function() {
+            adjustLayout();
+            adjustForSmallScreens();
+        });
+        
+        window.addEventListener('resize', function() {
+            adjustLayout();
+            adjustForSmallScreens();
+        });
+        
+        // Fix for iOS Safari viewport height issues
+        function setVH() {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        
+        window.addEventListener('resize', setVH);
+        setVH();
     </script>
 </body>
 </html>
