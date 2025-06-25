@@ -35,7 +35,6 @@ class Candidate extends Model
     const STATUS_OFFERED = 'offered';
     const STATUS_ACCEPTED = 'accepted';
     const STATUS_REJECTED = 'rejected';
-    const STATUS_WITHDRAWN = 'withdrawn';
 
     // Constants for test status (matching test sessions)
     const TEST_NOT_STARTED = 'not_started';
@@ -51,8 +50,7 @@ class Candidate extends Model
             self::STATUS_INTERVIEW => 'Interview',
             self::STATUS_OFFERED => 'Offered',
             self::STATUS_ACCEPTED => 'Accepted',
-            self::STATUS_REJECTED => 'Rejected',
-            self::STATUS_WITHDRAWN => 'Withdrawn'
+            self::STATUS_REJECTED => 'Rejected'
         ];
     }
 
@@ -209,11 +207,6 @@ class Candidate extends Model
         return $query->where('application_status', self::STATUS_SUBMITTED);
     }
 
-    public function scopeActive($query)
-    {
-        return $query->whereNotIn('application_status', [self::STATUS_REJECTED, self::STATUS_WITHDRAWN]);
-    }
-
     public function scopeByPosition($query, $position)
     {
         return $query->where('position_applied', $position);
@@ -233,6 +226,7 @@ class Candidate extends Model
             $q->where('status', self::TEST_COMPLETED);
         });
     }
+
 
     public function scopeKraeplinInProgress($query)
     {
@@ -298,7 +292,6 @@ class Candidate extends Model
             'offered' => 'status-offered',
             'accepted' => 'status-accepted',
             'rejected' => 'status-rejected',
-            'withdrawn' => 'status-withdrawn',
             default => 'status-pending'
         };
     }

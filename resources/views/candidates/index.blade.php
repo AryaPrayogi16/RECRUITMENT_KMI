@@ -484,12 +484,18 @@
             display: inline-block;
         }
 
-        .status-pending {
+        /* Dynamic Status Badges - berdasarkan konstanta model */
+        .status-draft {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .status-submitted {
             background: #fef3c7;
             color: #92400e;
         }
 
-        .status-reviewing {
+        .status-screening {
             background: #dbeafe;
             color: #1e40af;
         }
@@ -497,6 +503,11 @@
         .status-interview {
             background: #e0e7ff;
             color: #3730a3;
+        }
+
+        .status-offered {
+            background: #fde68a;
+            color: #d97706;
         }
 
         .status-accepted {
@@ -797,10 +808,10 @@
                     <h1 class="page-title">Manajemen Kandidat</h1>
                 </div>
                 <div class="header-right">
-                    <button class="notification-btn">
+                    {{-- <button class="notification-btn">
                         <i class="fas fa-bell"></i>
                         <span class="notification-badge">{{ $newApplicationsCount ?? 0 }}</span>
-                    </button>
+                    </button> --}}
                     
                     <form action="{{ route('logout') }}" method="POST" style="display: inline;">
                         @csrf
@@ -820,18 +831,20 @@
                             <div class="search-box">
                                 <i class="fas fa-search search-icon"></i>
                                 <input type="text" class="search-input" id="searchInput" 
-                                       placeholder="Cari berdasarkan nama, email, atau kode kandidat...">
+                                       placeholder="Cari berdasarkan nama, email, atau kode kandidat..."
+                                       value="{{ request('search') }}">
                             </div>
                             
                             <div class="filter-group">
                                 <label class="filter-label">Status</label>
                                 <select class="filter-select" id="statusFilter">
                                     <option value="">Semua Status</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="reviewing">Under Review</option>
-                                    <option value="interview">Interview</option>
-                                    <option value="accepted">Accepted</option>
-                                    <option value="rejected">Rejected</option>
+                                    @foreach(\App\Models\Candidate::getStatuses() as $statusKey => $statusLabel)
+                                        <option value="{{ $statusKey }}" 
+                                                {{ request('status') == $statusKey ? 'selected' : '' }}>
+                                            {{ $statusLabel }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
                             
@@ -840,7 +853,8 @@
                                 <select class="filter-select" id="positionFilter">
                                     <option value="">Semua Posisi</option>
                                     @foreach($positions as $position)
-                                        <option value="{{ $position->position_name }}">
+                                        <option value="{{ $position->position_name }}"
+                                                {{ request('position') == $position->position_name ? 'selected' : '' }}>
                                             {{ $position->position_name }} - {{ $position->department }}
                                         </option>
                                     @endforeach
@@ -852,10 +866,10 @@
                                     <i class="fas fa-redo"></i>
                                     Reset
                                 </button>
-                                <button type="button" class="btn-primary btn-export">
+                                {{-- <button type="button" class="btn-primary btn-export">
                                     <i class="fas fa-download"></i>
                                     Export
-                                </button>
+                                </button> --}}
                             </div>
                         </div>
                     </form>
@@ -911,8 +925,8 @@
                                 </td>
                                 <td>{{ $candidate->position_applied }}</td>
                                 <td>
-                                    <span class="status-badge status-{{ $candidate->application_status }}">
-                                        {{ ucfirst($candidate->application_status) }}
+                                    <span class="status-badge {{ $candidate->status_badge_class }}">
+                                        {{ \App\Models\Candidate::getStatuses()[$candidate->application_status] ?? ucfirst($candidate->application_status) }}
                                     </span>
                                 </td>
                                 <td>{{ $candidate->created_at->format('d M Y') }}</td>
@@ -938,25 +952,7 @@
                                                 Edit Data
                                             </a>
                                             <div class="dropdown-divider"></div>
-                                            <a href="#" class="dropdown-item" onclick="updateStatus({{ $candidate->id }}, 'reviewing')">
-                                                <i class="fas fa-search"></i>
-                                                Review
-                                            </a>
-                                            <a href="#" class="dropdown-item" onclick="scheduleInterview({{ $candidate->id }})">
-                                                <i class="fas fa-calendar-check"></i>
-                                                Jadwalkan Interview
-                                            </a>
-                                            <div class="dropdown-divider"></div>
-                                            <a href="#" class="dropdown-item" style="color: #10b981;" 
-                                               onclick="updateStatus({{ $candidate->id }}, 'accepted')">
-                                                <i class="fas fa-check-circle"></i>
-                                                Terima
-                                            </a>
-                                            <a href="#" class="dropdown-item" style="color: #ef4444;" 
-                                               onclick="updateStatus({{ $candidate->id }}, 'rejected')">
-                                                <i class="fas fa-times-circle"></i>
-                                                Tolak
-                                            </a>
+                                            
                                         </div>
                                     </div>
                                 </td>
@@ -966,6 +962,9 @@
                                 <td colspan="8" style="text-align: center; padding: 40px; color: #718096;">
                                     <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 10px; display: block;"></i>
                                     Tidak ada data kandidat
+                                    @if(request()->hasAny(['search', 'status', 'position']))
+                                        <br><small>Coba ubah filter pencarian Anda</small>
+                                    @endif
                                 </td>
                             </tr>
                             @endforelse
@@ -980,7 +979,7 @@
                         </div>
                         <div class="pagination-controls">
                             @if($candidates->previousPageUrl())
-                                <a href="{{ $candidates->previousPageUrl() }}" class="page-btn">
+                                <a href="{{ $candidates->appends(request()->query())->previousPageUrl() }}" class="page-btn">
                                     <i class="fas fa-chevron-left"></i>
                                 </a>
                             @else
@@ -989,7 +988,7 @@
                                 </button>
                             @endif
                             
-                            @foreach($candidates->getUrlRange(1, $candidates->lastPage()) as $page => $url)
+                            @foreach($candidates->appends(request()->query())->getUrlRange(1, $candidates->lastPage()) as $page => $url)
                                 @if($page == $candidates->currentPage())
                                     <button class="page-btn active">{{ $page }}</button>
                                 @else
@@ -998,7 +997,7 @@
                             @endforeach
                             
                             @if($candidates->nextPageUrl())
-                                <a href="{{ $candidates->nextPageUrl() }}" class="page-btn">
+                                <a href="{{ $candidates->appends(request()->query())->nextPageUrl() }}" class="page-btn">
                                     <i class="fas fa-chevron-right"></i>
                                 </a>
                             @else
@@ -1087,7 +1086,10 @@
 
         // Update status
         function updateStatus(candidateId, status) {
-            if (confirm(`Apakah Anda yakin ingin mengubah status kandidat ini menjadi ${status}?`)) {
+            const statusLabels = {!! json_encode(\App\Models\Candidate::getStatuses()) !!};
+            const statusLabel = statusLabels[status] || status;
+            
+            if (confirm(`Apakah Anda yakin ingin mengubah status kandidat ini menjadi "${statusLabel}"?`)) {
                 document.getElementById('loadingOverlay').style.display = 'flex';
                 
                 fetch(`/candidates/${candidateId}/status`, {
@@ -1103,12 +1105,12 @@
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('Gagal mengubah status kandidat');
+                        alert('Gagal mengubah status kandidat: ' + (data.message || 'Unknown error'));
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Terjadi kesalahan');
+                    alert('Terjadi kesalahan saat mengubah status');
                 })
                 .finally(() => {
                     document.getElementById('loadingOverlay').style.display = 'none';
@@ -1122,21 +1124,38 @@
             window.location.href = `/candidates/${candidateId}/schedule-interview`;
         }
 
-          document.querySelector('.btn-export').addEventListener('click', function() {
-        const params = new URLSearchParams(window.location.search);
-        
-        // Optional: Jika ingin export hanya yang dipilih
-        const selectedIds = [];
-        document.querySelectorAll('input[name="candidate_ids[]"]:checked').forEach(cb => {
-            selectedIds.push(cb.value);
+        // Export functionality
+        document.querySelector('.btn-export').addEventListener('click', function() {
+            const params = new URLSearchParams(window.location.search);
+            
+            // Optional: Jika ingin export hanya yang dipilih
+            const selectedIds = [];
+            document.querySelectorAll('input[name="candidate_ids[]"]:checked').forEach(cb => {
+                selectedIds.push(cb.value);
+            });
+            
+            if (selectedIds.length > 0) {
+                params.append('selected_ids', selectedIds.join(','));
+            }
+            
+            window.location.href = `{{ route('candidates.export.multiple') ?? '#' }}?${params.toString()}`;
         });
-        
-        if (selectedIds.length > 0) {
-            params.append('selected_ids', selectedIds.join(','));
-        }
-        
-        window.location.href = `{{ route('candidates.export.multiple') }}?${params.toString()}`;
-    });
+
+        // Initialize filter values on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set filter values from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            if (urlParams.get('search')) {
+                searchInput.value = urlParams.get('search');
+            }
+            if (urlParams.get('status')) {
+                statusFilter.value = urlParams.get('status');
+            }
+            if (urlParams.get('position')) {
+                positionFilter.value = urlParams.get('position');
+            }
+        });
     </script>
 </body>
 </html>

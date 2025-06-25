@@ -97,12 +97,11 @@
             justify-content: center;
             margin: 0 auto 20px;
             backdrop-filter: blur(10px);
-            overflow: hidden; /* Prevent logo from overflowing container */
+            overflow: hidden;
             position: relative;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         
-        /* Ensure perfect circular shape */
         .company-logo::before {
             content: '';
             position: absolute;
@@ -193,6 +192,11 @@
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
+        .form-group input.error {
+            border-color: #dc2626;
+            background: #fef2f2;
+        }
+
         .input-icon {
             position: absolute;
             left: 16px;
@@ -255,25 +259,46 @@
 
         .error-message,
         .success-message {
-            padding: 10px 14px;
+            padding: 12px 16px;
             border-radius: 8px;
             margin-bottom: 16px;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            animation: slideIn 0.3s ease-out;
         }
 
         .error-message {
             background: #fef2f2;
             color: #dc2626;
             border-left: 4px solid #dc2626;
+            border: 1px solid #fecaca;
         }
 
         .success-message {
             background: #f0fdf4;
             color: #16a34a;
             border-left: 4px solid #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+
+        .info-message {
+            background: #eff6ff;
+            color: #2563eb;
+            border-left: 4px solid #2563eb;
+            border: 1px solid #bfdbfe;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .demo-accounts {
@@ -363,7 +388,6 @@
                 border: 2px solid rgba(255, 255, 255, 0.3);
             }
             
-            /* Enhance circular shape on mobile */
             .company-logo::after {
                 content: '';
                 position: absolute;
@@ -440,7 +464,6 @@
             .login-left p {
                 font-size: 0.8rem;
                 line-height: 1.3;
-                /* Always show the text but make it smaller */
                 display: block;
             }
 
@@ -452,7 +475,6 @@
                 font-size: 0.8rem;
             }
             
-            /* Make sure the company logo is perfectly round on mobile */
             .company-logo {
                 width: 90px;
                 height: 90px;
@@ -462,7 +484,6 @@
                 overflow: visible;
             }
             
-            /* Inner container for logo content */
             .company-logo::after {
                 content: '';
                 position: absolute;
@@ -475,7 +496,6 @@
                 z-index: 0;
             }
             
-            /* Logo content */
             .company-logo img,
             .company-logo svg,
             .company-logo > div {
@@ -489,14 +509,12 @@
             }
         }
 
-        /* Handle very tall screens */
         @media (min-height: 900px) {
             .login-container {
                 min-height: 500px;
             }
         }
 
-        /* Ensure content is visible on landscape mobile */
         @media (max-height: 600px) and (orientation: landscape) {
             .main-wrapper {
                 padding: 10px;
@@ -524,7 +542,6 @@
             }
         }
         
-        /* Fix for very small screens in portrait orientation */
         @media (max-width: 360px) {
             .login-container {
                 border-radius: 12px;
@@ -588,7 +605,7 @@
         <div class="login-container">
             <div class="login-left">
                 <div class="company-logo">
-                    <x-company-logo />
+                    <i class="fas fa-building"></i>
                 </div>
                 <h1>HR Recruitment</h1>
                 <p>Sistem manajemen recruitment modern untuk mengelola kandidat dan proses interview secara efisien</p>
@@ -600,17 +617,33 @@
                     <p>Silakan login untuk mengakses sistem</p>
                 </div>
 
-                <!-- Error Message Example -->
-                <!-- <div class="error-message">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>Username atau password salah</span>
-                </div> -->
+                <!-- Display Error Messages -->
+                @if ($errors->any())
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            @foreach ($errors->all() as $error)
+                                <div>{{ $error }}</div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
 
-                <!-- Success Message Example -->
-                <!-- <div class="success-message">
-                    <i class="fas fa-check-circle"></i>
-                    <span>Registrasi berhasil! Silakan login</span>
-                </div> -->
+                <!-- Display Success Messages -->
+                @if (session('success'))
+                    <div class="success-message {{ session('alert-type') === 'info' ? 'info-message' : '' }}">
+                        <i class="fas fa-check-circle"></i>
+                        <span>{{ session('success') }}</span>
+                    </div>
+                @endif
+
+                <!-- Display Info Messages -->
+                @if (session('info'))
+                    <div class="info-message">
+                        <i class="fas fa-info-circle"></i>
+                        <span>{{ session('info') }}</span>
+                    </div>
+                @endif
 
                 <form method="POST" action="{{ route('login') }}" id="loginForm">
                     @csrf
@@ -621,7 +654,9 @@
                             <i class="fas fa-user input-icon"></i>
                             <input type="text" id="credential" name="credential" 
                                    placeholder="Masukkan username atau email" 
-                                   value="{{ old('credential') }}" required>
+                                   value="{{ old('credential') }}" 
+                                   class="{{ $errors->has('credential') ? 'error' : '' }}"
+                                   required>
                         </div>
                     </div>
 
@@ -630,7 +665,9 @@
                         <div class="input-wrapper">
                             <i class="fas fa-lock input-icon"></i>
                             <input type="password" id="password" name="password" 
-                                   placeholder="Masukkan password" required>
+                                   placeholder="Masukkan password" 
+                                   class="{{ $errors->has('password') ? 'error' : '' }}"
+                                   required>
                         </div>
                     </div>
 
@@ -660,7 +697,6 @@
                     </div>
                 </form>
 
-
                 <div class="footer-info">
                     <p>&copy; 2025 PT. Kayu Mebel Indonesia. All rights reserved.</p>
                 </div>
@@ -689,6 +725,10 @@
         document.querySelectorAll('input').forEach(input => {
             input.addEventListener('focus', function() {
                 this.closest('.input-wrapper').style.transform = 'scale(1.02)';
+                // Remove error class when user starts typing
+                if (this.classList.contains('error')) {
+                    this.classList.remove('error');
+                }
             });
             
             input.addEventListener('blur', function() {
@@ -704,6 +744,20 @@
             
             btn.addEventListener('mouseleave', function() {
                 this.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Auto-hide success messages after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const successMessages = document.querySelectorAll('.success-message, .info-message');
+            successMessages.forEach(function(message) {
+                setTimeout(function() {
+                    message.style.opacity = '0';
+                    message.style.transform = 'translateY(-10px)';
+                    setTimeout(function() {
+                        message.remove();
+                    }, 300);
+                }, 5000);
             });
         });
 
