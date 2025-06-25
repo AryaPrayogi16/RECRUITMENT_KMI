@@ -97,6 +97,22 @@
             justify-content: center;
             margin: 0 auto 20px;
             backdrop-filter: blur(10px);
+            overflow: hidden; /* Prevent logo from overflowing container */
+            position: relative;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Ensure perfect circular shape */
+        .company-logo::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 50%;
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+            z-index: 1;
         }
 
         .company-logo i {
@@ -341,13 +357,32 @@
             }
 
             .company-logo {
-                width: 80px;
-                height: 80px;
+                width: 100px;
+                height: 100px;
                 margin-bottom: 15px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
             }
-
-            .company-logo i {
-                font-size: 30px;
+            
+            /* Enhance circular shape on mobile */
+            .company-logo::after {
+                content: '';
+                position: absolute;
+                top: 6px;
+                left: 6px;
+                right: 6px;
+                bottom: 6px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 50%;
+                z-index: 0;
+            }
+            
+            .company-logo > div,
+            .company-logo img,
+            .company-logo svg {
+                position: relative;
+                z-index: 2;
+                max-width: 80%;
+                max-height: 80%;
             }
 
             .login-left h1 {
@@ -417,10 +452,40 @@
                 font-size: 0.8rem;
             }
             
-            /* Make sure the company logo is not too big on very small screens */
+            /* Make sure the company logo is perfectly round on mobile */
             .company-logo {
-                width: 60px;
-                height: 60px;
+                width: 90px;
+                height: 90px;
+                padding: 0;
+                margin-bottom: 15px;
+                position: relative;
+                overflow: visible;
+            }
+            
+            /* Inner container for logo content */
+            .company-logo::after {
+                content: '';
+                position: absolute;
+                top: 5px;
+                left: 5px;
+                right: 5px;
+                bottom: 5px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 50%;
+                z-index: 0;
+            }
+            
+            /* Logo content */
+            .company-logo img,
+            .company-logo svg,
+            .company-logo > div {
+                position: relative;
+                z-index: 2;
+                max-width: 80%;
+                max-height: 80%;
+                width: auto;
+                height: auto;
+                object-fit: contain;
             }
         }
 
@@ -470,8 +535,23 @@
             }
             
             .company-logo {
-                width: 50px;
-                height: 50px;
+                width: 80px;
+                height: 80px;
+                margin-bottom: 12px;
+            }
+            
+            .company-logo::after {
+                top: 4px;
+                left: 4px;
+                right: 4px;
+                bottom: 4px;
+            }
+            
+            .company-logo img,
+            .company-logo svg,
+            .company-logo > div {
+                max-width: 75%;
+                max-height: 75%;
             }
             
             .login-left h1 {
@@ -654,16 +734,33 @@
                 quickLoginBtns.style.flexDirection = 'row';
             }
         }
+        
+        // Ensure logo is perfectly circular on all devices
+        function enhanceLogoShape() {
+            const logo = document.querySelector('.company-logo');
+            const logoWidth = logo.offsetWidth;
+            
+            // Ensure perfect circle
+            logo.style.height = logoWidth + 'px';
+            
+            // Apply border and shadow for enhanced appearance
+            if (window.innerWidth <= 480) {
+                logo.style.border = '2px solid rgba(255, 255, 255, 0.3)';
+                logo.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.1)';
+            }
+        }
 
         // Call on load and resize
         window.addEventListener('load', function() {
             adjustLayout();
             adjustForSmallScreens();
+            enhanceLogoShape();
         });
         
         window.addEventListener('resize', function() {
             adjustLayout();
             adjustForSmallScreens();
+            enhanceLogoShape();
         });
         
         // Fix for iOS Safari viewport height issues
