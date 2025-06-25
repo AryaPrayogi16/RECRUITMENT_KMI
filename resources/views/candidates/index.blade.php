@@ -937,25 +937,16 @@
                                         <span style="color: #718096;">Tidak disebutkan</span>
                                     @endif
                                 </td>
-                                <td>
-                                    <div class="action-dropdown">
-                                        <button class="action-btn" onclick="toggleDropdown(this)">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <div class="dropdown-menu">
-                                            <a href="{{ route('candidates.show', $candidate->id) }}" class="dropdown-item">
-                                                <i class="fas fa-eye"></i>
-                                                Lihat Detail
-                                            </a>
-                                            <a href="{{ route('candidates.edit', $candidate->id) }}" class="dropdown-item">
-                                                <i class="fas fa-edit"></i>
-                                                Edit Data
-                                            </a>
-                                            <div class="dropdown-divider"></div>
-                                            
-                                        </div>
-                                    </div>
-                                </td>
+
+                                    <td>
+                                        <a href="{{ route('candidates.show', $candidate->id) }}" 
+                                        class="action-btn" 
+                                        data-tooltip="Lihat Detail Kandidat"
+                                        title="Lihat Detail Kandidat">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                
                             </tr>
                             @empty
                             <tr>
