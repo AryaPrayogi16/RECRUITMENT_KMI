@@ -111,7 +111,7 @@ class Candidate extends Model
 
     public function socialActivities()
     {
-        return $this->hasMany(SocialActivity::class);
+         return $this->hasMany(SocialActivity::class)->whereNull('deleted_at');
     }
 
     public function achievements()
@@ -170,30 +170,66 @@ class Candidate extends Model
         return $this->hasOne(KraeplinTestResult::class)->latest();
     }
 
-    // ========== DISC TEST RELATIONSHIPS - NEW ==========
+    // ========== DISC 3D TEST RELATIONSHIPS - UPDATED ==========
+    public function disc3DTestSessions()
+    {
+        return $this->hasMany(Disc3DTestSession::class);
+    }
+
+    public function disc3DTestResults()
+    {
+        return $this->hasMany(Disc3DResult::class);
+    }
+
+    public function disc3DResponses()
+    {
+        return $this->hasMany(Disc3DResponse::class);
+    }
+
+    public function disc3DAnalytics()
+    {
+        return $this->hasMany(Disc3DTestAnalytics::class);
+    }
+
+    public function latestDisc3DTest()
+    {
+        return $this->hasOne(Disc3DTestSession::class)->latest();
+    }
+
+    public function completedDisc3DTest()
+    {
+        return $this->hasOne(Disc3DTestSession::class)->where('status', 'completed');
+    }
+
+    public function disc3DTestResult()
+    {
+        return $this->hasOne(Disc3DResult::class)->latest();
+    }
+
+    // ========== DISC TEST RELATIONSHIPS - DISC 3D ONLY ==========
     public function discTestSessions()
     {
-        return $this->hasMany(DiscTestSession::class);
+        return $this->disc3DTestSessions();
     }
 
     public function discTestResults()
     {
-        return $this->hasMany(DiscTestResult::class);
+        return $this->disc3DTestResults();
     }
 
     public function latestDiscTest()
     {
-        return $this->hasOne(DiscTestSession::class)->latest();
+        return $this->latestDisc3DTest();
     }
 
     public function completedDiscTest()
     {
-        return $this->hasOne(DiscTestSession::class)->where('status', self::TEST_COMPLETED);
+        return $this->completedDisc3DTest();
     }
 
     public function discTestResult()
     {
-        return $this->hasOne(DiscTestResult::class)->latest();
+        return $this->disc3DTestResult();
     }
 
     // ========== BASIC SCOPES ==========
@@ -227,7 +263,6 @@ class Candidate extends Model
         });
     }
 
-
     public function scopeKraeplinInProgress($query)
     {
         return $query->whereHas('kraeplinTestSessions', function($q) {
@@ -235,34 +270,50 @@ class Candidate extends Model
         });
     }
 
-    // ========== DISC TEST SCOPES - NEW ==========
+    // ========== DISC 3D TEST SCOPES - NEW ==========
+    public function scopeWithDisc3DTest($query)
+    {
+        return $query->whereHas('disc3DTestSessions', function($q) {
+            $q->where('status', 'completed');
+        });
+    }
+
+    public function scopeWithoutDisc3DTest($query)
+    {
+        return $query->whereDoesntHave('disc3DTestSessions', function($q) {
+            $q->where('status', 'completed');
+        });
+    }
+
+    public function scopeDisc3DInProgress($query)
+    {
+        return $query->whereHas('disc3DTestSessions', function($q) {
+            $q->where('status', 'in_progress');
+        });
+    }
+
+    // ========== DISC TEST SCOPES - DISC 3D ONLY ==========
     public function scopeWithDiscTest($query)
     {
-        return $query->whereHas('discTestSessions', function($q) {
-            $q->where('status', self::TEST_COMPLETED);
-        });
+        return $this->scopeWithDisc3DTest($query);
     }
 
     public function scopeWithoutDiscTest($query)
     {
-        return $query->whereDoesntHave('discTestSessions', function($q) {
-            $q->where('status', self::TEST_COMPLETED);
-        });
+        return $this->scopeWithoutDisc3DTest($query);
     }
 
     public function scopeDiscInProgress($query)
     {
-        return $query->whereHas('discTestSessions', function($q) {
-            $q->where('status', self::TEST_IN_PROGRESS);
-        });
+        return $this->scopeDisc3DInProgress($query);
     }
 
     public function scopeWithAllTests($query)
     {
         return $query->whereHas('kraeplinTestSessions', function($q) {
             $q->where('status', self::TEST_COMPLETED);
-        })->whereHas('discTestSessions', function($q) {
-            $q->where('status', self::TEST_COMPLETED);
+        })->whereHas('disc3DTestSessions', function($q) {
+            $q->where('status', 'completed');
         });
     }
 
@@ -341,56 +392,119 @@ class Candidate extends Model
         return $result ? $result->performance_category : null;
     }
 
-    // ========== DISC TEST ACCESSORS - NEW ==========
-    public function getDiscStatusAttribute()
+    // ========== DISC 3D TEST ACCESSORS - NEW ==========
+    public function getDisc3DStatusAttribute()
     {
-        $session = $this->discTestSessions()->latest()->first();
+        $session = $this->disc3DTestSessions()->latest()->first();
         
         if (!$session) {
-            return self::TEST_NOT_STARTED;
+            return 'not_started';
         }
 
         return $session->status;
     }
 
-    public function getDiscStatusLabelAttribute()
+    public function getDisc3DStatusLabelAttribute()
     {
-        $statuses = self::getTestStatuses();
-        return $statuses[$this->disc_status] ?? 'Tidak Diketahui';
+        $statusLabels = [
+            'not_started' => 'Belum Dimulai',
+            'in_progress' => 'Sedang Berlangsung',
+            'completed' => 'Selesai',
+            'timeout' => 'Timeout',
+            'interrupted' => 'Terputus'
+        ];
+        
+        return $statusLabels[$this->disc_3d_status] ?? 'Tidak Diketahui';
     }
 
-    public function getDiscStatusBadgeClassAttribute()
+    public function getDisc3DStatusBadgeClassAttribute()
     {
-        return match($this->disc_status) {
-            self::TEST_NOT_STARTED => 'status-pending',
-            self::TEST_IN_PROGRESS => 'status-submitted',
-            self::TEST_COMPLETED => 'status-accepted',
+        return match($this->disc_3d_status) {
+            'not_started' => 'status-pending',
+            'in_progress' => 'status-submitted',
+            'completed' => 'status-accepted',
+            'timeout' => 'status-rejected',
+            'interrupted' => 'status-rejected',
             default => 'status-pending'
         };
     }
 
+    public function getDisc3DPrimaryTypeAttribute()
+    {
+        $result = $this->disc3DTestResult;
+        return $result ? $result->primary_type : null;
+    }
+
+    public function getDisc3DSecondaryTypeAttribute()
+    {
+        $result = $this->disc3DTestResult;
+        return $result ? $result->secondary_type : null;
+    }
+
+    public function getDisc3DPersonalityProfileAttribute()
+    {
+        $result = $this->disc3DTestResult;
+        return $result ? $result->personality_profile : null;
+    }
+
+    public function getDisc3DPrimaryPercentageAttribute()
+    {
+        $result = $this->disc3DTestResult;
+        return $result ? $result->primary_percentage : null;
+    }
+
+    public function getDisc3DSummaryAttribute()
+    {
+        $result = $this->disc3DTestResult;
+        return $result ? $result->brief_summary : null;
+    }
+
+    public function getDisc3DStressLevelAttribute()
+    {
+        $result = $this->disc3DTestResult;
+        return $result ? $result->stress_level : null;
+    }
+
+    public function getDisc3DAdaptationPatternAttribute()
+    {
+        $result = $this->disc3DTestResult;
+        return $result ? $result->adaptation_pattern : null;
+    }
+
+    // ========== DISC TEST ACCESSORS - DISC 3D ONLY ==========
+    public function getDiscStatusAttribute()
+    {
+        return $this->getDisc3DStatusAttribute();
+    }
+
+    public function getDiscStatusLabelAttribute()
+    {
+        return $this->getDisc3DStatusLabelAttribute();
+    }
+
+    public function getDiscStatusBadgeClassAttribute()
+    {
+        return $this->getDisc3DStatusBadgeClassAttribute();
+    }
+
     public function getDiscPrimaryTypeAttribute()
     {
-        $result = $this->discTestResult;
-        return $result ? $result->primary_type : null;
+        return $this->getDisc3DPrimaryTypeAttribute();
     }
 
     public function getDiscSecondaryTypeAttribute()
     {
-        $result = $this->discTestResult;
-        return $result ? $result->secondary_type : null;
+        return $this->getDisc3DSecondaryTypeAttribute();
     }
 
     public function getDiscPersonalityProfileAttribute()
     {
-        $result = $this->discTestResult;
-        return $result ? $result->personality_profile : null;
+        return $this->getDisc3DPersonalityProfileAttribute();
     }
 
     public function getDiscPrimaryPercentageAttribute()
     {
-        $result = $this->discTestResult;
-        return $result ? $result->primary_percentage : null;
+        return $this->getDisc3DPrimaryPercentageAttribute();
     }
 
     // ========== TEST HELPER METHODS ==========
@@ -408,33 +522,71 @@ class Candidate extends Model
             ->exists();
     }
 
+    // ========== DISC 3D TEST HELPER METHODS - NEW ==========
+    public function hasCompletedDisc3DTest()
+    {
+        return $this->disc3DTestSessions()
+            ->where('status', 'completed')
+            ->exists();
+    }
+
+    public function hasStartedDisc3DTest()
+    {
+        return $this->disc3DTestSessions()
+            ->whereIn('status', ['in_progress', 'completed'])
+            ->exists();
+    }
+
+    public function canStartDisc3DTest()
+    {
+        return $this->hasCompletedKraeplinTest() && !$this->hasCompletedDisc3DTest();
+    }
+
+    public function getDisc3DTestProgress()
+    {
+        $session = $this->latestDisc3DTest;
+        
+        if (!$session) {
+            return 0;
+        }
+
+        if ($session->status === 'completed') {
+            return 100;
+        }
+
+        return $session->progress ?? 0;
+    }
+
+    // ========== DISC TEST HELPER METHODS - DISC 3D ONLY ==========
     public function hasCompletedDiscTest()
     {
-        return $this->discTestSessions()
-            ->where('status', self::TEST_COMPLETED)
-            ->exists();
+        return $this->hasCompletedDisc3DTest();
     }
 
     public function hasStartedDiscTest()
     {
-        return $this->discTestSessions()
-            ->whereIn('status', [self::TEST_IN_PROGRESS, self::TEST_COMPLETED])
-            ->exists();
+        return $this->hasStartedDisc3DTest();
     }
 
+    public function canStartDiscTest()
+    {
+        return $this->canStartDisc3DTest();
+    }
+
+    public function getDiscTestProgress()
+    {
+        return $this->getDisc3DTestProgress();
+    }
+
+    // ========== UNIFIED TEST METHODS ==========
     public function hasCompletedAllTests()
     {
-        return $this->hasCompletedKraeplinTest() && $this->hasCompletedDiscTest();
+        return $this->hasCompletedKraeplinTest() && $this->hasCompletedDisc3DTest();
     }
 
     public function canStartKraeplinTest()
     {
         return $this->application_status === self::STATUS_SUBMITTED && !$this->hasCompletedKraeplinTest();
-    }
-
-    public function canStartDiscTest()
-    {
-        return $this->hasCompletedKraeplinTest() && !$this->hasCompletedDiscTest();
     }
 
     public function isTestingRequired()
@@ -458,28 +610,13 @@ class Candidate extends Model
         return $session->progress ?? 0;
     }
 
-    public function getDiscTestProgress()
-    {
-        $session = $this->latestDiscTest;
-        
-        if (!$session) {
-            return 0;
-        }
-
-        if ($session->status === self::TEST_COMPLETED) {
-            return 100;
-        }
-
-        return $session->progress ?? 0;
-    }
-
-    // ========== COMPREHENSIVE TEST SUMMARY ==========
+    // ========== COMPREHENSIVE TEST SUMMARY - DISC 3D ONLY ==========
     public function getTestSummary()
     {
         $kraeplinSession = $this->latestKraeplinTest;
         $kraeplinResult = $this->kraeplinTestResult;
-        $discSession = $this->latestDiscTest;
-        $discResult = $this->discTestResult;
+        $discSession = $this->latestDisc3DTest;
+        $discResult = $this->disc3DTestResult;
         
         return [
             'kraeplin' => [
@@ -494,16 +631,19 @@ class Candidate extends Model
                 'performance_category' => $kraeplinResult?->performance_category
             ],
             'disc' => [
-                'status' => $this->disc_status,
-                'status_label' => $this->disc_status_label,
-                'progress' => $this->getDiscTestProgress(),
+                'status' => $this->disc_3d_status,
+                'status_label' => $this->disc_3d_status_label,
+                'progress' => $this->getDisc3DTestProgress(),
                 'started_at' => $discSession?->started_at,
                 'completed_at' => $discSession?->completed_at,
                 'duration' => $discSession?->formatted_duration,
                 'primary_type' => $discResult?->primary_type,
                 'secondary_type' => $discResult?->secondary_type,
                 'personality_profile' => $discResult?->personality_profile,
-                'primary_percentage' => $discResult?->primary_percentage
+                'primary_percentage' => $discResult?->primary_percentage,
+                'summary' => $this->disc_3d_summary,
+                'stress_level' => $this->disc_3d_stress_level,
+                'adaptation_pattern' => $this->disc_3d_adaptation_pattern
             ],
             'overall' => [
                 'all_completed' => $this->hasCompletedAllTests(),
@@ -519,7 +659,7 @@ class Candidate extends Model
             return 'kraeplin';
         }
         
-        if (!$this->hasCompletedDiscTest()) {
+        if (!$this->hasCompletedDisc3DTest()) {
             return 'disc';
         }
         
@@ -535,7 +675,7 @@ class Candidate extends Model
             $completed++;
         }
         
-        if ($this->hasCompletedDiscTest()) {
+        if ($this->hasCompletedDisc3DTest()) {
             $completed++;
         }
         
@@ -547,7 +687,7 @@ class Candidate extends Model
         $steps = [
             'form_submitted' => $this->application_status !== self::STATUS_DRAFT,
             'kraeplin_completed' => $this->hasCompletedKraeplinTest(),
-            'disc_completed' => $this->hasCompletedDiscTest(),
+            'disc_completed' => $this->hasCompletedDisc3DTest(),
             'documents_uploaded' => $this->documentUploads()->count() > 0,
         ];
 
@@ -561,5 +701,137 @@ class Candidate extends Model
             'total' => $total,
             'percentage' => round(($completedCount / $total) * 100, 2)
         ];
+    }
+
+    // ========== DISC 3D SPECIFIC METHODS ==========
+    
+    /**
+     * Get comprehensive DISC 3D analysis
+     */
+    public function getDisc3DAnalysis()
+    {
+        $result = $this->disc3DTestResult;
+        $analytics = $this->disc3DAnalytics()->latest()->first();
+        
+        if (!$result) {
+            return null;
+        }
+
+        return [
+            'basic_info' => [
+                'primary_type' => $result->primary_type,
+                'secondary_type' => $result->secondary_type,
+                'personality_profile' => $result->personality_profile,
+                'summary' => $result->summary
+            ],
+            'three_graphs' => [
+                'most' => $result->most_scores,
+                'least' => $result->least_scores,
+                'change' => $result->change_scores
+            ],
+            'interpretations' => [
+                'public_self' => $result->public_self_summary,
+                'private_self' => $result->private_self_summary,
+                'adaptation' => $result->adaptation_summary,
+                'overall' => $result->overall_profile
+            ],
+            'analytics' => [
+                'engagement_level' => $analytics?->engagement_level,
+                'quality_level' => $analytics?->quality_level,
+                'completion_rate' => $analytics?->completion_rate,
+                'total_time' => $analytics?->formatted_total_time,
+                'suspicious_patterns' => $analytics?->suspicious_patterns
+            ],
+            'validity' => [
+                'is_valid' => $result->is_valid,
+                'consistency_score' => $result->consistency_score,
+                'validity_flags' => $result->validity_flags
+            ]
+        ];
+    }
+
+    /**
+     * Get DISC 3D responses breakdown
+     */
+    public function getDisc3DResponsesBreakdown()
+    {
+        return $this->disc3DResponses()
+            ->with(['section', 'mostChoice', 'leastChoice'])
+            ->orderBy('section_number')
+            ->get()
+            ->map(function($response) {
+                return [
+                    'section' => $response->section_number,
+                    'most_choice' => $response->most_choice,
+                    'least_choice' => $response->least_choice,
+                    'most_text' => $response->mostChoice?->localized_text,
+                    'least_text' => $response->leastChoice?->localized_text,
+                    'net_scores' => $response->net_scores,
+                    'time_spent' => $response->formatted_time
+                ];
+            });
+    }
+
+    /**
+     * Check if candidate has valid DISC 3D result
+     */
+    public function hasValidDisc3DResult()
+    {
+        $result = $this->disc3DTestResult;
+        return $result && $result->is_valid;
+    }
+
+    /**
+     * Get DISC 3D recommended actions based on results
+     */
+    public function getDisc3DRecommendations()
+    {
+        $result = $this->disc3DTestResult;
+        
+        if (!$result) {
+            return null;
+        }
+
+        $recommendations = [];
+
+        // Based on primary type
+        switch ($result->primary_type) {
+            case 'D':
+                $recommendations['role_fit'] = ['Leadership positions', 'Decision-making roles', 'Goal-oriented tasks'];
+                $recommendations['management_tips'] = ['Give autonomy', 'Set clear objectives', 'Avoid micromanagement'];
+                break;
+            case 'I':
+                $recommendations['role_fit'] = ['People-facing roles', 'Communication positions', 'Team collaboration'];
+                $recommendations['management_tips'] = ['Provide social interaction', 'Recognize achievements publicly', 'Allow creative expression'];
+                break;
+            case 'S':
+                $recommendations['role_fit'] = ['Support roles', 'Steady environments', 'Team member positions'];
+                $recommendations['management_tips'] = ['Provide stability', 'Give advance notice of changes', 'Appreciate loyalty'];
+                break;
+            case 'C':
+                $recommendations['role_fit'] = ['Detail-oriented tasks', 'Quality control', 'Analysis positions'];
+                $recommendations['management_tips'] = ['Provide clear procedures', 'Allow time for thoroughness', 'Value accuracy'];
+                break;
+        }
+
+        // Based on stress level
+        if ($result->stress_level === 'High') {
+            $recommendations['stress_management'] = [
+                'Monitor workload carefully',
+                'Provide stress management resources',
+                'Consider role adjustments'
+            ];
+        }
+
+        // Based on adaptation pattern
+        if ($result->hasHighAdaptation()) {
+            $recommendations['adaptation_support'] = [
+                'Acknowledge adaptation efforts',
+                'Provide authentic environment',
+                'Regular check-ins on satisfaction'
+            ];
+        }
+
+        return $recommendations;
     }
 }

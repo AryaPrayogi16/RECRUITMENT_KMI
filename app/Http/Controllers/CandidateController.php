@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
+use App\Models\DiscProfileInrepresentation;
 
 class CandidateController extends Controller
 {
@@ -627,7 +628,7 @@ class CandidateController extends Controller
             }
             
             // Get DISC profile descriptions
-            $profiles = \App\Models\DiscProfileDescription::all()->keyBy('dimension');
+            $profiles = \App\Models\Disc3DProfileInterpretation::all()->keyBy('dimension');
             
             // Get test session info
             $discSession = $candidate->discTestSessions()->latest()->first();

@@ -4,16 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes; // ✅ Ditambahkan
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PersonalData extends Model
 {
-    use HasFactory, SoftDeletes; // ✅ Ditambahkan SoftDeletes
+    use HasFactory, SoftDeletes;
 
     protected $table = 'personal_data';
 
     protected $fillable = [
         'candidate_id',
+        'nik',                    // ✅ ADDED
         'full_name',
         'email',
         'phone_number',
@@ -55,6 +56,26 @@ class PersonalData extends Model
         return $this->current_address ?: $this->ktp_address;
     }
 
+    // ✅ NEW: NIK Validation Methods
+    public function getNikFormattedAttribute()
+    {
+        if (!$this->nik) return null;
+        
+        // Format: XXXX-XXXX-XXXX-XXXX
+        return substr($this->nik, 0, 4) . '-' . 
+               substr($this->nik, 4, 4) . '-' . 
+               substr($this->nik, 8, 4) . '-' . 
+               substr($this->nik, 12, 4);
+    }
+
+    public function isValidNik()
+    {
+        if (!$this->nik) return false;
+        
+        // NIK must be exactly 16 digits
+        return preg_match('/^\d{16}$/', $this->nik);
+    }
+
     // Scopes
     public function scopeByGender($query, $gender)
     {
@@ -64,5 +85,10 @@ class PersonalData extends Model
     public function scopeByMaritalStatus($query, $status)
     {
         return $query->where('marital_status', $status);
+    }
+
+    public function scopeByNik($query, $nik)
+    {
+        return $query->where('nik', $nik);
     }
 }
