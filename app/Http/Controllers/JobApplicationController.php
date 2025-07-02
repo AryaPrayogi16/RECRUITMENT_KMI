@@ -20,7 +20,9 @@ use App\Models\{
     ApplicationLog,
     OtherSkill,
     KraeplinTestSession,
-    DiscTestSession
+    // ✅ PERBAIKAN: Gunakan model DISC 3D yang baru
+    Disc3DTestSession,
+    Disc3DResult
 };
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +52,7 @@ class JobApplicationController extends Controller
     public function submitApplication(JobApplicationRequest $request)
     {
         $validated = $request->validated();
-        $uploadedFiles = []; // Track uploaded files for cleanup on error
+        $uploadedFiles = [];
         
         try {
             DB::beginTransaction();
@@ -65,8 +67,6 @@ class JobApplicationController extends Controller
             if (!$position) {
                 throw new ModelNotFoundException("Position '{$validated['position_applied']}' not found");
             }
-            
-            Log::info('Position found', ['position_id' => $position->id, 'position_name' => $position->position_name]);
             
             // 1. Create Candidate
             $candidate = $this->createCandidate($validated, $position->id);
@@ -158,79 +158,22 @@ class JobApplicationController extends Controller
             return redirect()->route('kraeplin.instructions', $candidate->candidate_code)
                 ->with('success', 'Form lamaran berhasil dikirim. Silakan lanjutkan dengan mengerjakan Test Kraeplin.');
                 
-        } catch (QueryException $e) {
-            DB::rollback();
-            
-            // Clean up uploaded files on database error
-            $this->cleanupUploadedFiles($uploadedFiles);
-            
-            Log::error('Database Query Error during job application submission', [
-                'error_code' => $e->getCode(),
-                'error_message' => $e->getMessage(),
-                'sql_state' => $e->errorInfo[0] ?? null,
-                'error_info' => $e->errorInfo ?? null,
-                'position_applied' => $validated['position_applied'] ?? null,
-                'email' => $validated['email'] ?? null,
-                'stack_trace' => $e->getTraceAsString()
-            ]);
-            
-            // Specific error messages based on error codes
-            $errorMessage = $this->getSpecificErrorMessage($e);
-            
-            return back()->withErrors(['error' => $errorMessage])->withInput();
-            
-        } catch (ModelNotFoundException $e) {
-            DB::rollback();
-            
-            // Clean up uploaded files
-            $this->cleanupUploadedFiles($uploadedFiles);
-            
-            Log::error('Model Not Found Error during job application submission', [
-                'error_message' => $e->getMessage(),
-                'position_applied' => $validated['position_applied'] ?? null,
-                'email' => $validated['email'] ?? null,
-                'stack_trace' => $e->getTraceAsString()
-            ]);
-            
-            return back()->withErrors(['error' => 'Posisi yang dipilih tidak ditemukan. Silakan pilih posisi yang valid.'])->withInput();
-            
-        } catch (\Illuminate\Database\Eloquent\MassAssignmentException $e) {
-            DB::rollback();
-            
-            // Clean up uploaded files
-            $this->cleanupUploadedFiles($uploadedFiles);
-            
-            Log::error('Mass Assignment Error during job application submission', [
-                'error_message' => $e->getMessage(),
-                'email' => $validated['email'] ?? null,
-                'stack_trace' => $e->getTraceAsString()
-            ]);
-            
-            return back()->withErrors(['error' => 'Terjadi kesalahan dalam pengisian data. Silakan periksa kembali data yang diisi.'])->withInput();
-            
         } catch (\Exception $e) {
             DB::rollback();
-            
-            // Clean up uploaded files
             $this->cleanupUploadedFiles($uploadedFiles);
             
-            Log::error('General Error during job application submission', [
-                'error_type' => get_class($e),
-                'error_message' => $e->getMessage(),
-                'error_code' => $e->getCode(),
-                'email' => $validated['email'] ?? null,
-                'stack_trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
+            Log::error('Error during job application submission', [
+                'error' => $e->getMessage(),
+                'email' => $validated['email'] ?? null
             ]);
             
-            return back()->withErrors(['error' => 'Terjadi kesalahan sistem. Silakan coba lagi atau hubungi administrator.'])->withInput();
+            return back()->withErrors(['error' => 'Terjadi kesalahan sistem. Silakan coba lagi.'])->withInput();
         }
     }
 
     public function success()
     {
-        // Get candidate code from URL parameter (from DISC test completion)
+        // Get candidate code from URL parameter 
         $candidateCode = request()->get('candidate_code') ?: session('candidate_code');
         
         if (!$candidateCode) {
@@ -239,34 +182,220 @@ class JobApplicationController extends Controller
         }
         
         // Verify candidate exists
-        $candidate = \App\Models\Candidate::where('candidate_code', $candidateCode)->first();
+        $candidate = Candidate::where('candidate_code', $candidateCode)->first();
         if (!$candidate) {
             return redirect()->route('job.application.form')
                 ->with('error', 'Data kandidat tidak ditemukan.');
         }
         
-        // Check test completion status
+        // ✅ PERBAIKAN: Check test completion status dengan model yang benar
         $kraeplinTest = KraeplinTestSession::where('candidate_id', $candidate->id)
             ->where('status', 'completed')
             ->first();
             
-        $discTest = DiscTestSession::where('candidate_id', $candidate->id)
+        // ✅ PERBAIKAN: Gunakan Disc3DTestSession (bukan DiscTestSession)
+        $disc3dTest = Disc3DTestSession::where('candidate_id', $candidate->id)
             ->where('status', 'completed')
             ->first();
         
-        // NEW: Determine where to redirect based on test completion
+        // ✅ PERBAIKAN: Log untuk debugging
+        Log::info('Success page accessed', [
+            'candidate_code' => $candidateCode,
+            'kraeplin_completed' => (bool) $kraeplinTest,
+            'disc3d_completed' => (bool) $disc3dTest,
+            'url' => request()->fullUrl()
+        ]);
+        
+        // Determine where to redirect based on test completion
         if (!$kraeplinTest) {
             return redirect()->route('kraeplin.instructions', $candidateCode)
                 ->with('warning', 'Anda perlu menyelesaikan Test Kraeplin terlebih dahulu.');
         }
         
-        if (!$discTest) {
-            return redirect()->route('disc.instructions', $candidateCode)
-                ->with('warning', 'Anda perlu menyelesaikan Test DISC untuk melengkapi proses lamaran.');
+        if (!$disc3dTest) {
+            // ✅ PERBAIKAN: Redirect ke DISC 3D route yang benar
+            return redirect()->route('disc3d.instructions', $candidateCode)
+                ->with('warning', 'Anda perlu menyelesaikan Test DISC 3D untuk melengkapi proses lamaran.');
         }
         
         // Both tests completed - show success page
-        return view('job-application.success', compact('candidateCode', 'candidate', 'kraeplinTest', 'discTest'));
+        // ✅ PERBAIKAN: Get DISC 3D result
+        $disc3dResult = null;
+        if ($disc3dTest) {
+            $disc3dResult = Disc3DResult::where('candidate_id', $candidate->id)
+                ->where('test_session_id', $disc3dTest->id)
+                ->first();
+        }
+        
+        return view('job-application.success', compact(
+            'candidateCode', 
+            'candidate', 
+            'kraeplinTest', 
+            'disc3dTest',
+            'disc3dResult'
+        ));
+    }
+
+    /**
+     * Get candidate test status - NEW METHOD for checking test progress
+     */
+    public function getTestStatus($candidateCode)
+    {
+        try {
+            $candidate = Candidate::where('candidate_code', $candidateCode)->first();
+            
+            if (!$candidate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Candidate not found'
+                ], 404);
+            }
+            
+            $kraeplinTest = KraeplinTestSession::where('candidate_id', $candidate->id)
+                ->where('status', 'completed')
+                ->first();
+                
+            $disc3dTest = Disc3DTestSession::where('candidate_id', $candidate->id)
+                ->where('status', 'completed')
+                ->first();
+                
+            $disc3dInProgress = Disc3DTestSession::where('candidate_id', $candidate->id)
+                ->whereIn('status', ['not_started', 'in_progress'])
+                ->first();
+            
+            return response()->json([
+                'success' => true,
+                'candidate_code' => $candidateCode,
+                'tests' => [
+                    'kraeplin' => [
+                        'completed' => (bool) $kraeplinTest,
+                        'completed_at' => $kraeplinTest?->completed_at,
+                        'status' => $kraeplinTest?->status ?? 'not_started'
+                    ],
+                    'disc3d' => [
+                        'completed' => (bool) $disc3dTest,
+                        'completed_at' => $disc3dTest?->completed_at,
+                        'in_progress' => (bool) $disc3dInProgress,
+                        'progress_percentage' => $disc3dInProgress?->progress ?? 0,
+                        'sections_completed' => $disc3dInProgress?->sections_completed ?? 0,
+                        'status' => $disc3dTest?->status ?? $disc3dInProgress?->status ?? 'not_started'
+                    ]
+                ],
+                'next_step' => $this->determineNextStep($kraeplinTest, $disc3dTest, $disc3dInProgress, $candidateCode)
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error getting test status', [
+                'candidate_code' => $candidateCode,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving test status'
+            ], 500);
+        }
+    }
+
+    /**
+     * Determine next step for candidate - NEW HELPER METHOD
+     */
+    private function determineNextStep($kraeplinTest, $disc3dTest, $disc3dInProgress, $candidateCode)
+    {
+        if (!$kraeplinTest) {
+            return [
+                'action' => 'kraeplin_test',
+                'url' => route('kraeplin.instructions', $candidateCode),
+                'message' => 'Lanjutkan dengan Test Kraeplin'
+            ];
+        }
+        
+        if (!$disc3dTest) {
+            if ($disc3dInProgress) {
+                return [
+                    'action' => 'continue_disc3d',
+                    'url' => route('disc3d.start', $candidateCode),
+                    'message' => 'Lanjutkan Test DISC 3D yang tertunda',
+                    'progress' => $disc3dInProgress->progress,
+                    'sections_completed' => $disc3dInProgress->sections_completed
+                ];
+            } else {
+                return [
+                    'action' => 'disc3d_test',
+                    'url' => route('disc3d.instructions', $candidateCode),
+                    'message' => 'Lanjutkan dengan Test DISC 3D'
+                ];
+            }
+        }
+        
+        return [
+            'action' => 'completed',
+            'url' => route('job.application.success', ['candidate_code' => $candidateCode]),
+            'message' => 'Semua test telah selesai'
+        ];
+    }
+
+    /**
+     * NEW: Get candidate summary for dashboard/HR
+     */
+    public function getCandidateSummary($candidateCode)
+    {
+        try {
+            $candidate = Candidate::with([
+                'personalData',
+                'position',
+                'kraeplinTestSession' => function($query) {
+                    $query->where('status', 'completed');
+                },
+                'disc3dTestSession' => function($query) {
+                    $query->where('status', 'completed');
+                },
+                'disc3dResult'
+            ])->where('candidate_code', $candidateCode)->first();
+            
+            if (!$candidate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Candidate not found'
+                ], 404);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'candidate' => [
+                    'code' => $candidate->candidate_code,
+                    'name' => $candidate->personalData?->full_name,
+                    'email' => $candidate->personalData?->email,
+                    'position' => $candidate->position?->position_name,
+                    'application_date' => $candidate->application_date,
+                    'status' => $candidate->application_status,
+                    'tests' => [
+                        'kraeplin' => [
+                            'completed' => (bool) $candidate->kraeplinTestSession,
+                            'completed_at' => $candidate->kraeplinTestSession?->completed_at
+                        ],
+                        'disc3d' => [
+                            'completed' => (bool) $candidate->disc3dTestSession,
+                            'completed_at' => $candidate->disc3dTestSession?->completed_at,
+                            'primary_type' => $candidate->disc3dResult?->primary_type,
+                            'personality_profile' => $candidate->disc3dResult?->personality_profile,
+                            'summary' => $candidate->disc3dResult?->summary
+                        ]
+                    ]
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error getting candidate summary', [
+                'candidate_code' => $candidateCode,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving candidate summary'
+            ], 500);
+        }
     }
 
     private function getSpecificErrorMessage(QueryException $e): string

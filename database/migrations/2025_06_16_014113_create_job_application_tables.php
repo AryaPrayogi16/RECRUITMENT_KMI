@@ -70,6 +70,7 @@ return new class extends Migration
         Schema::create('personal_data', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->unique()->constrained('candidates')->onDelete('cascade');
+            $table->string('nik', 16)->unique()->nullable();
             $table->string('full_name');
             $table->string('email')->unique();
             $table->string('phone_number')->nullable();
@@ -89,7 +90,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
             
-            $table->index(['email', 'candidate_id']);
+            $table->index(['email', 'candidate_id', 'nik']); 
         });
 
         // 5. Family Members table
