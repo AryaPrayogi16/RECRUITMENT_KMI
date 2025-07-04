@@ -94,29 +94,12 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         
-        .choice-dimension {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            font-weight: bold;
-            color: white;
-            margin-right: 12px;
-            font-size: 14px;
-        }
-        
-        .dimension-d { background: #ef4444; }
-        .dimension-i { background: #f59e0b; }
-        .dimension-s { background: #10b981; }
-        .dimension-c { background: #3b82f6; }
-        
         .choice-text {
             font-size: 16px;
             font-weight: 500;
             color: #1f2937;
             line-height: 1.5;
+            width: 100%;
         }
         
         .progress-bar {
@@ -175,6 +158,10 @@
             color: white;
             opacity: 0.3;
             transition: opacity 0.3s ease;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         
         .selection-badge.most {
@@ -269,6 +256,15 @@
             .btn {
                 width: 100%;
             }
+            
+            .selection-badges {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .selection-badge {
+                max-width: 100%;
+            }
         }
     </style>
 </head>
@@ -343,17 +339,16 @@
                                 
                                 <div class="choices-container">
                                     @if(isset($section->choices) && count($section->choices) > 0)
-                                        @foreach($section->choices as $choice)
+                                        @php
+                                            // Randomize choices for this section
+                                            $randomizedChoices = $section->choices->shuffle();
+                                        @endphp
+                                        @foreach($randomizedChoices as $choice)
                                             <div class="choice-item" 
                                                  data-choice-id="{{ $choice->id }}" 
                                                  data-dimension="{{ $choice->choice_dimension ?? 'D' }}"
                                                  data-section="{{ $section->id }}">
-                                                <div class="flex items-center">
-                                                    <div class="choice-dimension dimension-{{ strtolower($choice->choice_dimension ?? 'd') }}">
-                                                        {{ $choice->choice_dimension ?? 'D' }}
-                                                    </div>
-                                                    <div class="choice-text">{{ $choice->choice_text ?? 'Choice text' }}</div>
-                                                </div>
+                                                <div class="choice-text">{{ $choice->choice_text ?? 'Choice text' }}</div>
                                             </div>
                                         @endforeach
                                     @endif
@@ -403,7 +398,7 @@
 
     <script>
         // ==========================================
-        // DISC 3D SINGLE RUN TEST MANAGER V3.0
+        // DISC 3D SINGLE RUN TEST MANAGER V3.1
         // ==========================================
         
         // Test configuration
@@ -529,7 +524,8 @@
             if (mostBadge) {
                 if (mostSelected) {
                     const text = mostSelected.querySelector('.choice-text').textContent;
-                    mostBadge.textContent = `MOST: ${mostSelected.dataset.dimension} - ${text.substring(0, 30)}...`;
+                    // Remove dimension from display, show only text
+                    mostBadge.textContent = `MOST: ${text.substring(0, 40)}${text.length > 40 ? '...' : ''}`;
                     mostBadge.classList.add('active');
                 } else {
                     mostBadge.textContent = 'MOST: Belum dipilih';
@@ -540,7 +536,8 @@
             if (leastBadge) {
                 if (leastSelected) {
                     const text = leastSelected.querySelector('.choice-text').textContent;
-                    leastBadge.textContent = `LEAST: ${leastSelected.dataset.dimension} - ${text.substring(0, 30)}...`;
+                    // Remove dimension from display, show only text
+                    leastBadge.textContent = `LEAST: ${text.substring(0, 40)}${text.length > 40 ? '...' : ''}`;
                     leastBadge.classList.add('active');
                 } else {
                     leastBadge.textContent = 'LEAST: Belum dipilih';
@@ -638,7 +635,7 @@
             
             const totalDuration = Math.max(1, Math.round((Date.now() - startTime) / 1000));
             
-            // Submit all responses in bulk (like Kraeplin)
+            // Submit all responses in bulk
             fetch('/disc3d/submit-test', {
                 method: 'POST',
                 headers: {
@@ -735,7 +732,7 @@
             if (overlay) overlay.style.display = 'none';
         }
         
-        console.log('🎯 DISC 3D Single Run Test Ready!');
+        console.log('🎯 DISC 3D Single Run Test Ready! (Without Dimension Indicators)');
     </script>
 </body>
 </html>

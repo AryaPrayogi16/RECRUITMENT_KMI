@@ -1,9 +1,9 @@
 /**
- * ENHANCED DISC 3D Manager
- * Displays all graphs simultaneously with complete trait analysis
+ * ENHANCED DISC 3D Manager - FIXED VERSION
+ * Menggunakan skala angka asli (segments) untuk semua grafik
  * 
  * @author HR System Enhanced
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 class Disc3DManager {
@@ -25,7 +25,7 @@ class Disc3DManager {
      * Initialize the DISC 3D Manager
      */
     init() {
-        console.log('=== ENHANCED DISC 3D MANAGER INITIALIZATION ===');
+        console.log('=== ENHANCED DISC 3D MANAGER INITIALIZATION (FIXED) ===');
         this.updateUI();
         this.renderAllGraphs();
     }
@@ -42,7 +42,7 @@ class Disc3DManager {
         this.updateElement('discSecondaryInfo', `Sekunder: ${this.data.profile.secondaryLabel || 'Unknown'}`);
         this.updateElement('discPrimaryPercentage', this.data.profile.primaryPercentage || '0');
         
-        // Update segment pattern
+        // Update segment pattern - GUNAKAN SEGMENTS BUKAN PERCENTAGES
         if (this.data.most) {
             const pattern = `${this.data.most.D}-${this.data.most.I}-${this.data.most.S}-${this.data.most.C}`;
             this.updateElement('discSegmentPattern', pattern);
@@ -51,7 +51,7 @@ class Disc3DManager {
         // Update completed date
         this.updateElement('discCompletedDate', this.data.session?.completedDate || 'N/A');
 
-        // Update score cards for all graphs
+        // Update score cards for all graphs - FIXED TO USE SEGMENTS
         this.updateScoreCards();
 
         // Update session details
@@ -62,7 +62,7 @@ class Disc3DManager {
     }
 
     /**
-     * Update score cards with current data for all three graphs
+     * Update score cards dengan segment values (FIXED)
      */
     updateScoreCards() {
         const graphTypes = ['most', 'least', 'change'];
@@ -70,15 +70,24 @@ class Disc3DManager {
         graphTypes.forEach(graphType => {
             this.dimensions.forEach(dim => {
                 if (graphType === 'change') {
+                    // CHANGE graph: gunakan change segments (bisa minus)
                     const value = this.data.change[dim] || 0;
                     this.updateElement(`${graphType}Score${dim}`, value > 0 ? `+${value}` : `${value}`);
                     this.updateElement(`${graphType}Segment${dim}`, value);
                 } else {
-                    const percentage = this.data.percentages[graphType][dim] || 0;
+                    // MOST & LEAST graphs: GUNAKAN SEGMENTS (1-7), BUKAN PERCENTAGES
                     const segment = this.data[graphType][dim] || 1;
+                    const percentage = this.data.percentages?.[graphType]?.[dim] || 0;
                     
-                    this.updateElement(`${graphType}Score${dim}`, `${percentage.toFixed(1)}%`);
+                    // FIXED: Tampilkan segment value, bukan percentage
+                    this.updateElement(`${graphType}Score${dim}`, `${segment}`);
                     this.updateElement(`${graphType}Segment${dim}`, segment);
+                    
+                    // Optional: tampilkan percentage sebagai tooltip atau secondary info
+                    const element = document.getElementById(`${graphType}Score${dim}`);
+                    if (element) {
+                        element.title = `${percentage.toFixed(1)}%`; // Percentage sebagai tooltip
+                    }
                 }
             });
         });
@@ -195,7 +204,7 @@ class Disc3DManager {
             this.renderSingleGraph(graph.containerId, graph.type, graph.title);
         });
 
-        console.log('All DISC graphs rendered successfully');
+        console.log('All DISC graphs rendered successfully (using segments)');
     }
 
     /**
@@ -258,21 +267,20 @@ class Disc3DManager {
             // Draw column
             this.drawColumn(svg, x, barWidth, dim, index, graphType);
             
-            // Draw bar based on graph type
+            // Draw bar based on graph type - FIXED TO USE SEGMENTS
             if (graphType === 'change') {
                 this.drawChangeBar(svg, x, barWidth, this.data.change[dim], this.colors[index]);
             } else {
+                // FIXED: Gunakan segment values untuk MOST dan LEAST
                 this.drawRegularBar(svg, x, barWidth, this.data[graphType][dim], this.colors[index]);
             }
 
-            // Draw percentage text
-            this.drawPercentageText(svg, x, barWidth, dim, index, graphType);
+            // Draw segment text (FIXED)
+            this.drawSegmentText(svg, x, barWidth, dim, index, graphType);
         });
 
-        // Draw connecting line for regular graphs
-        if (graphType !== 'change') {
-            this.drawConnectingLine(svg, graphType);
-        }
+        // Draw connecting line for all graphs (including CHANGE)
+        this.drawConnectingLine(svg, graphType);
     }
 
     /**
@@ -389,10 +397,11 @@ class Disc3DManager {
     }
 
     /**
-     * Draw regular bar (for MOST/LEAST graphs)
+     * Draw regular bar (for MOST/LEAST graphs) - FIXED TO USE SEGMENTS
      */
-    drawRegularBar(svg, x, barWidth, value, color) {
-        const barHeight = (value / 7) * 280;
+    drawRegularBar(svg, x, barWidth, segmentValue, color) {
+        // FIXED: Gunakan segment value (1-7) langsung
+        const barHeight = (segmentValue / 7) * 280;
         const barY = 310 - barHeight;
 
         // Bar
@@ -406,7 +415,7 @@ class Disc3DManager {
         svg.appendChild(bar);
 
         // Score point
-        const pointY = 30 + (280 - ((value - 1) * 40 + 20));
+        const pointY = 30 + (280 - ((segmentValue - 1) * 40 + 20));
         const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         point.setAttribute('cx', x + (barWidth / 2));
         point.setAttribute('cy', pointY);
@@ -418,69 +427,128 @@ class Disc3DManager {
     }
 
     /**
-     * Draw change bar (for CHANGE graph)
+     * Draw change bar (for CHANGE graph) - FIXED untuk nilai negatif
      */
     drawChangeBar(svg, x, barWidth, value, color) {
-        const centerY = 170; // Middle of the graph
-        const barHeight = Math.abs(value) * 35; // Scale for change graph
+        const centerY = 170; // Middle of the graph (skala 0)
+        const barHeight = Math.abs(value) * 35; // Scale untuk change graph (35px per unit)
 
         let barY;
         if (value >= 0) {
+            // Nilai positif: bar naik ke atas dari center
             barY = centerY - barHeight;
         } else {
+            // Nilai negatif: bar turun ke bawah dari center
             barY = centerY;
         }
 
-        const bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        bar.setAttribute('width', barWidth - 10);
-        bar.setAttribute('height', barHeight);
-        bar.setAttribute('x', x + 5);
-        bar.setAttribute('y', barY);
-        bar.setAttribute('fill', value >= 0 ? color : '#dc2626');
-        bar.setAttribute('opacity', '0.7');
-        svg.appendChild(bar);
+        // Jika barHeight > 0 (ada nilai), gambar bar
+        if (barHeight > 0) {
+            const bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bar.setAttribute('width', barWidth - 10);
+            bar.setAttribute('height', barHeight);
+            bar.setAttribute('x', x + 5);
+            bar.setAttribute('y', barY);
+            bar.setAttribute('fill', value >= 0 ? color : '#dc2626');
+            bar.setAttribute('opacity', '0.8');
+            bar.setAttribute('stroke', value >= 0 ? color : '#dc2626');
+            bar.setAttribute('stroke-width', '1');
+            svg.appendChild(bar);
+        }
+
+        // Tambahkan point indicator di posisi yang tepat
+        const pointY = centerY + (value * -35); // Negatif karena SVG Y terbalik
+        const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        point.setAttribute('cx', x + (barWidth / 2));
+        point.setAttribute('cy', pointY);
+        point.setAttribute('r', '5');
+        point.setAttribute('fill', value >= 0 ? color : '#dc2626');
+        point.setAttribute('stroke', 'white');
+        point.setAttribute('stroke-width', '2');
+        svg.appendChild(point);
+
+        // Tambahkan garis dari center ke point untuk clarity
+        if (value !== 0) {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', x + (barWidth / 2));
+            line.setAttribute('y1', centerY);
+            line.setAttribute('x2', x + (barWidth / 2));
+            line.setAttribute('y2', pointY);
+            line.setAttribute('stroke', value >= 0 ? color : '#dc2626');
+            line.setAttribute('stroke-width', '3');
+            line.setAttribute('opacity', '0.6');
+            svg.appendChild(line);
+        }
     }
 
     /**
-     * Draw percentage text below columns
+     * Draw segment text below columns (FIXED TO SHOW SEGMENTS)
      */
-    drawPercentageText(svg, x, barWidth, dimension, index, graphType) {
-        const percentText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        percentText.setAttribute('x', x + (barWidth / 2));
-        percentText.setAttribute('y', '330');
-        percentText.setAttribute('fill', this.colors[index]);
-        percentText.setAttribute('font-size', '12');
-        percentText.setAttribute('font-weight', 'bold');
-        percentText.setAttribute('text-anchor', 'middle');
+    drawSegmentText(svg, x, barWidth, dimension, index, graphType) {
+        const segmentText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        segmentText.setAttribute('x', x + (barWidth / 2));
+        segmentText.setAttribute('y', '330');
+        segmentText.setAttribute('fill', this.colors[index]);
+        segmentText.setAttribute('font-size', '12');
+        segmentText.setAttribute('font-weight', 'bold');
+        segmentText.setAttribute('text-anchor', 'middle');
         
         if (graphType === 'change') {
             const value = this.data.change[dimension];
-            percentText.textContent = value > 0 ? `+${value}` : `${value}`;
+            segmentText.textContent = value > 0 ? `+${value}` : `${value}`;
         } else {
-            const percentage = this.data.percentages[graphType][dimension];
-            percentText.textContent = `${percentage.toFixed(1)}%`;
+            // FIXED: Tampilkan segment value, bukan percentage
+            const segmentValue = this.data[graphType][dimension];
+            segmentText.textContent = `${segmentValue}`;
+            
+            // Optional: Buat tooltip untuk percentage
+            const percentage = this.data.percentages?.[graphType]?.[dimension];
+            if (percentage) {
+                const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+                title.textContent = `${percentage.toFixed(1)}%`;
+                segmentText.appendChild(title);
+            }
         }
         
-        svg.appendChild(percentText);
+        svg.appendChild(segmentText);
     }
 
     /**
-     * Draw connecting line between points
+     * Draw connecting line between points - UPDATED untuk semua graph types
      */
     drawConnectingLine(svg, graphType) {
         const points = [];
 
         this.dimensions.forEach((dim, index) => {
             const x = 60 + (index * 70) + 25; // Center of bar
-            const value = this.data[graphType][dim];
-            const y = 30 + (280 - ((value - 1) * 40 + 20));
+            
+            let y;
+            if (graphType === 'change') {
+                // CHANGE graph: gunakan center (170) + offset berdasarkan value
+                const value = this.data.change[dim];
+                y = 170 + (value * -35); // Negatif karena SVG Y terbalik
+            } else {
+                // MOST/LEAST graph: gunakan segment value
+                const segmentValue = this.data[graphType][dim];
+                y = 30 + (280 - ((segmentValue - 1) * 40 + 20));
+            }
+            
             points.push(`${x},${y}`);
         });
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
         path.setAttribute('points', points.join(' '));
-        path.setAttribute('stroke', '#4f46e5');
-        path.setAttribute('stroke-width', '3');
+        
+        // Warna berbeda untuk CHANGE graph
+        if (graphType === 'change') {
+            path.setAttribute('stroke', '#7c3aed');
+            path.setAttribute('stroke-width', '4');
+            path.setAttribute('stroke-dasharray', '5,5');
+        } else {
+            path.setAttribute('stroke', '#4f46e5');
+            path.setAttribute('stroke-width', '3');
+        }
+        
         path.setAttribute('fill', 'none');
         path.setAttribute('opacity', '0.8');
         svg.appendChild(path);
@@ -497,13 +565,16 @@ class Disc3DManager {
     }
 
     /**
-     * Get enhanced default data with comprehensive analysis
+     * Get enhanced default data with segments - UPDATED FOR TESTING
      */
     getDefaultData() {
         return {
+            // GUNAKAN SEGMENT VALUES (1-7) untuk MOST dan LEAST
             most: { D: 6, I: 5, S: 2, C: 3 },
             least: { D: 3, I: 2, S: 6, C: 4 },
+            // CHANGE tetap bisa minus
             change: { D: 3, I: 3, S: -4, C: -1 },
+            // Percentages tetap ada untuk reference/tooltip
             percentages: {
                 most: { D: 75.2, I: 62.8, S: 28.5, C: 45.1 },
                 least: { D: 38.4, I: 24.6, S: 78.3, C: 55.7 }
@@ -616,7 +687,7 @@ class Disc3DManager {
         this.data = laravelData;
         this.updateUI();
         this.renderAllGraphs();
-        console.log('Loaded data from Laravel:', laravelData);
+        console.log('Loaded data from Laravel (segments-based):', laravelData);
     }
 
     /**
@@ -643,7 +714,7 @@ function initializeDisc3D(discData = null) {
     // Store reference globally for debugging
     window.disc3DManager = manager;
     
-    console.log('Enhanced DISC 3D Manager initialized successfully');
+    console.log('Enhanced DISC 3D Manager initialized successfully (segments-based)');
     return manager;
 }
 

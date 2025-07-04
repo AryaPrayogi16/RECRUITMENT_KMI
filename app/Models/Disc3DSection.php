@@ -36,10 +36,7 @@ class Disc3DSection extends Model
         return $this->hasMany(Disc3DResponse::class, 'section_id');
     }
 
-    public function analytics()
-    {
-        return $this->hasMany(Disc3DSectionAnalytics::class, 'section_id');
-    }
+
 
     // Scopes
     public function scopeActive($query)

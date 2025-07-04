@@ -4,124 +4,127 @@
         Hasil Tes DISC 3D - Analisis Kepribadian Komprehensif
     </h2>
 
-    @if(isset($candidate->discTestResult) && $candidate->discTestResult)
-        {{-- Pass Enhanced DISC data to JavaScript --}}
+    @if($candidate->disc3DTestResult)
+        {{-- FIXED: Pass Enhanced DISC data using SEGMENTS to JavaScript --}}
         <script>
             window.discData = {
+                // FIXED: Gunakan segment values (1-7) untuk MOST dan LEAST
                 most: {
-                    D: {{ $candidate->discTestResult->most_d_segment ?? 1 }},
-                    I: {{ $candidate->discTestResult->most_i_segment ?? 1 }},
-                    S: {{ $candidate->discTestResult->most_s_segment ?? 1 }},
-                    C: {{ $candidate->discTestResult->most_c_segment ?? 1 }}
+                    D: {{ $candidate->disc3DTestResult->most_d_segment ?? 1 }},
+                    I: {{ $candidate->disc3DTestResult->most_i_segment ?? 1 }},
+                    S: {{ $candidate->disc3DTestResult->most_s_segment ?? 1 }},
+                    C: {{ $candidate->disc3DTestResult->most_c_segment ?? 1 }}
                 },
                 least: {
-                    D: {{ $candidate->discTestResult->least_d_segment ?? 1 }},
-                    I: {{ $candidate->discTestResult->least_i_segment ?? 1 }},
-                    S: {{ $candidate->discTestResult->least_s_segment ?? 1 }},
-                    C: {{ $candidate->discTestResult->least_c_segment ?? 1 }}
+                    D: {{ $candidate->disc3DTestResult->least_d_segment ?? 1 }},
+                    I: {{ $candidate->disc3DTestResult->least_i_segment ?? 1 }},
+                    S: {{ $candidate->disc3DTestResult->least_s_segment ?? 1 }},
+                    C: {{ $candidate->disc3DTestResult->least_c_segment ?? 1 }}
                 },
+                // CHANGE tetap menggunakan segment values yang bisa minus
                 change: {
-                    D: {{ $candidate->discTestResult->change_d_segment ?? 0 }},
-                    I: {{ $candidate->discTestResult->change_i_segment ?? 0 }},
-                    S: {{ $candidate->discTestResult->change_s_segment ?? 0 }},
-                    C: {{ $candidate->discTestResult->change_c_segment ?? 0 }}
+                    D: {{ $candidate->disc3DTestResult->change_d_segment ?? 0 }},
+                    I: {{ $candidate->disc3DTestResult->change_i_segment ?? 0 }},
+                    S: {{ $candidate->disc3DTestResult->change_s_segment ?? 0 }},
+                    C: {{ $candidate->disc3DTestResult->change_c_segment ?? 0 }}
                 },
+                // Percentages tetap disimpan untuk reference/tooltip
                 percentages: {
                     most: {
-                        D: {{ $candidate->discTestResult->most_d_percentage ?? 0 }},
-                        I: {{ $candidate->discTestResult->most_i_percentage ?? 0 }},
-                        S: {{ $candidate->discTestResult->most_s_percentage ?? 0 }},
-                        C: {{ $candidate->discTestResult->most_c_percentage ?? 0 }}
+                        D: {{ $candidate->disc3DTestResult->most_d_percentage ?? 0 }},
+                        I: {{ $candidate->disc3DTestResult->most_i_percentage ?? 0 }},
+                        S: {{ $candidate->disc3DTestResult->most_s_percentage ?? 0 }},
+                        C: {{ $candidate->disc3DTestResult->most_c_percentage ?? 0 }}
                     },
                     least: {
-                        D: {{ $candidate->discTestResult->least_d_percentage ?? 0 }},
-                        I: {{ $candidate->discTestResult->least_i_percentage ?? 0 }},
-                        S: {{ $candidate->discTestResult->least_s_percentage ?? 0 }},
-                        C: {{ $candidate->discTestResult->least_c_percentage ?? 0 }}
+                        D: {{ $candidate->disc3DTestResult->least_d_percentage ?? 0 }},
+                        I: {{ $candidate->disc3DTestResult->least_i_percentage ?? 0 }},
+                        S: {{ $candidate->disc3DTestResult->least_s_percentage ?? 0 }},
+                        C: {{ $candidate->disc3DTestResult->least_c_percentage ?? 0 }}
                     }
                 },
                 profile: {
-                    primary: '{{ $candidate->discTestResult->primary_type ?? "D" }}',
-                    secondary: '{{ $candidate->discTestResult->secondary_type ?? "I" }}',
-                    primaryLabel: '{{ $candidate->discTestResult->primary_type_label ?? "Unknown Type" }}',
-                    secondaryLabel: '{{ $candidate->discTestResult->secondary_type_label ?? "Unknown" }}',
-                    primaryPercentage: {{ $candidate->discTestResult->primary_percentage ?? 0 }},
-                    summary: {!! json_encode($candidate->discTestResult->profile_summary ?? "Belum tersedia") !!}
+                    primary: '{{ $candidate->disc3DTestResult->primary_type ?? "D" }}',
+                    secondary: '{{ $candidate->disc3DTestResult->secondary_type ?? "I" }}',
+                    primaryLabel: '{{ $candidate->disc3DTestResult->primary_type_label ?? "Unknown Type" }}',
+                    secondaryLabel: '{{ $candidate->disc3DTestResult->secondary_type_label ?? "Unknown" }}',
+                    primaryPercentage: {{ $candidate->disc3DTestResult->primary_percentage ?? 0 }},
+                    summary: {!! json_encode($candidate->disc3DTestResult->summary ?? "Belum tersedia") !!}
                 },
                 analysis: {
                     // Enhanced comprehensive analysis with all traits
-                    allStrengths: {!! json_encode($candidate->discTestResult->all_strengths ?? [
+                    allStrengths: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['strengths'] ?? [
                         'Kepemimpinan Natural', 'Pengambilan Keputusan Cepat', 'Orientasi Hasil Tinggi', 
                         'Komunikasi Persuasif', 'Kemampuan Memotivasi', 'Keberanian Mengambil Risiko',
                         'Inisiatif Tinggi', 'Fokus pada Pencapaian', 'Kemampuan Delegasi',
                         'Daya Juang Tinggi', 'Visioner', 'Energi Tinggi'
                     ]) !!},
                     
-                    allDevelopmentAreas: {!! json_encode($candidate->discTestResult->all_development_areas ?? [
+                    allDevelopmentAreas: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['development_areas'] ?? [
                         'Kesabaran dalam Proses', 'Perhatian pada Detail', 'Konsistensi Follow-up',
                         'Mendengarkan Feedback', 'Fleksibilitas Metode', 'Empati yang Lebih Dalam',
                         'Manajemen Stres', 'Kontrol Emosi', 'Delegasi yang Efektif'
                     ]) !!},
 
-                    behavioralTendencies: {!! json_encode($candidate->discTestResult->behavioral_tendencies ?? [
+                    behavioralTendencies: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['tendencies'] ?? [
                         'Mengambil Kendali Situasi', 'Berbicara Langsung pada Inti', 'Membuat Keputusan Cepat',
                         'Fokus pada Hasil Akhir', 'Mendorong Perubahan', 'Berani Konfrontasi',
                         'Multitasking Efektif', 'Networking Aktif', 'Kompetitif'
                     ]) !!},
 
-                    communicationPreferences: {!! json_encode($candidate->discTestResult->communication_preferences ?? [
+                    communicationPreferences: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['communication'] ?? [
                         'Komunikasi Langsung', 'Presentasi yang Dinamis', 'Diskusi Berorientasi Solusi',
                         'Feedback yang Konstruktif', 'Meeting yang Efisien', 'Laporan Ringkas',
                         'Brainstorming Aktif', 'Negosiasi Asertif'
                     ]) !!},
 
-                    motivators: {!! json_encode($candidate->discTestResult->motivators ?? [
+                    motivators: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['motivators'] ?? [
                         'Pencapaian Target', 'Pengakuan Prestasi', 'Tantangan Baru',
                         'Otoritas dan Tanggung Jawab', 'Kompetisi Sehat', 'Perubahan dan Inovasi',
                         'Hasil yang Terukur', 'Pengaruh pada Keputusan'
                     ]) !!},
 
-                    stressIndicators: {!! json_encode($candidate->discTestResult->stress_indicators ?? [
+                    stressIndicators: {!! json_encode($candidate->disc3DTestResult->stress_indicators ?? [
                         'Ketidakpastian Berkepanjangan', 'Proses yang Terlalu Lambat', 'Micromanagement',
                         'Rutinitas yang Monoton', 'Konflik Interpersonal', 'Kekurangan Informasi',
                         'Deadline yang Tidak Realistis', 'Perubahan Mendadak'
                     ]) !!},
 
-                    workEnvironment: {!! json_encode($candidate->discTestResult->work_environment ?? [
+                    workEnvironment: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['work_environment'] ?? [
                         'Lingkungan Dinamis', 'Tim yang Responsif', 'Budaya Meritokrasi',
                         'Struktur yang Fleksibel', 'Akses pada Manajemen Senior', 'Resource yang Memadai',
                         'Teknologi Terkini', 'Ruang untuk Inovasi'
                     ]) !!},
 
-                    decisionMaking: {!! json_encode($candidate->discTestResult->decision_making ?? [
+                    decisionMaking: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['decision_making'] ?? [
                         'Berdasarkan Data dan Intuisi', 'Cepat dan Tegas', 'Mempertimbangkan Dampak',
                         'Melibatkan Stakeholder Kunci', 'Fokus pada ROI', 'Berani Mengambil Risiko Terkalkulasi'
                     ]) !!},
 
-                    leadershipStyle: {!! json_encode($candidate->discTestResult->leadership_style ?? [
+                    leadershipStyle: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['leadership'] ?? [
                         'Transformational Leadership', 'Delegasi Efektif', 'Coaching dan Mentoring',
                         'Setting Ekspektasi Tinggi', 'Leading by Example', 'Inspirational Communication'
                     ]) !!},
 
-                    conflictResolution: {!! json_encode($candidate->discTestResult->conflict_resolution ?? [
+                    conflictResolution: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['conflict_resolution'] ?? [
                         'Pendekatan Langsung', 'Fokus pada Solusi', 'Win-Win Solution',
                         'Mediasi Objektif', 'Komunikasi Terbuka', 'Escalation Jika Diperlukan'
                     ]) !!},
 
-                    detailedWorkStyle: {!! json_encode($candidate->discTestResult->detailed_work_style ?? "Bekerja dengan tempo tinggi dan fokus pada hasil. Menyukai lingkungan yang dinamis dengan kebebasan untuk mengambil keputusan.") !!},
+                    detailedWorkStyle: {!! json_encode($candidate->disc3DTestResult->overall_profile ?? "Bekerja dengan tempo tinggi dan fokus pada hasil. Menyukai lingkungan yang dinamis dengan kebebasan untuk mengambil keputusan.") !!},
                     
-                    detailedCommunicationStyle: {!! json_encode($candidate->discTestResult->detailed_communication_style ?? "Komunikasi yang langsung, jelas, dan persuasif. Mampu menyampaikan visi dan memotivasi tim.") !!},
+                    detailedCommunicationStyle: {!! json_encode($candidate->disc3DTestResult->personality_profile ?? "Komunikasi yang langsung, jelas, dan persuasif. Mampu menyampaikan visi dan memotivasi tim.") !!},
                     
-                    publicSelfAnalysis: {!! json_encode($candidate->discTestResult->public_self_analysis ?? "Di lingkungan publik, menampilkan sosok yang percaya diri, tegas, dan berorientasi pada hasil.") !!},
+                    publicSelfAnalysis: {!! json_encode($candidate->disc3DTestResult->public_self_summary ?? "Di lingkungan publik, menampilkan sosok yang percaya diri, tegas, dan berorientasi pada hasil.") !!},
                     
-                    privateSelfAnalysis: {!! json_encode($candidate->discTestResult->private_self_analysis ?? "Secara pribadi, lebih reflektif dan mempertimbangkan berbagai aspek sebelum mengambil keputusan.") !!},
+                    privateSelfAnalysis: {!! json_encode($candidate->disc3DTestResult->private_self_summary ?? "Secara pribadi, lebih reflektif dan mempertimbangkan berbagai aspek sebelum mengambil keputusan.") !!},
                     
-                    adaptationAnalysis: {!! json_encode($candidate->discTestResult->adaptation_analysis ?? "Mengalami tekanan untuk tampil lebih dominan dan ekspresif di lingkungan kerja.") !!}
+                    adaptationAnalysis: {!! json_encode($candidate->disc3DTestResult->adaptation_summary ?? "Mengalami tekanan untuk tampil lebih dominan dan ekspresif di lingkungan kerja.") !!}
                 },
                 session: {
-                    testCode: '{{ optional($candidate->discTestResult->testSession)->test_code ?? "N/A" }}',
-                    completedDate: '{{ optional($candidate->discTestResult->testSession)->completed_at ? $candidate->discTestResult->testSession->completed_at->format("d M Y") : "N/A" }}',
-                    duration: '{{ optional($candidate->discTestResult->testSession)->formatted_duration ?? "N/A" }}'
+                    testCode: '{{ $candidate->latestDisc3DTest->test_code ?? "N/A" }}',
+                    completedDate: '{{ $candidate->latestDisc3DTest->completed_at ? $candidate->latestDisc3DTest->completed_at->format("d M Y") : "N/A" }}',
+                    duration: '{{ $candidate->latestDisc3DTest->formatted_duration ?? "N/A" }}'
                 }
             };
         </script>
@@ -133,7 +136,7 @@
                 <div>
                     <div class="disc-profile-type">
                         <div class="type-code" id="discTypeCode">
-                            {{ ($candidate->discTestResult->primary_type ?? 'D') . ($candidate->discTestResult->secondary_type ?? 'I') }}
+                            {{ ($candidate->disc3DTestResult->primary_type ?? 'D') . ($candidate->disc3DTestResult->secondary_type ?? 'I') }}
                         </div>
                         <div class="type-label">Profile Type</div>
                     </div>
@@ -141,17 +144,17 @@
                 
                 {{-- Primary Info --}}
                 <div class="disc-primary-info">
-                    <h3 id="discPrimaryType">{{ $candidate->discTestResult->primary_type_label ?? 'Unknown Type' }}</h3>
-                    <p id="discSecondaryInfo">Sekunder: {{ $candidate->discTestResult->secondary_type_label ?? 'Unknown' }}</p>
+                    <h3 id="discPrimaryType">{{ $candidate->disc3DTestResult->primary_type_label ?? 'Unknown Type' }}</h3>
+                    <p id="discSecondaryInfo">Sekunder: {{ $candidate->disc3DTestResult->secondary_type_label ?? 'Unknown' }}</p>
                     <div class="disc-meta-badges">
                         <span class="disc-meta-badge">
                             <i class="fas fa-percentage"></i> 
-                            <span id="discPrimaryPercentage">{{ number_format($candidate->discTestResult->primary_percentage ?? 0, 1) }}</span>% Dominan
+                            <span id="discPrimaryPercentage">{{ number_format($candidate->disc3DTestResult->primary_percentage ?? 0, 1) }}</span>% Dominan
                         </span>
                         <span class="disc-meta-badge">
                             <i class="fas fa-chart-bar"></i> 
                             <span id="discSegmentPattern">
-                                {{ ($candidate->discTestResult->most_d_segment ?? 1) }}-{{ ($candidate->discTestResult->most_i_segment ?? 1) }}-{{ ($candidate->discTestResult->most_s_segment ?? 1) }}-{{ ($candidate->discTestResult->most_c_segment ?? 1) }}
+                                {{ ($candidate->disc3DTestResult->most_d_segment ?? 1) }}-{{ ($candidate->disc3DTestResult->most_i_segment ?? 1) }}-{{ ($candidate->disc3DTestResult->most_s_segment ?? 1) }}-{{ ($candidate->disc3DTestResult->most_c_segment ?? 1) }}
                             </span>
                         </span>
                     </div>
@@ -162,7 +165,7 @@
                     <div class="disc-quick-stats">
                         <div class="stats-label">Completed</div>
                         <div class="stats-value" id="discCompletedDate">
-                            {{ optional($candidate->discTestResult->testSession)->completed_at ? $candidate->discTestResult->testSession->completed_at->format('d M Y') : 'N/A' }}
+                            {{ $candidate->latestDisc3DTest->completed_at ? $candidate->latestDisc3DTest->completed_at->format('d M Y') : 'N/A' }}
                         </div>
                     </div>
                 </div>
@@ -183,27 +186,27 @@
                     <div class="disc-graph-description">
                         <strong>MOST (Topeng/Publik):</strong> Menunjukkan bagaimana Anda berperilaku di depan umum atau dalam situasi kerja formal.
                     </div>
-                    {{-- Score cards for MOST --}}
+                    {{-- FIXED: Score cards for MOST - Menampilkan segment values --}}
                     <div class="disc-scores-mini-grid">
                         <div class="disc-score-mini dominance">
                             <span class="dim-label">D</span>
-                            <span class="score-value" id="mostScoreD">{{ number_format($candidate->discTestResult->most_d_percentage ?? 0, 1) }}%</span>
-                            <span class="segment-value">Seg. <span id="mostSegmentD">{{ $candidate->discTestResult->most_d_segment ?? 1 }}</span></span>
+                            <span class="score-value" id="mostScoreD">{{ $candidate->disc3DTestResult->most_d_segment ?? 1 }}</span>
+                            <span class="segment-value">Seg. <span id="mostSegmentD">{{ $candidate->disc3DTestResult->most_d_segment ?? 1 }}</span></span>
                         </div>
                         <div class="disc-score-mini influence">
                             <span class="dim-label">I</span>
-                            <span class="score-value" id="mostScoreI">{{ number_format($candidate->discTestResult->most_i_percentage ?? 0, 1) }}%</span>
-                            <span class="segment-value">Seg. <span id="mostSegmentI">{{ $candidate->discTestResult->most_i_segment ?? 1 }}</span></span>
+                            <span class="score-value" id="mostScoreI">{{ $candidate->disc3DTestResult->most_i_segment ?? 1 }}</span>
+                            <span class="segment-value">Seg. <span id="mostSegmentI">{{ $candidate->disc3DTestResult->most_i_segment ?? 1 }}</span></span>
                         </div>
                         <div class="disc-score-mini steadiness">
                             <span class="dim-label">S</span>
-                            <span class="score-value" id="mostScoreS">{{ number_format($candidate->discTestResult->most_s_percentage ?? 0, 1) }}%</span>
-                            <span class="segment-value">Seg. <span id="mostSegmentS">{{ $candidate->discTestResult->most_s_segment ?? 1 }}</span></span>
+                            <span class="score-value" id="mostScoreS">{{ $candidate->disc3DTestResult->most_s_segment ?? 1 }}</span>
+                            <span class="segment-value">Seg. <span id="mostSegmentS">{{ $candidate->disc3DTestResult->most_s_segment ?? 1 }}</span></span>
                         </div>
                         <div class="disc-score-mini conscientiousness">
                             <span class="dim-label">C</span>
-                            <span class="score-value" id="mostScoreC">{{ number_format($candidate->discTestResult->most_c_percentage ?? 0, 1) }}%</span>
-                            <span class="segment-value">Seg. <span id="mostSegmentC">{{ $candidate->discTestResult->most_c_segment ?? 1 }}</span></span>
+                            <span class="score-value" id="mostScoreC">{{ $candidate->disc3DTestResult->most_c_segment ?? 1 }}</span>
+                            <span class="segment-value">Seg. <span id="mostSegmentC">{{ $candidate->disc3DTestResult->most_c_segment ?? 1 }}</span></span>
                         </div>
                     </div>
                 </div>
@@ -214,27 +217,27 @@
                     <div class="disc-graph-description">
                         <strong>LEAST (Inti/Pribadi):</strong> Menggambarkan kepribadian alami Anda yang sesungguhnya tanpa pengaruh eksternal.
                     </div>
-                    {{-- Score cards for LEAST --}}
+                    {{-- FIXED: Score cards for LEAST - Menampilkan segment values --}}
                     <div class="disc-scores-mini-grid">
                         <div class="disc-score-mini dominance">
                             <span class="dim-label">D</span>
-                            <span class="score-value" id="leastScoreD">{{ number_format($candidate->discTestResult->least_d_percentage ?? 0, 1) }}%</span>
-                            <span class="segment-value">Seg. <span id="leastSegmentD">{{ $candidate->discTestResult->least_d_segment ?? 1 }}</span></span>
+                            <span class="score-value" id="leastScoreD">{{ $candidate->disc3DTestResult->least_d_segment ?? 1 }}</span>
+                            <span class="segment-value">Seg. <span id="leastSegmentD">{{ $candidate->disc3DTestResult->least_d_segment ?? 1 }}</span></span>
                         </div>
                         <div class="disc-score-mini influence">
                             <span class="dim-label">I</span>
-                            <span class="score-value" id="leastScoreI">{{ number_format($candidate->discTestResult->least_i_percentage ?? 0, 1) }}%</span>
-                            <span class="segment-value">Seg. <span id="leastSegmentI">{{ $candidate->discTestResult->least_i_segment ?? 1 }}</span></span>
+                            <span class="score-value" id="leastScoreI">{{ $candidate->disc3DTestResult->least_i_segment ?? 1 }}</span>
+                            <span class="segment-value">Seg. <span id="leastSegmentI">{{ $candidate->disc3DTestResult->least_i_segment ?? 1 }}</span></span>
                         </div>
                         <div class="disc-score-mini steadiness">
                             <span class="dim-label">S</span>
-                            <span class="score-value" id="leastScoreS">{{ number_format($candidate->discTestResult->least_s_percentage ?? 0, 1) }}%</span>
-                            <span class="segment-value">Seg. <span id="leastSegmentS">{{ $candidate->discTestResult->least_s_segment ?? 1 }}</span></span>
+                            <span class="score-value" id="leastScoreS">{{ $candidate->disc3DTestResult->least_s_segment ?? 1 }}</span>
+                            <span class="segment-value">Seg. <span id="leastSegmentS">{{ $candidate->disc3DTestResult->least_s_segment ?? 1 }}</span></span>
                         </div>
                         <div class="disc-score-mini conscientiousness">
                             <span class="dim-label">C</span>
-                            <span class="score-value" id="leastScoreC">{{ number_format($candidate->discTestResult->least_c_percentage ?? 0, 1) }}%</span>
-                            <span class="segment-value">Seg. <span id="leastSegmentC">{{ $candidate->discTestResult->least_c_segment ?? 1 }}</span></span>
+                            <span class="score-value" id="leastScoreC">{{ $candidate->disc3DTestResult->least_c_segment ?? 1 }}</span>
+                            <span class="segment-value">Seg. <span id="leastSegmentC">{{ $candidate->disc3DTestResult->least_c_segment ?? 1 }}</span></span>
                         </div>
                     </div>
                 </div>
@@ -245,26 +248,26 @@
                     <div class="disc-graph-description">
                         <strong>CHANGE (Adaptasi):</strong> Menunjukkan tekanan dan adaptasi yang dialami antara kepribadian publik dan pribadi.
                     </div>
-                    {{-- Score cards for CHANGE --}}
+                    {{-- Score cards for CHANGE - tetap sama (bisa minus) --}}
                     <div class="disc-scores-mini-grid">
                         <div class="disc-score-mini dominance">
                             <span class="dim-label">D</span>
-                            <span class="score-value" id="changeScoreD">{{ $candidate->discTestResult->change_d_segment ?? 0 > 0 ? '+' : '' }}{{ $candidate->discTestResult->change_d_segment ?? 0 }}</span>
+                            <span class="score-value" id="changeScoreD">{{ $candidate->disc3DTestResult->change_d_segment ?? 0 > 0 ? '+' : '' }}{{ $candidate->disc3DTestResult->change_d_segment ?? 0 }}</span>
                             <span class="segment-value">Change</span>
                         </div>
                         <div class="disc-score-mini influence">
                             <span class="dim-label">I</span>
-                            <span class="score-value" id="changeScoreI">{{ $candidate->discTestResult->change_i_segment ?? 0 > 0 ? '+' : '' }}{{ $candidate->discTestResult->change_i_segment ?? 0 }}</span>
+                            <span class="score-value" id="changeScoreI">{{ $candidate->disc3DTestResult->change_i_segment ?? 0 > 0 ? '+' : '' }}{{ $candidate->disc3DTestResult->change_i_segment ?? 0 }}</span>
                             <span class="segment-value">Change</span>
                         </div>
                         <div class="disc-score-mini steadiness">
                             <span class="dim-label">S</span>
-                            <span class="score-value" id="changeScoreS">{{ $candidate->discTestResult->change_s_segment ?? 0 > 0 ? '+' : '' }}{{ $candidate->discTestResult->change_s_segment ?? 0 }}</span>
+                            <span class="score-value" id="changeScoreS">{{ $candidate->disc3DTestResult->change_s_segment ?? 0 > 0 ? '+' : '' }}{{ $candidate->disc3DTestResult->change_s_segment ?? 0 }}</span>
                             <span class="segment-value">Change</span>
                         </div>
                         <div class="disc-score-mini conscientiousness">
                             <span class="dim-label">C</span>
-                            <span class="score-value" id="changeScoreC">{{ $candidate->discTestResult->change_c_segment ?? 0 > 0 ? '+' : '' }}{{ $candidate->discTestResult->change_c_segment ?? 0 }}</span>
+                            <span class="score-value" id="changeScoreC">{{ $candidate->disc3DTestResult->change_c_segment ?? 0 > 0 ? '+' : '' }}{{ $candidate->disc3DTestResult->change_c_segment ?? 0 }}</span>
                             <span class="segment-value">Change</span>
                         </div>
                     </div>
@@ -272,6 +275,7 @@
             </div>
         </div>
 
+        {{-- Rest of the comprehensive analysis sections remain the same --}}
         {{-- COMPREHENSIVE PERSONALITY ANALYSIS --}}
         <div class="disc-comprehensive-analysis">
             <h3 class="disc-analysis-section-title">
@@ -479,17 +483,17 @@
             <div class="disc-session-grid">
                 <div class="disc-session-item">
                     <span class="disc-session-label">Kode Tes</span>
-                    <span class="disc-session-value" id="discTestCode">{{ optional($candidate->discTestResult->testSession)->test_code ?? 'N/A' }}</span>
+                    <span class="disc-session-value" id="discTestCode">{{ $candidate->latestDisc3DTest->test_code ?? 'N/A' }}</span>
                 </div>
                 <div class="disc-session-item">
                     <span class="disc-session-label">Tanggal Penyelesaian</span>
                     <span class="disc-session-value" id="discTestDate">
-                        {{ optional($candidate->discTestResult->testSession)->completed_at ? $candidate->discTestResult->testSession->completed_at->format('d M Y H:i') : 'N/A' }}
+                        {{ $candidate->latestDisc3DTest->completed_at ? $candidate->latestDisc3DTest->completed_at->format('d M Y H:i') : 'N/A' }}
                     </span>
                 </div>
                 <div class="disc-session-item">
                     <span class="disc-session-label">Durasi Pengerjaan</span>
-                    <span class="disc-session-value" id="discTestDuration">{{ optional($candidate->discTestResult->testSession)->formatted_duration ?? 'N/A' }}</span>
+                    <span class="disc-session-value" id="discTestDuration">{{ $candidate->latestDisc3DTest->formatted_duration ?? 'N/A' }}</span>
                 </div>
                 <div class="disc-session-item">
                     <span class="disc-session-label">Status</span>
@@ -506,7 +510,7 @@
             <i class="fas fa-chart-pie"></i>
             <p>Kandidat belum menyelesaikan tes DISC 3D</p>
             
-            @if(method_exists($candidate, 'canStartDiscTest') && $candidate->canStartDiscTest())
+            @if($candidate->canStartDisc3DTest())
                 <div style="margin-top: 20px;">
                     <a href="{{ route('disc.instructions', $candidate->candidate_code) }}" 
                        class="btn btn-primary" target="_blank">
@@ -514,7 +518,7 @@
                         Mulai Tes DISC 3D
                     </a>
                 </div>
-            @elseif(method_exists($candidate, 'hasCompletedKraeplinTest') && !$candidate->hasCompletedKraeplinTest())
+            @elseif(!$candidate->hasCompletedKraeplinTest())
                 <div class="empty-note">
                     Kandidat harus menyelesaikan tes Kraeplin terlebih dahulu
                 </div>

@@ -1,6 +1,6 @@
 /* ============================================
-   ENHANCED DISC 3D RESULTS STYLES
-   ALL GRAPHS DISPLAYED SIMULTANEOUSLY
+   ENHANCED DISC 3D RESULTS STYLES - FIXED VERSION
+   ALL GRAPHS DISPLAYED SIMULTANEOUSLY USING SEGMENTS
    ============================================ */
 
 /* Base Styles */
@@ -111,7 +111,7 @@
 }
 
 /* ============================================
-   ALL GRAPHS CONTAINER (NEW LAYOUT)
+   ALL GRAPHS CONTAINER (FIXED LAYOUT)
    ============================================ */
 
 .disc-comprehensive-graphs {
@@ -190,7 +190,7 @@
 }
 
 /* ============================================
-   MINI SCORE CARDS FOR EACH GRAPH
+   MINI SCORE CARDS FOR EACH GRAPH - FIXED FOR SEGMENTS
    ============================================ */
 
 .disc-scores-mini-grid {
@@ -200,77 +200,140 @@
 }
 
 .disc-score-mini {
-    padding: 8px;
-    border-radius: 6px;
+    padding: 10px 8px;
+    border-radius: 8px;
     text-align: center;
-    border-left: 3px solid;
+    border-left: 4px solid;
     transition: all 0.3s ease;
     background: white;
+    position: relative;
+    cursor: help; /* Show that there's tooltip available */
 }
 
 .disc-score-mini:hover {
-    transform: scale(1.02);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
+/* FIXED: Enhanced styling for segment values */
 .disc-score-mini.dominance {
-    background: #fee2e2;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
     border-left-color: #dc2626;
 }
 
 .disc-score-mini.influence {
-    background: #fef3c7;
+    background: linear-gradient(135deg, #fef3c7, #fed7aa);
     border-left-color: #f59e0b;
 }
 
 .disc-score-mini.steadiness {
-    background: #d1fae5;
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
     border-left-color: #10b981;
 }
 
 .disc-score-mini.conscientiousness {
-    background: #dbeafe;
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
     border-left-color: #3b82f6;
 }
 
 .disc-score-mini .dim-label {
-    font-weight: 700;
-    font-size: 0.9rem;
+    font-weight: 800;
+    font-size: 1rem;
     display: block;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
+/* FIXED: Enhanced segment value display */
 .disc-score-mini .score-value {
-    font-weight: 600;
-    font-size: 0.85rem;
+    font-weight: 700;
+    font-size: 1.2rem;
     display: block;
-    margin-bottom: 1px;
+    margin-bottom: 2px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    /* Add gradient text effect for better visibility */
+    background: linear-gradient(135deg, #1a202c, #4a5568);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .disc-score-mini .segment-value {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     opacity: 0.8;
     display: block;
+    font-weight: 500;
 }
 
-/* Color variations for mini scores */
+/* FIXED: Color variations for segment values */
 .dominance .dim-label,
-.dominance .score-value { 
+.dominance .segment-value { 
     color: #dc2626; 
 }
 
 .influence .dim-label,
-.influence .score-value { 
+.influence .segment-value { 
     color: #f59e0b; 
 }
 
 .steadiness .dim-label,
-.steadiness .score-value { 
+.steadiness .segment-value { 
     color: #10b981; 
 }
 
 .conscientiousness .dim-label,
-.conscientiousness .score-value { 
+.conscientiousness .segment-value { 
     color: #3b82f6; 
+}
+
+/* FIXED: Special styling for CHANGE graph (with negative values) */
+.disc-single-graph-container:last-child .disc-score-mini .score-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* FIXED: Negative values styling for CHANGE graph */
+.disc-single-graph-container:last-child .disc-score-mini .score-value:not([id*="+"]) {
+    color: #dc2626 !important;
+    -webkit-text-fill-color: #dc2626 !important;
+}
+
+.disc-single-graph-container:last-child .disc-score-mini .score-value[id*="+"] {
+    color: #10b981 !important;
+    -webkit-text-fill-color: #10b981 !important;
+}
+
+/* FIXED: Tooltip styling for percentage information */
+.disc-score-mini[title] {
+    position: relative;
+}
+
+.disc-score-mini[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a202c;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 5px;
+}
+
+.disc-score-mini[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: #1a202c;
+    z-index: 1000;
+    margin-bottom: 1px;
 }
 
 /* ============================================
@@ -576,6 +639,44 @@
 }
 
 /* ============================================
+   SEGMENT VALUE INDICATORS - NEW
+   ============================================ */
+
+/* FIXED: Add special indicators for segment ranges */
+.disc-score-mini .score-value::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    opacity: 0.7;
+}
+
+/* FIXED: Segment level indicators */
+.disc-score-mini .score-value[data-segment="1"]::after,
+.disc-score-mini .score-value[data-segment="2"]::after {
+    background: #dc2626; /* Low */
+}
+
+.disc-score-mini .score-value[data-segment="3"]::after,
+.disc-score-mini .score-value[data-segment="4"]::after,
+.disc-score-mini .score-value[data-segment="5"]::after {
+    background: #f59e0b; /* Medium */
+}
+
+.disc-score-mini .score-value[data-segment="6"]::after,
+.disc-score-mini .score-value[data-segment="7"]::after {
+    background: #10b981; /* High */
+}
+
+/* FIXED: Special styling for change values */
+.disc-single-graph-container:last-child .disc-score-mini .score-value::after {
+    display: none; /* No indicators for change graph */
+}
+
+/* ============================================
    RESPONSIVE DESIGN
    ============================================ */
 
@@ -641,6 +742,15 @@
         font-size: 0.8rem;
         padding: 5px 10px;
     }
+    
+    /* FIXED: Mobile styling for segment values */
+    .disc-score-mini .score-value {
+        font-size: 1.1rem;
+    }
+    
+    .disc-score-mini .dim-label {
+        font-size: 0.9rem;
+    }
 }
 
 @media (max-width: 480px) {
@@ -662,6 +772,15 @@
     
     .disc-graph-section-title {
         font-size: 1.1rem;
+    }
+    
+    /* FIXED: Extra small screen segment display */
+    .disc-score-mini {
+        padding: 8px 6px;
+    }
+    
+    .disc-score-mini .score-value {
+        font-size: 1rem;
     }
 }
 
@@ -693,5 +812,18 @@
     .disc-all-graphs-container {
         grid-template-columns: 1fr;
         gap: 20px;
+    }
+    
+    /* FIXED: Print-friendly segment display */
+    .disc-score-mini {
+        background: white !important;
+        border: 1px solid #6b7280 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .disc-score-mini .score-value {
+        -webkit-text-fill-color: #1a202c !important;
+        color: #1a202c !important;
     }
 }

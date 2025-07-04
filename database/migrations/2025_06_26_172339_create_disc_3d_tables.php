@@ -162,9 +162,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('test_session_id')->unique()->constrained('disc_3d_test_sessions')->onDelete('cascade');
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            
-            // Test information - denormalized for quick access
-            $table->string('test_code', 50); // Denormalized for quick access
+            $table->string('test_code', 50);
             $table->timestamp('test_completed_at');
             $table->integer('test_duration_seconds');
             
@@ -263,12 +261,40 @@ return new class extends Migration
             // Performance metrics
             $table->decimal('response_consistency', 5, 2)->nullable(); // Response pattern consistency
             $table->integer('average_response_time')->nullable(); // Average time per section
-            $table->json('timing_analysis')->nullable(); // Detailed timing analysis
-            
+            $table->json('timing_analysis')->nullable();
+
+            // ======= DITAMBAHKAN: INTERPRETATION FIELDS =======
+            // Work style interpretations
+            $table->json('work_style_most')->nullable();
+            $table->json('work_style_least')->nullable();
+            $table->json('work_style_adaptation')->nullable();
+
+            // Communication style interpretations  
+            $table->json('communication_style_most')->nullable();
+            $table->json('communication_style_least')->nullable();
+
+            // Stress behavior patterns
+            $table->json('stress_behavior_most')->nullable();
+            $table->json('stress_behavior_least')->nullable();
+            $table->json('stress_behavior_change')->nullable();
+
+            // Motivators and fears
+            $table->json('motivators_most')->nullable();
+            $table->json('motivators_least')->nullable();
+            $table->json('fears_most')->nullable();
+            $table->json('fears_least')->nullable();
+
+            // Compiled interpretations for easy access
+            $table->text('work_style_summary')->nullable();
+            $table->text('communication_summary')->nullable();
+            $table->text('motivators_summary')->nullable();
+            $table->text('stress_management_summary')->nullable();
+            // ======= END TAMBAHAN =======
+
             $table->timestamps();
             
             $table->index(['candidate_id', 'most_primary_type', 'least_primary_type'], 'idx_disc3d_results_candidate_types');
-            $table->index(['candidate_id', 'primary_type'], 'idx_disc3d_results_candidate_primary'); // ADDED FOR QUICK ACCESS
+            $table->index(['candidate_id', 'primary_type'], 'idx_disc3d_results_candidate_primary');
             $table->index(['most_pattern', 'least_pattern'], 'idx_disc3d_results_patterns');
             $table->index('test_completed_at', 'idx_disc3d_results_completed');
             $table->index('created_at', 'idx_disc3d_results_created');
@@ -281,13 +307,11 @@ return new class extends Migration
             $table->id();
             $table->enum('dimension', ['D', 'I', 'S', 'C']);
             $table->enum('graph_type', ['MOST', 'LEAST', 'CHANGE']);
-            $table->integer('segment_level'); // 1-7 for MOST/LEAST, -4 to +4 for CHANGE
-            
+            $table->integer('segment_level');
             $table->string('title', 100)->nullable();
             $table->string('title_en', 100)->nullable();
             $table->text('description');
             $table->text('description_en')->nullable();
-            
             $table->json('characteristics')->nullable();
             $table->json('characteristics_en')->nullable();
             $table->json('behavioral_indicators')->nullable();
@@ -296,12 +320,14 @@ return new class extends Migration
             $table->json('stress_behavior')->nullable();
             $table->json('motivators')->nullable();
             $table->json('fears')->nullable();
-            
             $table->timestamps();
-            
+
             $table->unique(['dimension', 'graph_type', 'segment_level'], 'unq_disc3d_interpretations_dim_graph_seg');
             $table->index(['graph_type', 'dimension'], 'idx_disc3d_interpretations_graph_dim');
             $table->index('segment_level', 'idx_disc3d_interpretations_segment');
+            // ======= TAMBAHKAN INDEX BARU =======
+            $table->index(['dimension', 'graph_type', 'segment_level'], 'idx_disc3d_interpretations_lookup');
+            // ======= END TAMBAHAN =======
         });
 
         // 7. DISC 3D Pattern Combinations
@@ -425,7 +451,10 @@ return new class extends Migration
         // Drop check constraint first
         DB::statement('ALTER TABLE disc_3d_responses DROP CONSTRAINT IF EXISTS check_different_choices');
         
-        Schema::dropIfExists('disc_3d_section_analytics');
+        // ======= HAPUS BARIS INI =======
+        // Schema::dropIfExists('disc_3d_section_analytics');
+        // ======= END HAPUS =======
+
         Schema::dropIfExists('disc_3d_test_analytics');
         Schema::dropIfExists('disc_3d_config');
         Schema::dropIfExists('disc_3d_pattern_combinations');
