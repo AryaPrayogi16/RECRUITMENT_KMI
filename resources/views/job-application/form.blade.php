@@ -405,7 +405,6 @@
                         <label class="form-label" for="birth_date">Tanggal Lahir <span class="required-star">*</span></label>
                         <input type="date" name="birth_date" id="birth_date" class="form-input" 
                                value="{{ old('birth_date') }}" lang="id-ID" required>
-                        <small class="text-xs text-gray-500 mt-1">Format: DD/MM/YYYY</small>
                     </div>
                     
                     <div class="form-group">
@@ -812,7 +811,6 @@
                         <label class="form-label" for="start_work_date">Jika diterima, kapan Anda dapat mulai bekerja? <span class="required-star">*</span></label>
                         <input type="date" name="start_work_date" id="start_work_date" class="form-input" 
                                value="{{ old('start_work_date') }}" lang="id-ID" required>
-                        <small class="text-xs text-gray-500 mt-1">Format: DD/MM/YYYY (harus setelah hari ini)</small>
                     </div>
                 </div>
                 
