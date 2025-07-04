@@ -139,11 +139,11 @@
                             </button>
                             <button class="chart-tab" data-chart="speed" style="flex: 1; min-width: 120px; padding: 12px 20px; border: none; background: #f8fafc; color: #6b7280; border-radius: 8px; margin-right: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
                                 <i class="fas fa-tachometer-alt"></i>
-                                Kecepatan
+                                Soal Terjawab
                             </button>
                             <button class="chart-tab" data-chart="time" style="flex: 1; min-width: 120px; padding: 12px 20px; border: none; background: #f8fafc; color: #6b7280; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
                                 <i class="fas fa-clock"></i>
-                                Waktu
+                                Kecepatan Pengerjaan
                             </button>
                         </div>
                     </div>

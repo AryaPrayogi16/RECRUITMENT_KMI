@@ -67,15 +67,8 @@ class Disc3DTestSession extends Model
     }
 
     // Rest of the methods remain the same
-    public function analytics()
-    {
-        return $this->hasOne(Disc3DTestAnalytics::class, 'test_session_id');
-    }
 
-    public function sectionAnalytics()
-    {
-        return $this->hasMany(Disc3DSectionAnalytics::class, 'test_session_id');
-    }
+
 
     // Scopes (enhanced from old model)
     public function scopeCompleted($query)
