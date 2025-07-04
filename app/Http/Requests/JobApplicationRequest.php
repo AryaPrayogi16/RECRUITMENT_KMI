@@ -32,7 +32,8 @@ class JobApplicationRequest extends FormRequest
             'phone_number' => 'required|string|max:20',
             'phone_alternative' => 'required|string|max:20',
             'birth_place' => 'required|string|max:100',
-            'birth_date' => 'required|date|before:today',
+            // ✅ PERUBAHAN: Explicit date validation dengan format yang jelas
+            'birth_date' => 'required|date|before:' . now()->format('Y-m-d'),
             'gender' => 'required|in:Laki-laki,Perempuan',
             'religion' => 'required|string|max:50',
             'marital_status' => 'required|in:Lajang,Menikah,Janda,Duda',
@@ -123,7 +124,8 @@ class JobApplicationRequest extends FormRequest
             'has_other_business' => 'nullable|boolean',
             'other_business_detail' => 'nullable|required_if:has_other_business,1|string|max:255',
             'absence_days' => 'nullable|integer|min:0|max:365',
-            'start_work_date' => 'required|date|after:today',
+            // ✅ PERUBAHAN: Explicit date validation untuk start_work_date
+            'start_work_date' => 'required|date|after:' . now()->format('Y-m-d'),
             'information_source' => 'required|string|max:255',
             
             // Document Uploads - Enhanced validation with custom rule
@@ -244,7 +246,8 @@ class JobApplicationRequest extends FormRequest
             'phone_alternative.required' => 'Telepon alternatif harus diisi.',
             'birth_place.required' => 'Tempat lahir harus diisi.',
             'birth_date.required' => 'Tanggal lahir harus diisi.',
-            'birth_date.before' => 'Tanggal lahir tidak valid.',
+            // ✅ PERUBAHAN: Error message yang lebih jelas dengan tanggal spesifik
+            'birth_date.before' => 'Tanggal lahir harus sebelum tanggal ' . now()->format('d/m/Y') . '.',
             'gender.required' => 'Jenis kelamin harus dipilih.',
             'religion.required' => 'Agama harus diisi.',
             'marital_status.required' => 'Status pernikahan harus dipilih.',
@@ -286,7 +289,8 @@ class JobApplicationRequest extends FormRequest
             'strengths.required' => 'Kelebihan Anda harus diisi.',
             'weaknesses.required' => 'Kekurangan Anda harus diisi.',
             'start_work_date.required' => 'Tanggal mulai kerja harus diisi.',
-            'start_work_date.after' => 'Tanggal mulai kerja harus setelah hari ini.',
+            // ✅ PERUBAHAN: Error message yang lebih jelas dengan tanggal spesifik
+            'start_work_date.after' => 'Tanggal mulai kerja harus setelah tanggal ' . now()->format('d/m/Y') . '.',
             'information_source.required' => 'Sumber informasi lowongan harus diisi.',
             
             // File uploads
