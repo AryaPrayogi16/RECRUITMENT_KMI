@@ -1961,26 +1961,76 @@
                 }
             });
             
-            // FIXED: Specific validation for start_work_date
-            const startWorkDate = document.getElementById('start_work_date');
-            if (startWorkDate && startWorkDate.value) {
-                const selectedDate = new Date(startWorkDate.value);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Reset time to start of day
-                
-                if (selectedDate <= today) {
-                    hasError = true;
-                    startWorkDate.classList.add('error');
-                    const todayStr = today.toLocaleDateString('id-ID');
-                    errors.push(`Tanggal mulai kerja harus setelah ${todayStr}`);
-                }
+            // Check required dynamic fields
+            const familyContainer = document.getElementById('familyMembers');
+            const educationContainer = document.getElementById('formalEducation');
+            const languageContainer = document.getElementById('languageSkills');
+            
+            if (familyContainer.children.length === 0) {
+                hasError = true;
+                errors.push('Data keluarga minimal harus diisi 1 anggota');
             }
+            
+            if (educationContainer.children.length === 0) {
+                hasError = true;
+                errors.push('Pendidikan formal minimal harus diisi 1 pendidikan');
+            }
+            
+            if (languageContainer.children.length === 0) {
+                hasError = true;
+                errors.push('Kemampuan bahasa minimal harus diisi 1 bahasa');
+            }
+            
+            // Check each dynamic group has all required fields filled
+            [
+                {container: familyContainer, name: 'Data Keluarga'},
+                {container: educationContainer, name: 'Pendidikan Formal'},
+                {container: languageContainer, name: 'Kemampuan Bahasa'}
+            ].forEach(section => {
+                Array.from(section.container.children).forEach((group, index) => {
+                    const requiredInputs = group.querySelectorAll('input[required], select[required]');
+                    requiredInputs.forEach(input => {
+                        if (!input.value || input.value.trim() === '') {
+                            hasError = true;
+                            input.classList.add('error');
+                            errors.push(`${section.name} #${index + 1}: ${input.previousElementSibling.textContent.replace(' *', '')} harus diisi`);
+                        }
+                    });
+                });
+            });
             
             // Check agreement checkbox
             const agreementCheckbox = document.querySelector('input[name="agreement"]');
-            if (!agreementCheckbox || !agreementCheckbox.checked) {
+            if (!agreementCheckbox.checked) {
                 hasError = true;
                 errors.push('Anda harus menyetujui pernyataan untuk melanjutkan');
+            }
+            
+            // Enhanced file validation with async
+            const fileInputs = ['cv', 'photo', 'transcript'];
+            for (const fieldName of fileInputs) {
+                const input = document.getElementById(fieldName);
+                if (input && input.files.length > 0) {
+                    const file = input.files[0];
+                    const validation = fileValidation[fieldName];
+                    
+                    try {
+                        const validationResult = await validateFile(file, validation);
+                        
+                        if (!validationResult.valid) {
+                            hasError = true;
+                            errors.push(`${fieldName.toUpperCase()}: ${validationResult.error}`);
+                            showFileError(fieldName, validationResult.error);
+                        }
+                    } catch (error) {
+                        hasError = true;
+                        errors.push(`${fieldName.toUpperCase()}: Gagal memvalidasi file`);
+                        console.error(`Validation error for ${fieldName}:`, error);
+                    }
+                } else if (fileValidation[fieldName].required) {
+                    hasError = true;
+                    errors.push(`${fieldName.toUpperCase()}: File harus diupload`);
+                }
             }
             
             if (hasError) {
@@ -1992,10 +2042,10 @@
                     errorMessage += `\n... dan ${errors.length - 10} field lainnya`;
                 }
                 
-                alert(errorMessage);
+                showAlert(errorMessage.replace(/\n/g, '<br>'), 'error');
                 
                 // Scroll to first error
-                const firstError = this.querySelector('.form-input.error, .file-upload-label.error');
+                const firstError = form.querySelector('.form-input.error, .file-upload-label.error');
                 if (firstError) {
                     firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     if (firstError.classList.contains('form-input')) {

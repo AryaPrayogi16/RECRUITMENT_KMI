@@ -123,19 +123,7 @@ class JobApplicationRequest extends FormRequest
             'has_other_business' => 'nullable|boolean',
             'other_business_detail' => 'nullable|required_if:has_other_business,1|string|max:255',
             'absence_days' => 'nullable|integer|min:0|max:365',
-            
-            // ✅ PERBAIKAN: Ubah validasi dari 'after:today' menjadi custom rule yang lebih tepat
-            'start_work_date' => ['required', 'date', function ($attribute, $value, $fail) {
-                $selectedDate = \Carbon\Carbon::parse($value)->startOfDay();
-                $today = \Carbon\Carbon::now()->startOfDay();
-                
-                // Tanggal mulai kerja harus setelah hari ini (minimal besok)
-                if ($selectedDate->lte($today)) {
-                    $tomorrow = $today->addDay()->format('d/m/Y');
-                    $fail("Tanggal mulai kerja harus setelah hari ini. Minimal tanggal {$tomorrow}.");
-                }
-            }],
-            
+            'start_work_date' => 'required|date|after:today',
             'information_source' => 'required|string|max:255',
             
             // Document Uploads - Enhanced validation with custom rule
@@ -298,6 +286,7 @@ class JobApplicationRequest extends FormRequest
             'strengths.required' => 'Kelebihan Anda harus diisi.',
             'weaknesses.required' => 'Kekurangan Anda harus diisi.',
             'start_work_date.required' => 'Tanggal mulai kerja harus diisi.',
+            'start_work_date.after' => 'Tanggal mulai kerja harus setelah hari ini.',
             'information_source.required' => 'Sumber informasi lowongan harus diisi.',
             
             // File uploads
