@@ -247,9 +247,9 @@
         <header class="preview-header">
             <div class="header-content">
                 <div class="header-left">
-                    <button class="back-btn" onclick="window.history.back()">
+                    <a href="{{ route('candidates.show', $candidate->id) }}" class="back-btn" title="Kembali ke Detail Kandidat">
                         <i class="fas fa-arrow-left"></i>
-                    </button>
+                    </a>
                     <div>
                         <h1 class="page-title">
                             Preview CV
@@ -263,11 +263,6 @@
                         <i class="fas fa-print"></i>
                         Print
                     </button>
-                    
-                    <a href="{{ route('candidates.export.single.pdf', $candidate->id) }}" class="btn btn-success">
-                        <i class="fas fa-download"></i>
-                        Download PDF
-                    </a>
                     
                     <a href="{{ route('candidates.show', $candidate->id) }}" class="btn btn-primary">
                         <i class="fas fa-user"></i>

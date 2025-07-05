@@ -21,7 +21,8 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->integer('order_number')->unsigned();
             $table->timestamps();
-            
+            $table->softDeletes(); // TAMBAHKAN BARIS INI
+
             $table->index(['section_number', 'is_active'], 'idx_disc3d_sections_num_active');
             $table->index('order_number', 'idx_disc3d_sections_order');
         });
@@ -32,70 +33,51 @@ return new class extends Migration
             $table->foreignId('section_id')->constrained('disc_3d_sections')->onDelete('cascade');
             $table->string('section_code', 10);
             $table->integer('section_number')->unsigned();
-            
-            // Choice identification
-            $table->enum('choice_dimension', ['D', 'I', 'S', 'C']); // Which DISC dimension this choice represents
-            $table->string('choice_code', 20)->unique(); // SEC01_D, SEC01_I, etc.
-            
-            // Choice text
-            $table->text('choice_text'); // Indonesian text
-            $table->text('choice_text_en')->nullable(); // English translation
-            
-            // Detailed scoring weights for EACH dimension when this choice is selected
-            // These weights can be positive or negative
-            $table->decimal('weight_d', 6, 4)->default(0); // How this choice affects D score
-            $table->decimal('weight_i', 6, 4)->default(0); // How this choice affects I score
-            $table->decimal('weight_s', 6, 4)->default(0); // How this choice affects S score
-            $table->decimal('weight_c', 6, 4)->default(0); // How this choice affects C score
-            
-            // Primary dimension and strength (for analysis)
+            $table->enum('choice_dimension', ['D', 'I', 'S', 'C']);
+            $table->string('choice_code', 20)->unique();
+            $table->text('choice_text');
+            $table->text('choice_text_en')->nullable();
+            $table->decimal('weight_d', 6, 4)->default(0);
+            $table->decimal('weight_i', 6, 4)->default(0);
+            $table->decimal('weight_s', 6, 4)->default(0);
+            $table->decimal('weight_c', 6, 4)->default(0);
             $table->enum('primary_dimension', ['D', 'I', 'S', 'C'])->nullable();
             $table->decimal('primary_strength', 5, 4)->nullable();
-            
-            // Behavioral keywords (for interpretation)
-            $table->json('keywords')->nullable(); // ['tegas', 'langsung', 'assertif']
+            $table->json('keywords')->nullable();
             $table->json('keywords_en')->nullable();
-            
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+            $table->softDeletes(); // TAMBAHKAN BARIS INI
+
             $table->unique(['section_id', 'choice_dimension'], 'unq_disc3d_choices_section_dim');
             $table->index(['section_code', 'choice_dimension'], 'idx_disc3d_choices_code_dim');
             $table->index('choice_code', 'idx_disc3d_choices_code');
             $table->index('primary_dimension', 'idx_disc3d_choices_primary');
         });
 
-        // 3. DISC 3D Test Sessions - ENHANCED WITH CANDIDATE INTEGRATION
+        // 3. DISC 3D Test Sessions
         Schema::create('disc_3d_test_sessions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
             $table->string('test_code')->unique();
             $table->enum('status', ['not_started', 'in_progress', 'completed', 'timeout', 'interrupted'])->default('not_started');
-            
-            // Enhanced session tracking
             $table->timestamp('started_at')->nullable();
             $table->timestamp('completed_at')->nullable();
-            $table->timestamp('last_activity_at')->nullable(); // Track user activity
+            $table->timestamp('last_activity_at')->nullable();
             $table->integer('total_duration_seconds')->nullable();
             $table->integer('sections_completed')->default(0);
-            $table->decimal('progress', 5, 2)->default(0); // Progress percentage 0-100
-            
-            // Session configuration
+            $table->decimal('progress', 5, 2)->default(0);
             $table->enum('language', ['en', 'id'])->default('id');
-            $table->integer('time_limit_minutes')->default(60); // Configurable time limit
+            $table->integer('time_limit_minutes')->default(60);
             $table->boolean('auto_save')->default(true);
-            
-            // Browser/Device tracking for security
             $table->string('user_agent', 500)->nullable();
             $table->ipAddress('ip_address')->nullable();
             $table->string('session_token', 100)->nullable();
-            
-            // Additional metadata
-            $table->json('metadata')->nullable(); // Additional test data
-            $table->json('device_info')->nullable(); // Device/browser information
-            
+            $table->json('metadata')->nullable();
+            $table->json('device_info')->nullable();
             $table->timestamps();
-            
+            $table->softDeletes(); // TAMBAHKAN BARIS INI
+
             $table->index(['candidate_id', 'status'], 'idx_disc3d_sessions_candidate_status');
             $table->index('test_code', 'idx_disc3d_sessions_code');
             $table->index('completed_at', 'idx_disc3d_sessions_completed');
@@ -103,52 +85,40 @@ return new class extends Migration
             $table->index('status', 'idx_disc3d_sessions_status');
         });
 
-        // 4. DISC 3D Responses - ENHANCED WITH CANDIDATE CONNECTION
+        // 4. DISC 3D Responses
         Schema::create('disc_3d_responses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('test_session_id')->constrained('disc_3d_test_sessions')->onDelete('cascade');
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade'); // ADDED FOR DIRECT ACCESS
+            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
             $table->foreignId('section_id')->constrained('disc_3d_sections');
             $table->string('section_code', 10);
             $table->integer('section_number')->unsigned();
-            
-            // Most and Least choice IDs
             $table->foreignId('most_choice_id')->constrained('disc_3d_section_choices');
             $table->foreignId('least_choice_id')->constrained('disc_3d_section_choices');
-            
-            // P (Most) and K (Least) selections
-            $table->enum('most_choice', ['D', 'I', 'S', 'C']); // P - Most describing
-            $table->enum('least_choice', ['D', 'I', 'S', 'C']); // K - Least describing
-            
-            // Calculated scores from MOST selection (positive contribution)
+            $table->enum('most_choice', ['D', 'I', 'S', 'C']);
+            $table->enum('least_choice', ['D', 'I', 'S', 'C']);
             $table->decimal('most_score_d', 6, 4)->default(0);
             $table->decimal('most_score_i', 6, 4)->default(0);
             $table->decimal('most_score_s', 6, 4)->default(0);
             $table->decimal('most_score_c', 6, 4)->default(0);
-            
-            // Calculated scores from LEAST selection (negative contribution)
             $table->decimal('least_score_d', 6, 4)->default(0);
             $table->decimal('least_score_i', 6, 4)->default(0);
             $table->decimal('least_score_s', 6, 4)->default(0);
             $table->decimal('least_score_c', 6, 4)->default(0);
-            
-            // Net scores for this section (most + least)
             $table->decimal('net_score_d', 6, 4)->default(0);
             $table->decimal('net_score_i', 6, 4)->default(0);
             $table->decimal('net_score_s', 6, 4)->default(0);
             $table->decimal('net_score_c', 6, 4)->default(0);
-            
-            // Response timing and behavior
             $table->integer('time_spent_seconds')->default(0);
-            $table->integer('response_order')->unsigned(); // Order in which user answered
-            $table->timestamp('answered_at')->nullable(); // When this section was answered
-            $table->integer('revision_count')->default(0); // How many times user changed answer
-            
+            $table->integer('response_order')->unsigned();
+            $table->timestamp('answered_at')->nullable();
+            $table->integer('revision_count')->default(0);
             $table->timestamps();
-            
+            $table->softDeletes(); // TAMBAHKAN BARIS INI
+
             $table->unique(['test_session_id', 'section_id'], 'unq_disc3d_responses_session_section');
             $table->index('test_session_id', 'idx_disc3d_responses_session');
-            $table->index('candidate_id', 'idx_disc3d_responses_candidate'); // ADDED INDEX FOR DIRECT ACCESS
+            $table->index('candidate_id', 'idx_disc3d_responses_candidate');
             $table->index(['most_choice', 'least_choice'], 'idx_disc3d_responses_choices');
             $table->index('answered_at', 'idx_disc3d_responses_answered');
             $table->index('section_number', 'idx_disc3d_responses_section_num');
@@ -292,6 +262,7 @@ return new class extends Migration
             // ======= END TAMBAHAN =======
 
             $table->timestamps();
+            $table->softDeletes(); // TAMBAHKAN BARIS INI
             
             $table->index(['candidate_id', 'most_primary_type', 'least_primary_type'], 'idx_disc3d_results_candidate_types');
             $table->index(['candidate_id', 'primary_type'], 'idx_disc3d_results_candidate_primary');
@@ -321,32 +292,30 @@ return new class extends Migration
             $table->json('motivators')->nullable();
             $table->json('fears')->nullable();
             $table->timestamps();
+            $table->softDeletes(); // TAMBAHKAN BARIS INI
 
             $table->unique(['dimension', 'graph_type', 'segment_level'], 'unq_disc3d_interpretations_dim_graph_seg');
             $table->index(['graph_type', 'dimension'], 'idx_disc3d_interpretations_graph_dim');
             $table->index('segment_level', 'idx_disc3d_interpretations_segment');
-            // ======= TAMBAHKAN INDEX BARU =======
             $table->index(['dimension', 'graph_type', 'segment_level'], 'idx_disc3d_interpretations_lookup');
-            // ======= END TAMBAHAN =======
         });
 
         // 7. DISC 3D Pattern Combinations
         Schema::create('disc_3d_pattern_combinations', function (Blueprint $table) {
             $table->id();
-            $table->string('pattern_code', 10)->unique(); // DI, DC, ID, etc.
+            $table->string('pattern_code', 10)->unique();
             $table->string('pattern_name', 100);
             $table->string('pattern_name_en', 100)->nullable();
             $table->text('description');
             $table->text('description_en')->nullable();
-            
             $table->json('strengths')->nullable();
             $table->json('weaknesses')->nullable();
             $table->json('ideal_environment')->nullable();
             $table->json('communication_tips')->nullable();
             $table->json('career_matches')->nullable();
-            
             $table->timestamps();
-            
+            $table->softDeletes(); // TAMBAHKAN BARIS INI
+
             $table->index('pattern_code', 'idx_disc3d_patterns_code');
         });
 
@@ -357,82 +326,43 @@ return new class extends Migration
             $table->text('config_value');
             $table->text('description')->nullable();
             $table->timestamps();
-            
+            $table->softDeletes(); // TAMBAHKAN BARIS INI
+
             $table->index('config_key', 'idx_disc3d_config_key');
         });
 
-        // 9. NEW: DISC 3D Test Analytics - For comprehensive tracking
+        // 9. DISC 3D Test Analytics
         Schema::create('disc_3d_test_analytics', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
             $table->foreignId('test_session_id')->constrained('disc_3d_test_sessions')->onDelete('cascade');
-            
-            // Basic analytics data
             $table->integer('total_sections')->default(24);
             $table->integer('completed_sections')->default(0);
-            $table->decimal('completion_rate', 5, 2)->default(0); // 0-100%
+            $table->decimal('completion_rate', 5, 2)->default(0);
             $table->integer('total_time_seconds')->default(0);
             $table->integer('average_time_per_section')->default(0);
             $table->integer('fastest_section_time')->nullable();
             $table->integer('slowest_section_time')->nullable();
-            
-            // Behavioral patterns
-            $table->integer('revisions_made')->default(0); // Total answer changes
-            $table->json('section_timing')->nullable(); // Time spent per section
-            $table->json('response_patterns')->nullable(); // Answer distribution analysis
-            $table->decimal('response_variance', 5, 2)->nullable(); // Consistency measure
-            $table->decimal('engagement_score', 5, 2)->nullable(); // Overall engagement rating
-            
-            // Device/Browser analytics
+            $table->integer('revisions_made')->default(0);
+            $table->json('section_timing')->nullable();
+            $table->json('response_patterns')->nullable();
+            $table->decimal('response_variance', 5, 2)->nullable();
+            $table->decimal('engagement_score', 5, 2)->nullable();
             $table->json('device_analytics')->nullable();
             $table->integer('page_reloads')->default(0);
-            $table->integer('focus_lost_count')->default(0); // Tab switches
-            $table->integer('idle_time_seconds')->default(0); // Time inactive
-            
-            // Quality metrics
+            $table->integer('focus_lost_count')->default(0);
+            $table->integer('idle_time_seconds')->default(0);
             $table->decimal('response_quality_score', 5, 2)->nullable();
             $table->boolean('suspicious_patterns')->default(false);
             $table->json('quality_flags')->nullable();
-            
             $table->timestamps();
-            
+            $table->softDeletes(); // TAMBAHKAN BARIS INI
+
             $table->index('candidate_id', 'idx_disc3d_analytics_candidate');
             $table->index('completion_rate', 'idx_disc3d_analytics_completion');
             $table->index('total_time_seconds', 'idx_disc3d_analytics_time');
             $table->index('engagement_score', 'idx_disc3d_analytics_engagement');
             $table->index('suspicious_patterns', 'idx_disc3d_analytics_suspicious');
-        });
-
-        // 10. NEW: DISC 3D Section Analytics - Per section performance tracking
-        Schema::create('disc_3d_section_analytics', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->foreignId('test_session_id')->constrained('disc_3d_test_sessions')->onDelete('cascade');
-            $table->foreignId('section_id')->constrained('disc_3d_sections')->onDelete('cascade');
-            $table->integer('section_number')->unsigned();
-            
-            // Section-specific timing
-            $table->integer('time_to_first_response')->nullable(); // Time to make first selection
-            $table->integer('time_to_completion')->nullable(); // Total time for section
-            $table->integer('hesitation_time')->nullable(); // Time spent deciding
-            
-            // Interaction patterns
-            $table->integer('most_choice_changes')->default(0);
-            $table->integer('least_choice_changes')->default(0);
-            $table->json('choice_sequence')->nullable(); // Order of choices made
-            $table->integer('mouse_movements')->nullable(); // Interaction complexity
-            
-            // Quality indicators
-            $table->boolean('rushed_response')->default(false); // Completed too quickly
-            $table->boolean('delayed_response')->default(false); // Took too long
-            $table->decimal('confidence_score', 5, 2)->nullable(); // Based on behavior patterns
-            
-            $table->timestamps();
-            
-            $table->unique(['test_session_id', 'section_id'], 'unq_disc3d_section_analytics_session_sec');
-            $table->index('candidate_id', 'idx_disc3d_section_analytics_candidate');
-            $table->index('section_number', 'idx_disc3d_section_analytics_num');
-            $table->index(['rushed_response', 'delayed_response'], 'idx_disc3d_section_analytics_response');
         });
 
         // Insert initial data
@@ -451,10 +381,6 @@ return new class extends Migration
         // Drop check constraint first
         DB::statement('ALTER TABLE disc_3d_responses DROP CONSTRAINT IF EXISTS check_different_choices');
         
-        // ======= HAPUS BARIS INI =======
-        // Schema::dropIfExists('disc_3d_section_analytics');
-        // ======= END HAPUS =======
-
         Schema::dropIfExists('disc_3d_test_analytics');
         Schema::dropIfExists('disc_3d_config');
         Schema::dropIfExists('disc_3d_pattern_combinations');
