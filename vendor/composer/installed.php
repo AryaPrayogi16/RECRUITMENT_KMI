@@ -3,7 +3,11 @@
         'name' => 'laravel/laravel',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
+<<<<<<< HEAD
         'reference' => '544aa79eaebb95f8400447a0b45bc4a66766c5c3',
+=======
+        'reference' => '35262cd85db93e9b8fc415b1655aac18da43f5db',
+>>>>>>> 025c2862bf332aae40a1272ed2615a1b04c212e7
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -424,7 +428,11 @@
         'laravel/laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
+<<<<<<< HEAD
             'reference' => '544aa79eaebb95f8400447a0b45bc4a66766c5c3',
+=======
+            'reference' => '35262cd85db93e9b8fc415b1655aac18da43f5db',
+>>>>>>> 025c2862bf332aae40a1272ed2615a1b04c212e7
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -572,9 +580,9 @@
             ),
         ),
         'myclabs/deep-copy' => array(
-            'pretty_version' => '1.13.1',
-            'version' => '1.13.1.0',
-            'reference' => '1720ddd719e16cf0db4eb1c6eca108031636d46c',
+            'pretty_version' => '1.13.3',
+            'version' => '1.13.3.0',
+            'reference' => 'faed855a7b5f4d4637717c2b3863e277116beb36',
             'type' => 'library',
             'install_path' => __DIR__ . '/../myclabs/deep-copy',
             'aliases' => array(),

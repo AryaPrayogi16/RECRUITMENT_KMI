@@ -384,6 +384,14 @@
                     </div>
                     
                     <div class="form-group">
+                        <label class="form-label" for="nik">NIK (Nomor Induk Kependudukan) <span class="required-star">*</span></label>
+                        <input type="text" name="nik" id="nik" class="form-input" 
+                            value="{{ old('nik') }}" maxlength="16" pattern="[0-9]{16}" 
+                            placeholder="Masukkan 16 digit NIK" required>
+                        <small class="text-gray-500 text-xs">NIK harus 16 digit angka sesuai KTP</small>
+                    </div>
+                    
+                    <div class="form-group">
                         <label class="form-label" for="phone_number">Nomor Telepon <span class="required-star">*</span></label>
                         <input type="text" name="phone_number" id="phone_number" class="form-input" 
                                value="{{ old('phone_number') }}" placeholder="08xxxxxxxxxx" required>
@@ -405,7 +413,6 @@
                         <label class="form-label" for="birth_date">Tanggal Lahir <span class="required-star">*</span></label>
                         <input type="date" name="birth_date" id="birth_date" class="form-input" 
                                value="{{ old('birth_date') }}" lang="id-ID" required>
-                        <small class="text-xs text-gray-500 mt-1">Format: DD/MM/YYYY</small>
                     </div>
                     
                     <div class="form-group">
@@ -812,7 +819,6 @@
                         <label class="form-label" for="start_work_date">Jika diterima, kapan Anda dapat mulai bekerja? <span class="required-star">*</span></label>
                         <input type="date" name="start_work_date" id="start_work_date" class="form-input" 
                                value="{{ old('start_work_date') }}" lang="id-ID" required>
-                        <small class="text-xs text-gray-500 mt-1">Format: DD/MM/YYYY (harus setelah hari ini)</small>
                     </div>
                 </div>
                 
@@ -1388,11 +1394,12 @@
         
         // Required field IDs for validation
         const requiredFields = [
-            'position_applied', 'expected_salary', 'full_name', 'email', 'phone_number', 
-            'phone_alternative', 'birth_place', 'birth_date', 'gender', 'religion', 
-            'marital_status', 'ethnicity', 'current_address', 'current_address_status', 
-            'ktp_address', 'height_cm', 'weight_kg', 'motivation', 'strengths', 
-            'weaknesses', 'start_work_date', 'information_source', 'cv', 'photo', 'transcript'
+            'position_applied', 'expected_salary', 'full_name', 'email', 'nik', // TAMBAHKAN 'nik'
+            'phone_number', 'phone_alternative', 'birth_place', 'birth_date', 'gender', 
+            'religion', 'marital_status', 'ethnicity', 'current_address', 
+            'current_address_status', 'ktp_address', 'height_cm', 'weight_kg', 
+            'motivation', 'strengths', 'weaknesses', 'start_work_date', 
+            'information_source', 'cv', 'photo', 'transcript'
         ];
         
         // Load saved data on page load
@@ -2100,6 +2107,27 @@
                 this.submit();
             }
         });
+
+        // NIK validation
+        const nikInput = document.getElementById('nik');
+        if (nikInput) {
+            nikInput.addEventListener('input', function(e) {
+                const nikValue = e.target.value;
+                const nikError = document.createElement('div');
+                // Remove existing error
+                const existingError = e.target.parentNode.querySelector('.nik-error');
+                if (existingError) existingError.remove();
+                // Validate NIK format
+                if (nikValue.length > 0 && (nikValue.length !== 16 || !/^[0-9]{16}$/.test(nikValue))) {
+                    nikError.className = 'nik-error text-red-500 text-xs mt-1';
+                    nikError.textContent = 'NIK harus 16 digit angka';
+                    e.target.parentNode.appendChild(nikError);
+                    e.target.classList.add('error');
+                } else {
+                    e.target.classList.remove('error');
+                }
+            });
+        }
 
         // Initialize remove button states
         document.addEventListener('DOMContentLoaded', function() {

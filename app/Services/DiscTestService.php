@@ -9,7 +9,6 @@ use App\Models\{
     Disc3DSectionChoice,
     Disc3DResponse,
     Disc3DResult,
-    Disc3DTestAnalytics,
     Disc3DConfig
 };
 use Illuminate\Support\Facades\DB;
@@ -92,37 +91,12 @@ class DiscTestService
                 'device_info' => json_encode($this->extractDeviceInfo($request))
             ]);
             
-            // Create analytics record
-            $analytics = Disc3DTestAnalytics::create([
-                'candidate_id' => $candidate->id,
-                'test_session_id' => $session->id,
-                'total_sections' => 24,
-                'completed_sections' => 0,
-                'completion_rate' => 0,
-                'total_time_seconds' => 0,
-                'average_time_per_section' => 0,
-                'device_analytics' => json_encode([
-                    'user_agent' => $request->userAgent(),
-                    'platform' => $this->detectPlatform($request->userAgent()),
-                    'browser' => $this->detectBrowser($request->userAgent()),
-                    'is_mobile' => $this->isMobile($request->userAgent()),
-                    'screen_info' => $request->input('screen_resolution')
-                ]),
-                'page_reloads' => 0,
-                'focus_lost_count' => 0,
-                'idle_time_seconds' => 0,
-                'response_quality_score' => null,
-                'suspicious_patterns' => false,
-                'quality_flags' => json_encode([])
-            ]);
-            
             DB::commit();
             
             Log::info('✅ DISC test session created via service', [
                 'candidate_id' => $candidate->id,
                 'session_id' => $session->id,
                 'test_code' => $session->test_code,
-                'analytics_id' => $analytics->id,
                 'mode' => $freshStart ? 'fresh_start' : 'resume'
             ]);
             
@@ -322,9 +296,6 @@ class DiscTestService
             
             // Calculate comprehensive results
             $result = $this->calculateDisc3DResults($session, $totalDuration);
-            
-            // Update analytics
-            $this->updateTestAnalytics($session, $totalDuration);
             
             // Validate result quality
             $this->validateResultQuality($result);
@@ -864,35 +835,7 @@ class DiscTestService
 
     // ===== ANALYTICS AND VALIDATION METHODS =====
 
-    private function updateTestAnalytics(Disc3DTestSession $session, int $totalDuration): void
-    {
-        try {
-            $analytics = $session->analytics ?? Disc3DTestAnalytics::where('test_session_id', $session->id)->first();
-            
-            if ($analytics) {
-                $responses = DB::table('disc_3d_responses')
-                    ->where('test_session_id', $session->id)
-                    ->get();
-                
-                $analytics->update([
-                    'completed_sections' => 24,
-                    'completion_rate' => 100,
-                    'total_time_seconds' => $totalDuration,
-                    'average_time_per_section' => round($totalDuration / 24),
-                    'fastest_section_time' => $responses->min('time_spent_seconds'),
-                    'slowest_section_time' => $responses->max('time_spent_seconds'),
-                    'revisions_made' => $responses->sum('revision_count'),
-                    'response_variance' => $this->calculateResponseVariance($responses),
-                    'engagement_score' => $this->calculateEngagementScore($responses),
-                    'response_quality_score' => $this->calculateQualityScore($responses),
-                    'suspicious_patterns' => $this->detectSuspiciousPatterns($responses),
-                    'quality_flags' => json_encode($this->getQualityFlags($responses))
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::warning('Could not update final analytics', ['error' => $e->getMessage()]);
-        }
-    }
+    // Hapus seluruh method updateTestAnalytics dan helpernya
 
     // ===== HELPER METHODS FOR CALCULATIONS =====
 

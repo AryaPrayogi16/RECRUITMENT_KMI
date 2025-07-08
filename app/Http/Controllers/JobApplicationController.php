@@ -476,6 +476,7 @@ class JobApplicationController extends Controller
         try {
             $personalData = [
                 'candidate_id' => $candidate->id,
+                'nik' => $validated['nik'], // TAMBAHKAN BARIS INI
                 'full_name' => $validated['full_name'],
                 'email' => $validated['email'],
                 'phone_number' => $validated['phone_number'] ?? null,
