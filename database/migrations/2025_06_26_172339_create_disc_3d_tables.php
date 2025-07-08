@@ -331,40 +331,6 @@ return new class extends Migration
             $table->index('config_key', 'idx_disc3d_config_key');
         });
 
-        // 9. DISC 3D Test Analytics
-        Schema::create('disc_3d_test_analytics', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->foreignId('test_session_id')->constrained('disc_3d_test_sessions')->onDelete('cascade');
-            $table->integer('total_sections')->default(24);
-            $table->integer('completed_sections')->default(0);
-            $table->decimal('completion_rate', 5, 2)->default(0);
-            $table->integer('total_time_seconds')->default(0);
-            $table->integer('average_time_per_section')->default(0);
-            $table->integer('fastest_section_time')->nullable();
-            $table->integer('slowest_section_time')->nullable();
-            $table->integer('revisions_made')->default(0);
-            $table->json('section_timing')->nullable();
-            $table->json('response_patterns')->nullable();
-            $table->decimal('response_variance', 5, 2)->nullable();
-            $table->decimal('engagement_score', 5, 2)->nullable();
-            $table->json('device_analytics')->nullable();
-            $table->integer('page_reloads')->default(0);
-            $table->integer('focus_lost_count')->default(0);
-            $table->integer('idle_time_seconds')->default(0);
-            $table->decimal('response_quality_score', 5, 2)->nullable();
-            $table->boolean('suspicious_patterns')->default(false);
-            $table->json('quality_flags')->nullable();
-            $table->timestamps();
-            $table->softDeletes(); // TAMBAHKAN BARIS INI
-
-            $table->index('candidate_id', 'idx_disc3d_analytics_candidate');
-            $table->index('completion_rate', 'idx_disc3d_analytics_completion');
-            $table->index('total_time_seconds', 'idx_disc3d_analytics_time');
-            $table->index('engagement_score', 'idx_disc3d_analytics_engagement');
-            $table->index('suspicious_patterns', 'idx_disc3d_analytics_suspicious');
-        });
-
         // Insert initial data
         $this->insertDisc3DSections();
         $this->insertDisc3DSectionChoices();
@@ -381,7 +347,6 @@ return new class extends Migration
         // Drop check constraint first
         DB::statement('ALTER TABLE disc_3d_responses DROP CONSTRAINT IF EXISTS check_different_choices');
         
-        Schema::dropIfExists('disc_3d_test_analytics');
         Schema::dropIfExists('disc_3d_config');
         Schema::dropIfExists('disc_3d_pattern_combinations');
         Schema::dropIfExists('disc_3d_profile_interpretations');

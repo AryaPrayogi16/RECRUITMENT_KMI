@@ -25,6 +25,7 @@ class JobApplicationRequest extends FormRequest
             'position_applied' => 'required|string|max:255',
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:personal_data,email',
+            'nik' => 'required|string|size:16|regex:/^[0-9]{16}$/|unique:personal_data,nik',
             'agreement' => 'required|accepted',
             
             // Personal Data
@@ -308,6 +309,12 @@ class JobApplicationRequest extends FormRequest
             'certificates.*.file' => 'Sertifikat harus berupa file.',
             'certificates.*.mimes' => 'Sertifikat harus berformat PDF.',
             'certificates.*.max' => 'Ukuran sertifikat maksimal 2MB.',
+
+            // NIK validation messages
+            'nik.required' => 'NIK harus diisi.',
+            'nik.size' => 'NIK harus terdiri dari 16 digit.',
+            'nik.regex' => 'NIK harus berupa 16 digit angka.',
+            'nik.unique' => 'NIK sudah terdaftar dalam sistem.',
         ];
     }
 
