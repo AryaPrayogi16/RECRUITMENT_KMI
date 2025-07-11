@@ -39,7 +39,7 @@ class DashboardController extends Controller
                 ->pluck('total', 'application_status'),
         ];
         
-        $recent_activities = ApplicationLog::with(['candidate.personalData', 'user'])
+        $recent_activities = ApplicationLog::with(['candidate', 'user'])
             ->latest()
             ->take(10)
             ->get();

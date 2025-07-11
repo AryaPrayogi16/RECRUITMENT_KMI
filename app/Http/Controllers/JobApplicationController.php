@@ -4,23 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\{
     Candidate, 
-    PersonalData, 
     Position,
     FamilyMember,
-    FormalEducation,
-    NonFormalEducation,
+    Education,
     WorkExperience,
     LanguageSkill,
-    ComputerSkill,
-    SocialActivity,
-    Achievement,
+    Activity,
     DrivingLicense,
-    GeneralInformation,
+    CandidateAdditionalInfo, 
     DocumentUpload,
     ApplicationLog,
-    OtherSkill,
     KraeplinTestSession,
-    // ✅ PERBAIKAN: Gunakan model DISC 3D yang baru
     Disc3DTestSession,
     Disc3DResult
 };
@@ -51,6 +45,14 @@ class JobApplicationController extends Controller
 
     public function submitApplication(JobApplicationRequest $request)
     {
+        Log::info('=== DEBUGGING submitApplication START ===');
+        Log::info('Available methods:', [
+            'createLanguageSkills' => method_exists($this, 'createLanguageSkills'),
+            'createWorkExperiences' => method_exists($this, 'createWorkExperiences'), 
+            'createDrivingLicenses' => method_exists($this, 'createDrivingLicenses'),
+            'createCandidateAdditionalInfo' => method_exists($this, 'createCandidateAdditionalInfo'),
+        ]);
+
         $validated = $request->validated();
         $uploadedFiles = [];
         
@@ -72,74 +74,64 @@ class JobApplicationController extends Controller
             $candidate = $this->createCandidate($validated, $position->id);
             Log::info('Candidate created', ['candidate_id' => $candidate->id, 'candidate_code' => $candidate->candidate_code]);
             
-            // 2. Create Personal Data
-            $this->createPersonalData($candidate, $validated);
-            Log::info('Personal data created for candidate', ['candidate_id' => $candidate->id]);
-            
-            // 3. Create Family Members
+            // 2. Create Family Members
             if (!empty($validated['family_members'])) {
                 $this->createFamilyMembers($candidate, $validated['family_members']);
                 Log::info('Family members created', ['candidate_id' => $candidate->id, 'count' => count($validated['family_members'])]);
             }
             
-            // 4. Create Education Records
+            // 3. Create Education Records
             if (!empty($validated['formal_education'])) {
-                $this->createFormalEducation($candidate, $validated['formal_education']);
+                $this->createEducation($candidate, $validated['formal_education'], 'formal');
                 Log::info('Formal education created', ['candidate_id' => $candidate->id, 'count' => count($validated['formal_education'])]);
             }
             
             if (!empty($validated['non_formal_education'])) {
-                $this->createNonFormalEducation($candidate, $validated['non_formal_education']);
+                $this->createEducation($candidate, $validated['non_formal_education'], 'non_formal');
                 Log::info('Non-formal education created', ['candidate_id' => $candidate->id, 'count' => count($validated['non_formal_education'])]);
             }
             
-            // 5. Create Work Experience
+            // 4. Create Work Experience
             if (!empty($validated['work_experiences'])) {
                 $this->createWorkExperiences($candidate, $validated['work_experiences']);
                 Log::info('Work experiences created', ['candidate_id' => $candidate->id, 'count' => count($validated['work_experiences'])]);
             }
             
-            // 6. Create Skills
+            // 5. Create Skills
             if (!empty($validated['language_skills'])) {
                 $this->createLanguageSkills($candidate, $validated['language_skills']);
                 Log::info('Language skills created', ['candidate_id' => $candidate->id, 'count' => count($validated['language_skills'])]);
             }
             
             // Create Computer Skills
-            $this->createComputerSkills($candidate, $validated);
-            Log::info('Computer skills processed', ['candidate_id' => $candidate->id]);
+            $this->createCandidateAdditionalInfo($candidate, $validated);
+            Log::info('Candidate additional information created', ['candidate_id' => $candidate->id]);
             
-            // Create Other Skills
-            $this->createOtherSkills($candidate, $validated);
-            Log::info('Other skills processed', ['candidate_id' => $candidate->id]);
-            
-            // 7. Create Social Activities
+            // 6. Create Social Activities
             if (!empty($validated['social_activities'])) {
-                $this->createSocialActivities($candidate, $validated['social_activities']);
+                $this->createActivities($candidate, $validated['social_activities'], 'social_activity');
                 Log::info('Social activities created', ['candidate_id' => $candidate->id, 'count' => count($validated['social_activities'])]);
             }
             
-            // 8. Create Achievements
+            // 7. Create Achievements
             if (!empty($validated['achievements'])) {
-                $this->createAchievements($candidate, $validated['achievements']);
+                $this->createActivities($candidate, $validated['achievements'], 'achievement');
                 Log::info('Achievements created', ['candidate_id' => $candidate->id, 'count' => count($validated['achievements'])]);
             }
             
-            // 9. Create Driving Licenses
+            // 8. Create Driving Licenses
             if (!empty($validated['driving_licenses'])) {
                 $this->createDrivingLicenses($candidate, $validated['driving_licenses']);
                 Log::info('Driving licenses created', ['candidate_id' => $candidate->id, 'count' => count($validated['driving_licenses'])]);
             }
             
-            // 10. Create General Information
-            $this->createGeneralInformation($candidate, $validated);
-            Log::info('General information created', ['candidate_id' => $candidate->id]);
             
-            // 11. Handle File Uploads
+            
+            // 10. Handle File Uploads
             $uploadedFiles = $this->handleDocumentUploads($candidate, $request);
             Log::info('Document uploads processed', ['candidate_id' => $candidate->id, 'files_count' => count($uploadedFiles)]);
             
-            // 12. Create Application Log
+            // 11. Create Application Log
             ApplicationLog::create([
                 'candidate_id' => $candidate->id,
                 'user_id' => null, // No user for public submission
@@ -456,11 +448,30 @@ class JobApplicationController extends Controller
                 'position_applied' => $validated['position_applied'],
                 'expected_salary' => $validated['expected_salary'] ?? null,
                 'application_status' => 'submitted',
-                'application_date' => now()
+                'application_date' => now(),
+
+                // Data pribadi langsung di tabel candidates
+                'nik' => $validated['nik'] ?? null,
+                'full_name' => $validated['full_name'] ?? null,
+                'email' => $validated['email'] ?? null,
+                'phone_number' => $validated['phone_number'] ?? null,
+                'phone_alternative' => $validated['phone_alternative'] ?? null,
+                'birth_place' => $validated['birth_place'] ?? null,
+                'birth_date' => $validated['birth_date'] ?? null,
+                'gender' => $validated['gender'] ?? null,
+                'religion' => $validated['religion'] ?? null,
+                'marital_status' => $validated['marital_status'] ?? null,
+                'ethnicity' => $validated['ethnicity'] ?? null,
+                'current_address' => $validated['current_address'] ?? null,
+                'current_address_status' => $validated['current_address_status'] ?? null,
+                'ktp_address' => $validated['ktp_address'] ?? null,
+                'height_cm' => $validated['height_cm'] ?? null,
+                'weight_kg' => $validated['weight_kg'] ?? null,
+                'vaccination_status' => $validated['vaccination_status'] ?? null,
             ];
-            
+
             Log::info('Creating candidate with data', $candidateData);
-            
+
             return Candidate::create($candidateData);
         } catch (\Exception $e) {
             Log::error('Error creating candidate', [
@@ -471,58 +482,20 @@ class JobApplicationController extends Controller
         }
     }
 
-    private function createPersonalData($candidate, $validated)
-    {
-        try {
-            $personalData = [
-                'candidate_id' => $candidate->id,
-                'nik' => $validated['nik'], // TAMBAHKAN BARIS INI
-                'full_name' => $validated['full_name'],
-                'email' => $validated['email'],
-                'phone_number' => $validated['phone_number'] ?? null,
-                'phone_alternative' => $validated['phone_alternative'] ?? null,
-                'birth_place' => $validated['birth_place'] ?? null,
-                'birth_date' => $validated['birth_date'] ?? null,
-                'gender' => $validated['gender'] ?? null,
-                'religion' => $validated['religion'] ?? null,
-                'ethnicity' => $validated['ethnicity'] ?? null,
-                'marital_status' => $validated['marital_status'] ?? null,
-                'current_address' => $validated['current_address'] ?? null,
-                'current_address_status' => $validated['current_address_status'] ?? null,
-                'ktp_address' => $validated['ktp_address'] ?? null,
-                'height_cm' => $validated['height_cm'] ?? null,
-                'weight_kg' => $validated['weight_kg'] ?? null,
-                'vaccination_status' => $validated['vaccination_status'] ?? null,
-            ];
-            
-            Log::info('Creating personal data', ['candidate_id' => $candidate->id, 'email' => $validated['email']]);
-            
-            return PersonalData::create($personalData);
-        } catch (\Exception $e) {
-            Log::error('Error creating personal data', [
-                'candidate_id' => $candidate->id,
-                'error' => $e->getMessage()
-            ]);
-            throw $e;
-        }
-    }
-
     private function createFamilyMembers($candidate, $familyMembers)
     {
         foreach ($familyMembers as $index => $member) {
-            // Skip if all fields are empty
             if (empty($member['relationship']) && empty($member['name'])) {
                 continue;
             }
-            
             try {
                 FamilyMember::create([
                     'candidate_id' => $candidate->id,
-                    'relationship' => $member['relationship'],
-                    'name' => $member['name'] ?? null,
+                    'relationship' => !empty($member['relationship']) ? $member['relationship'] : null,
+                    'name' => !empty($member['name']) ? $member['name'] : null,
                     'age' => $member['age'] ?? null,
-                    'education' => $member['education'] ?? null,
-                    'occupation' => $member['occupation'] ?? null,
+                    'education' => !empty($member['education']) ? $member['education'] : null,
+                    'occupation' => !empty($member['occupation']) ? $member['occupation'] : null,
                 ]);
             } catch (\Exception $e) {
                 Log::error('Error creating family member', [
@@ -536,28 +509,50 @@ class JobApplicationController extends Controller
         }
     }
 
-    private function createFormalEducation($candidate, $educations)
+    private function createEducation($candidate, $educations, $educationType = 'formal')
     {
         foreach ($educations as $index => $education) {
-            // Skip if all fields are empty
-            if (empty($education['education_level']) && empty($education['institution_name'])) {
-                continue;
+            // Skip jika field utama kosong
+            if ($educationType === 'formal') {
+                if (empty($education['education_level']) && empty($education['institution_name'])) {
+                    continue;
+                }
+            } else {
+                if (empty($education['course_name'])) {
+                    continue;
+                }
             }
-            
+
             try {
-                FormalEducation::create([
+                $educationData = [
                     'candidate_id' => $candidate->id,
-                    'education_level' => $education['education_level'],
-                    'institution_name' => $education['institution_name'] ?? null,
-                    'major' => $education['major'] ?? null,
-                    'start_year' => $education['start_year'] ?? null,
-                    'end_year' => $education['end_year'] ?? null,
-                    'gpa' => $education['gpa'] ?? null,
-                ]);
+                    'education_type' => $educationType,
+                ];
+
+                if ($educationType === 'formal') {
+                    $educationData = array_merge($educationData, [
+                        'education_level' => $education['education_level'] ?? null,
+                        'institution_name' => $education['institution_name'] ?? null,
+                        'major' => $education['major'] ?? null,
+                        'start_year' => $education['start_year'] ?? null,
+                        'end_year' => $education['end_year'] ?? null,
+                        'gpa' => $education['gpa'] ?? null,
+                    ]);
+                } else {
+                    $educationData = array_merge($educationData, [
+                        'course_name' => $education['course_name'] ?? null,
+                        'organizer' => $education['organizer'] ?? null,
+                        'date' => $education['date'] ?? null,
+                        'description' => $education['description'] ?? null,
+                    ]);
+                }
+
+                Education::create($educationData);
             } catch (\Exception $e) {
-                Log::error('Error creating formal education', [
+                Log::error('Error creating education', [
                     'candidate_id' => $candidate->id,
                     'education_index' => $index,
+                    'education_type' => $educationType,
                     'error' => $e->getMessage(),
                     'education_data' => $education
                 ]);
@@ -566,153 +561,42 @@ class JobApplicationController extends Controller
         }
     }
 
-    private function createNonFormalEducation($candidate, $educations)
-    {
-        foreach ($educations as $index => $education) {
-            // Skip if all fields are empty
-            if (empty($education['course_name'])) {
-                continue;
-            }
-            
-            try {
-                NonFormalEducation::create([
-                    'candidate_id' => $candidate->id,
-                    'course_name' => $education['course_name'],
-                    'organizer' => $education['organizer'] ?? null,
-                    'date' => $education['date'] ?? null,
-                    'description' => $education['description'] ?? null,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error creating non-formal education', [
-                    'candidate_id' => $candidate->id,
-                    'education_index' => $index,
-                    'error' => $e->getMessage(),
-                    'education_data' => $education
-                ]);
-                throw $e;
-            }
-        }
-    }
-
-    private function createWorkExperiences($candidate, $experiences)
-    {
-        foreach ($experiences as $index => $experience) {
-            // Skip if all fields are empty
-            if (empty($experience['company_name'])) {
-                continue;
-            }
-            
-            try {
-                WorkExperience::create([
-                    'candidate_id' => $candidate->id,
-                    'company_name' => $experience['company_name'],
-                    'company_address' => $experience['company_address'] ?? null,
-                    'company_field' => $experience['company_field'] ?? null,
-                    'position' => $experience['position'] ?? null,
-                    'start_year' => $experience['start_year'] ?? null,
-                    'end_year' => $experience['end_year'] ?? null,
-                    'salary' => $experience['salary'] ?? null,
-                    'reason_for_leaving' => $experience['reason_for_leaving'] ?? null,
-                    'supervisor_contact' => $experience['supervisor_contact'] ?? null,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error creating work experience', [
-                    'candidate_id' => $candidate->id,
-                    'experience_index' => $index,
-                    'error' => $e->getMessage(),
-                    'experience_data' => $experience
-                ]);
-                throw $e;
-            }
-        }
-    }
-
-    private function createLanguageSkills($candidate, $skills)
-    {
-        foreach ($skills as $index => $skill) {
-            // Skip if all fields are empty
-            if (empty($skill['language'])) {
-                continue;
-            }
-            
-            try {
-                LanguageSkill::create([
-                    'candidate_id' => $candidate->id,
-                    'language' => $skill['language'],
-                    'speaking_level' => $skill['speaking_level'] ?? null,
-                    'writing_level' => $skill['writing_level'] ?? null,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error creating language skill', [
-                    'candidate_id' => $candidate->id,
-                    'skill_index' => $index,
-                    'error' => $e->getMessage(),
-                    'skill_data' => $skill
-                ]);
-                throw $e;
-            }
-        }
-    }
-
-    private function createComputerSkills($candidate, $validated)
-    {
-        // Only create if at least one skill is provided
-        if (!empty($validated['hardware_skills']) || !empty($validated['software_skills'])) {
-            try {
-                ComputerSkill::create([
-                    'candidate_id' => $candidate->id,
-                    'hardware_skills' => $validated['hardware_skills'] ?? null,
-                    'software_skills' => $validated['software_skills'] ?? null,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error creating computer skills', [
-                    'candidate_id' => $candidate->id,
-                    'error' => $e->getMessage()
-                ]);
-                throw $e;
-            }
-        }
-    }
-
-    private function createOtherSkills($candidate, $validated)
-    {
-        // Only create if other skills is provided
-        if (!empty($validated['other_skills'])) {
-            try {
-                OtherSkill::create([
-                    'candidate_id' => $candidate->id,
-                    'other_skills' => $validated['other_skills'],
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error creating other skills', [
-                    'candidate_id' => $candidate->id,
-                    'error' => $e->getMessage()
-                ]);
-                throw $e;
-            }
-        }
-    }
-
-    private function createSocialActivities($candidate, $activities)
+    private function createActivities($candidate, $activities, $activityType)
     {
         foreach ($activities as $index => $activity) {
-            // Skip if all fields are empty
-            if (empty($activity['organization_name'])) {
+            $mainField = $activityType === 'social_activity' ? 'organization_name' : 'achievement';
+            if (empty($activity[$mainField])) {
                 continue;
             }
-            
+
             try {
-                SocialActivity::create([
+                $activityData = [
                     'candidate_id' => $candidate->id,
-                    'organization_name' => $activity['organization_name'],
-                    'field' => $activity['field'] ?? null,
-                    'period' => $activity['period'] ?? null,
-                    'description' => $activity['description'] ?? null,
-                ]);
+                    'activity_type' => $activityType,
+                ];
+
+                if ($activityType === 'social_activity') {
+                    $activityData = array_merge($activityData, [
+                        'title' => $activity['organization_name'] ?? null,
+                        'field_or_year' => $activity['field'] ?? null,
+                        'period' => $activity['period'] ?? null,
+                        'description' => $activity['description'] ?? null,
+                    ]);
+                } else {
+                    $activityData = array_merge($activityData, [
+                        'title' => $activity['achievement'] ?? null,
+                        'field_or_year' => $activity['year'] ?? null,
+                        'period' => null,
+                        'description' => $activity['description'] ?? null,
+                    ]);
+                }
+
+                Activity::create($activityData);
             } catch (\Exception $e) {
-                Log::error('Error creating social activity', [
+                Log::error('Error creating activity', [
                     'candidate_id' => $candidate->id,
                     'activity_index' => $index,
+                    'activity_type' => $activityType,
                     'error' => $e->getMessage(),
                     'activity_data' => $activity
                 ]);
@@ -721,80 +605,38 @@ class JobApplicationController extends Controller
         }
     }
 
-    private function createAchievements($candidate, $achievements)
-    {
-        foreach ($achievements as $index => $achievement) {
-            // Skip if all fields are empty
-            if (empty($achievement['achievement'])) {
-                continue;
-            }
-            
-            try {
-                Achievement::create([
-                    'candidate_id' => $candidate->id,
-                    'achievement' => $achievement['achievement'],
-                    'year' => $achievement['year'] ?? null,
-                    'description' => $achievement['description'] ?? null,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error creating achievement', [
-                    'candidate_id' => $candidate->id,
-                    'achievement_index' => $index,
-                    'error' => $e->getMessage(),
-                    'achievement_data' => $achievement
-                ]);
-                throw $e;
-            }
-        }
-    }
-
-    private function createDrivingLicenses($candidate, $licenses)
-    {
-        foreach ($licenses as $index => $license) {
-            try {
-                DrivingLicense::create([
-                    'candidate_id' => $candidate->id,
-                    'license_type' => $license,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error creating driving license', [
-                    'candidate_id' => $candidate->id,
-                    'license_index' => $index,
-                    'error' => $e->getMessage(),
-                    'license' => $license
-                ]);
-                throw $e;
-            }
-        }
-    }
-
-    private function createGeneralInformation($candidate, $validated)
+    private function createCandidateAdditionalInfo($candidate, $validated)
     {
         try {
-            GeneralInformation::create([
+            $additionalData = [
                 'candidate_id' => $candidate->id,
+                'hardware_skills' => !empty($validated['hardware_skills']) ? $validated['hardware_skills'] : null,
+                'software_skills' => !empty($validated['software_skills']) ? $validated['software_skills'] : null,
+                'other_skills' => !empty($validated['other_skills']) ? $validated['other_skills'] : null,
                 'willing_to_travel' => $validated['willing_to_travel'] ?? false,
                 'has_vehicle' => $validated['has_vehicle'] ?? false,
-                'vehicle_types' => $validated['vehicle_types'] ?? null,
-                'motivation' => $validated['motivation'] ?? null,
-                'strengths' => $validated['strengths'] ?? null,
-                'weaknesses' => $validated['weaknesses'] ?? null,
-                'other_income' => $validated['other_income'] ?? null,
+                'vehicle_types' => !empty($validated['vehicle_types']) ? $validated['vehicle_types'] : null,
+                'motivation' => !empty($validated['motivation']) ? $validated['motivation'] : null,
+                'strengths' => !empty($validated['strengths']) ? $validated['strengths'] : null,
+                'weaknesses' => !empty($validated['weaknesses']) ? $validated['weaknesses'] : null,
+                'other_income' => !empty($validated['other_income']) ? $validated['other_income'] : null,
                 'has_police_record' => $validated['has_police_record'] ?? false,
-                'police_record_detail' => $validated['police_record_detail'] ?? null,
+                'police_record_detail' => !empty($validated['police_record_detail']) ? $validated['police_record_detail'] : null,
                 'has_serious_illness' => $validated['has_serious_illness'] ?? false,
-                'illness_detail' => $validated['illness_detail'] ?? null,
+                'illness_detail' => !empty($validated['illness_detail']) ? $validated['illness_detail'] : null,
                 'has_tattoo_piercing' => $validated['has_tattoo_piercing'] ?? false,
-                'tattoo_piercing_detail' => $validated['tattoo_piercing_detail'] ?? null,
+                'tattoo_piercing_detail' => !empty($validated['tattoo_piercing_detail']) ? $validated['tattoo_piercing_detail'] : null,
                 'has_other_business' => $validated['has_other_business'] ?? false,
-                'other_business_detail' => $validated['other_business_detail'] ?? null,
+                'other_business_detail' => !empty($validated['other_business_detail']) ? $validated['other_business_detail'] : null,
                 'absence_days' => $validated['absence_days'] ?? null,
                 'start_work_date' => $validated['start_work_date'] ?? null,
-                'information_source' => $validated['information_source'] ?? null,
+                'information_source' => !empty($validated['information_source']) ? $validated['information_source'] : null,
                 'agreement' => $validated['agreement'] ?? false,
-            ]);
+            ];
+
+            CandidateAdditionalInfo::create($additionalData);
         } catch (\Exception $e) {
-            Log::error('Error creating general information', [
+            Log::error('Error creating candidate additional info', [
                 'candidate_id' => $candidate->id,
                 'error' => $e->getMessage()
             ]);
@@ -802,6 +644,7 @@ class JobApplicationController extends Controller
         }
     }
 
+    
     private function handleDocumentUploads($candidate, $request)
     {
         $uploadedFiles = [];
@@ -921,5 +764,257 @@ class JobApplicationController extends Controller
         }
         
         return $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function createLanguageSkills($candidate, $skills)
+    {
+        foreach ($skills as $index => $skill) {
+            // Skip if language is empty
+            if (empty($skill['language'])) {
+                continue;
+            }
+            
+            try {
+                LanguageSkill::create([
+                    'candidate_id' => $candidate->id,
+                    'language' => !empty($skill['language']) ? $skill['language'] : null,
+                    'speaking_level' => !empty($skill['speaking_level']) ? $skill['speaking_level'] : null,
+                    'writing_level' => !empty($skill['writing_level']) ? $skill['writing_level'] : null,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error creating language skill', [
+                    'candidate_id' => $candidate->id,
+                    'skill_index' => $index,
+                    'error' => $e->getMessage(),
+                    'skill_data' => $skill
+                ]);
+                throw $e;
+            }
+        }
+    }
+
+    private function createWorkExperiences($candidate, $experiences)
+    {
+        foreach ($experiences as $index => $experience) {
+            if (empty($experience['company_name'])) {
+                continue;
+            }
+            try {
+                WorkExperience::create([
+                    'candidate_id' => $candidate->id,
+                    'company_name' => !empty($experience['company_name']) ? $experience['company_name'] : null,
+                    'company_address' => !empty($experience['company_address']) ? $experience['company_address'] : null,
+                    'company_field' => !empty($experience['company_field']) ? $experience['company_field'] : null,
+                    'position' => !empty($experience['position']) ? $experience['position'] : null,
+                    'start_year' => $experience['start_year'] ?? null,
+                    'end_year' => $experience['end_year'] ?? null,
+                    'salary' => $experience['salary'] ?? null,
+                    'reason_for_leaving' => !empty($experience['reason_for_leaving']) ? $experience['reason_for_leaving'] : null,
+                    'supervisor_contact' => !empty($experience['supervisor_contact']) ? $experience['supervisor_contact'] : null,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error creating work experience', [
+                    'candidate_id' => $candidate->id,
+                    'experience_index' => $index,
+                    'error' => $e->getMessage(),
+                    'experience_data' => $experience
+                ]);
+                throw $e;
+            }
+        }
+    }
+
+    private function createDrivingLicenses($candidate, $licenses)
+    {
+        foreach ($licenses as $index => $license) {
+            if (empty($license)) {
+                continue;
+            }
+            try {
+                DrivingLicense::create([
+                    'candidate_id' => $candidate->id,
+                    'license_type' => $license,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error creating driving license', [
+                    'candidate_id' => $candidate->id,
+                    'license_index' => $index,
+                    'error' => $e->getMessage(),
+                    'license' => $license
+                ]);
+                throw $e;
+            }
+        }
+    }
+
+    /**
+     * Force create minimal records di semua tabel untuk menjaga konsistensi ID
+     */
+    private function forceCreateMinimalRecords($candidate, $validated)
+    {
+        // 1. Family Members - minimal 1 record
+        $this->ensureFamilyMembers($candidate, $validated['family_members'] ?? []);
+        
+        // 2. Education - minimal 2 records (1 formal + 1 non-formal)
+        $this->ensureEducation($candidate, $validated);
+        
+        // 3. Language Skills - minimal 1 record
+        $this->ensureLanguageSkills($candidate, $validated['language_skills'] ?? []);
+        
+        // 4. Work Experience - minimal 1 record
+        $this->ensureWorkExperience($candidate, $validated['work_experiences'] ?? []);
+        
+        // 5. Driving License - minimal 1 record
+        $this->ensureDrivingLicense($candidate, $validated['driving_licenses'] ?? []);
+        
+        // 6. Activities - minimal 2 records (1 social + 1 achievement)
+        $this->ensureActivities($candidate, $validated);
+        
+        // 7. Additional Info - selalu 1 record
+        $this->createCandidateAdditionalInfo($candidate, $validated);
+        
+        Log::info('✅ All minimal records ensured for candidate', ['candidate_id' => $candidate->id]);
+    }
+
+    private function ensureFamilyMembers($candidate, $familyMembers)
+    {
+        if (!empty($familyMembers)) {
+            $this->createFamilyMembers($candidate, $familyMembers);
+            Log::info('Family members created from data', ['count' => count($familyMembers)]);
+        } else {
+            FamilyMember::create([
+                'candidate_id' => $candidate->id,
+                'relationship' => null,
+                'name' => null,
+                'age' => null,
+                'education' => null,
+                'occupation' => null,
+            ]);
+            Log::info('Empty family member record created for ID consistency');
+        }
+    }
+
+    private function ensureEducation($candidate, $validated)
+    {
+        // Formal Education - minimal 1 record
+        if (!empty($validated['formal_education'])) {
+            $this->createEducation($candidate, $validated['formal_education'], 'formal');
+            Log::info('Formal education created from data', ['count' => count($validated['formal_education'])]);
+        } else {
+            Education::create([
+                'candidate_id' => $candidate->id,
+                'education_type' => 'formal',
+                'education_level' => null,
+                'institution_name' => null,
+                'major' => null,
+                'start_year' => null,
+                'end_year' => null,
+                'gpa' => null,
+            ]);
+            Log::info('Empty formal education record created for ID consistency');
+        }
+        
+        // Non-formal Education - minimal 1 record
+        if (!empty($validated['non_formal_education'])) {
+            $this->createEducation($candidate, $validated['non_formal_education'], 'non_formal');
+            Log::info('Non-formal education created from data', ['count' => count($validated['non_formal_education'])]);
+        } else {
+            Education::create([
+                'candidate_id' => $candidate->id,
+                'education_type' => 'non_formal',
+                'course_name' => null,
+                'organizer' => null,
+                'date' => null,
+                'description' => null,
+            ]);
+            Log::info('Empty non-formal education record created for ID consistency');
+        }
+    }
+
+    private function ensureLanguageSkills($candidate, $languageSkills)
+    {
+        if (!empty($languageSkills)) {
+            $this->createLanguageSkills($candidate, $languageSkills);
+            Log::info('Language skills created from data', ['count' => count($languageSkills)]);
+        } else {
+            LanguageSkill::create([
+                'candidate_id' => $candidate->id,
+                'language' => null,
+                'speaking_level' => null,
+                'writing_level' => null,
+            ]);
+            Log::info('Empty language skill record created for ID consistency');
+        }
+    }
+
+    private function ensureWorkExperience($candidate, $workExperiences)
+    {
+        if (!empty($workExperiences)) {
+            $this->createWorkExperiences($candidate, $workExperiences);
+            Log::info('Work experiences created from data', ['count' => count($workExperiences)]);
+        } else {
+            WorkExperience::create([
+                'candidate_id' => $candidate->id,
+                'company_name' => null,
+                'company_address' => null,
+                'company_field' => null,
+                'position' => null,
+                'start_year' => null,
+                'end_year' => null,
+                'salary' => null,
+                'reason_for_leaving' => null,
+                'supervisor_contact' => null,
+            ]);
+            Log::info('Empty work experience record created for ID consistency');
+        }
+    }
+
+    private function ensureDrivingLicense($candidate, $drivingLicenses)
+    {
+        if (!empty($drivingLicenses)) {
+            $this->createDrivingLicenses($candidate, $drivingLicenses);
+            Log::info('Driving licenses created from data', ['count' => count($drivingLicenses)]);
+        } else {
+            DrivingLicense::create([
+                'candidate_id' => $candidate->id,
+                'license_type' => null,
+            ]);
+            Log::info('Empty driving license record created for ID consistency');
+        }
+    }
+
+    private function ensureActivities($candidate, $validated)
+    {
+        // Social Activities - minimal 1 record
+        if (!empty($validated['social_activities'])) {
+            $this->createActivities($candidate, $validated['social_activities'], 'social_activity');
+            Log::info('Social activities created from data', ['count' => count($validated['social_activities'])]);
+        } else {
+            Activity::create([
+                'candidate_id' => $candidate->id,
+                'activity_type' => 'social_activity',
+                'title' => null,
+                'field_or_year' => null,
+                'period' => null,
+                'description' => null,
+            ]);
+            Log::info('Empty social activity record created for ID consistency');
+        }
+        
+        // Achievements - minimal 1 record
+        if (!empty($validated['achievements'])) {
+            $this->createActivities($candidate, $validated['achievements'], 'achievement');
+            Log::info('Achievements created from data', ['count' => count($validated['achievements'])]);
+        } else {
+            Activity::create([
+                'candidate_id' => $candidate->id,
+                'activity_type' => 'achievement',
+                'title' => null,
+                'field_or_year' => null,
+                'period' => null,
+                'description' => null,
+            ]);
+            Log::info('Empty achievement record created for ID consistency');
+        }
     }
 }

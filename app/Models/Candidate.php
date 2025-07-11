@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Candidate extends Model
 {
@@ -16,18 +19,36 @@ class Candidate extends Model
         'position_applied',
         'expected_salary',
         'application_status',
-        'application_date'
+        'application_date',
+        // Personal Data - sesuai database (stored directly in candidates table)
+        'nik',
+        'full_name',
+        'email',
+        'phone_number',
+        'phone_alternative',
+        'birth_place',
+        'birth_date',
+        'gender',
+        'religion',
+        'marital_status',
+        'ethnicity',
+        'current_address',
+        'current_address_status',
+        'ktp_address',
+        'height_cm',
+        'weight_kg',
+        'vaccination_status'
     ];
 
     protected $casts = [
         'expected_salary' => 'decimal:2',
         'application_date' => 'date',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
+        'birth_date' => 'date',
+        'height_cm' => 'integer',
+        'weight_kg' => 'integer'
     ];
 
-    // Constants for application status
+    // Constants sesuai database enum
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
     const STATUS_SCREENING = 'screening';
@@ -36,12 +57,358 @@ class Candidate extends Model
     const STATUS_ACCEPTED = 'accepted';
     const STATUS_REJECTED = 'rejected';
 
-    // Constants for test status (matching test sessions)
-    const TEST_NOT_STARTED = 'not_started';
-    const TEST_IN_PROGRESS = 'in_progress';
-    const TEST_COMPLETED = 'completed';
+    const GENDER_MALE = 'Laki-laki';
+    const GENDER_FEMALE = 'Perempuan';
 
-    public static function getStatuses()
+    const MARITAL_SINGLE = 'Lajang';
+    const MARITAL_MARRIED = 'Menikah';
+    const MARITAL_WIDOW = 'Janda';
+    const MARITAL_WIDOWER = 'Duda';
+
+    const ADDRESS_OWN = 'Milik Sendiri';
+    const ADDRESS_PARENTS = 'Orang Tua';
+    const ADDRESS_CONTRACT = 'Kontrak';
+    const ADDRESS_RENT = 'Sewa';
+
+    const VACCINE_1 = 'Vaksin 1';
+    const VACCINE_2 = 'Vaksin 2';
+    const VACCINE_3 = 'Vaksin 3';
+    const VACCINE_BOOSTER = 'Booster';
+
+    // Relationships
+    public function position(): BelongsTo
+    {
+        return $this->belongsTo(Position::class);
+    }
+
+    public function familyMembers(): HasMany
+    {
+        return $this->hasMany(FamilyMember::class);
+    }
+
+    public function education(): HasMany
+    {
+        return $this->hasMany(Education::class);
+    }
+
+    public function languageSkills(): HasMany
+    {
+        return $this->hasMany(LanguageSkill::class);
+    }
+
+    public function workExperiences(): HasMany
+    {
+        return $this->hasMany(WorkExperience::class);
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(Activity::class);
+    }
+
+    public function drivingLicenses(): HasMany
+    {
+        return $this->hasMany(DrivingLicense::class);
+    }
+
+    public function additionalInfo(): HasOne
+    {
+        return $this->hasOne(CandidateAdditionalInfo::class);
+    }
+
+    public function documentUploads(): HasMany
+    {
+        return $this->hasMany(DocumentUpload::class);
+    }
+
+    public function applicationLogs(): HasMany
+    {
+        return $this->hasMany(ApplicationLog::class);
+    }
+
+    public function interviews(): HasMany
+    {
+        return $this->hasMany(Interview::class);
+    }
+
+    /**
+     * DISC 3D Test Relationships
+     */
+    public function disc3DTestSessions(): HasMany
+    {
+        return $this->hasMany(Disc3DTestSession::class);
+    }
+
+    public function disc3DResponses(): HasMany
+    {
+        return $this->hasMany(Disc3DResponse::class);
+    }
+
+    public function disc3DResult(): HasOne
+    {
+        return $this->hasOne(Disc3DResult::class);
+    }
+
+    // Specific helper methods
+    public function latestDisc3DTest(): HasOne
+    {
+        return $this->hasOne(Disc3DTestSession::class)->latest('completed_at');
+    }
+
+    public function disc3DTestResult(): HasOne
+    {
+        return $this->hasOne(Disc3DResult::class)->latest('test_completed_at');
+    }
+
+    // Specific relationship methods
+    public function achievements(): HasMany
+    {
+        return $this->activities()->where('activity_type', 'achievement');
+    }
+
+    public function socialActivities(): HasMany
+    {
+        return $this->activities()->where('activity_type', 'social_activity');
+    }
+
+    public function formalEducation(): HasMany
+    {
+        return $this->education()->where('education_type', 'formal');
+    }
+
+    public function nonFormalEducation(): HasMany
+    {
+        return $this->education()->where('education_type', 'non_formal');
+    }
+
+    // Document relationships
+    public function cvDocuments(): HasMany
+    {
+        return $this->documentUploads()->where('document_type', 'cv');
+    }
+
+    public function photoDocuments(): HasMany
+    {
+        return $this->documentUploads()->where('document_type', 'photo');
+    }
+
+    public function certificateDocuments(): HasMany
+    {
+        return $this->documentUploads()->where('document_type', 'certificates');
+    }
+
+    public function transcriptDocuments(): HasMany
+    {
+        return $this->documentUploads()->where('document_type', 'transcript');
+    }
+
+    // Scopes
+    public function scopeActive($query)
+    {
+        return $query->whereIn('application_status', [
+            self::STATUS_SUBMITTED, 
+            self::STATUS_SCREENING, 
+            self::STATUS_INTERVIEW, 
+            self::STATUS_OFFERED
+        ]);
+    }
+
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('application_status', $status);
+    }
+
+    public function scopeByPosition($query, $positionId)
+    {
+        return $query->where('position_id', $positionId);
+    }
+
+    public function scopeByGender($query, $gender)
+    {
+        return $query->where('gender', $gender);
+    }
+
+    public function scopeByMaritalStatus($query, $status)
+    {
+        return $query->where('marital_status', $status);
+    }
+
+    public function scopeRecentApplications($query, $days = 30)
+    {
+        return $query->where('application_date', '>=', now()->subDays($days));
+    }
+
+    // Accessors
+    public function getFormattedExpectedSalaryAttribute()
+    {
+        if (!$this->expected_salary) return 'Tidak disebutkan';
+        return 'Rp ' . number_format($this->expected_salary, 0, ',', '.');
+    }
+
+    public function getAgeAttribute()
+    {
+        return $this->birth_date ? $this->birth_date->age : null;
+    }
+
+    public function getFormattedBirthDateAttribute()
+    {
+        return $this->birth_date ? $this->birth_date->format('d F Y') : null;
+    }
+
+    public function getBirthPlaceAndDateAttribute()
+    {
+        $place = $this->birth_place ?: '-';
+        $date = $this->formatted_birth_date ?: '-';
+        return $place . ', ' . $date;
+    }
+
+    public function getStatusBadgeAttribute()
+    {
+        $statusMap = [
+            'draft' => 'bg-gray-100 text-gray-800',
+            'submitted' => 'bg-blue-100 text-blue-800',
+            'screening' => 'bg-yellow-100 text-yellow-800',
+            'interview' => 'bg-purple-100 text-purple-800',
+            'offered' => 'bg-green-100 text-green-800',
+            'accepted' => 'bg-green-200 text-green-900',
+            'rejected' => 'bg-red-100 text-red-800'
+        ];
+
+        return $statusMap[$this->application_status] ?? 'bg-gray-100 text-gray-800';
+    }
+
+    public function getStatusLabelAttribute()
+    {
+        $labels = [
+            'draft' => 'Draft',
+            'submitted' => 'Submitted',
+            'screening' => 'Screening',
+            'interview' => 'Interview',
+            'offered' => 'Offered',
+            'accepted' => 'Accepted',
+            'rejected' => 'Rejected'
+        ];
+
+        return $labels[$this->application_status] ?? $this->application_status;
+    }
+
+    public function getGenderLabelAttribute()
+    {
+        return $this->gender ?: '-';
+    }
+
+    public function getMaritalStatusLabelAttribute()
+    {
+        return $this->marital_status ?: '-';
+    }
+
+    public function getFormattedHeightWeightAttribute()
+    {
+        $height = $this->height_cm ? $this->height_cm . ' cm' : '-';
+        $weight = $this->weight_kg ? $this->weight_kg . ' kg' : '-';
+        return $height . ' / ' . $weight;
+    }
+
+    public function getCurrentAddressStatusLabelAttribute()
+    {
+        return $this->current_address_status ?: '-';
+    }
+
+    public function getVaccinationStatusLabelAttribute()
+    {
+        return $this->vaccination_status ?: '-';
+    }
+
+    // Check completeness
+    public function hasCompleteMinimalRecords()
+    {
+        return $this->familyMembers()->exists() &&
+               $this->education()->exists() &&
+               $this->languageSkills()->exists() &&
+               $this->workExperiences()->exists() &&
+               $this->activities()->exists() &&
+               $this->drivingLicenses()->exists() &&
+               $this->additionalInfo()->exists();
+    }
+
+    public function getCompletionPercentageAttribute()
+    {
+        $total = 8; // Total sections
+        $completed = 0;
+
+        // Basic info (always completed if candidate exists)
+        $completed++;
+
+        // Family members
+        if ($this->familyMembers()->exists()) $completed++;
+
+        // Education
+        if ($this->education()->exists()) $completed++;
+
+        // Language skills
+        if ($this->languageSkills()->exists()) $completed++;
+
+        // Work experience
+        if ($this->workExperiences()->exists()) $completed++;
+
+        // Activities
+        if ($this->activities()->exists()) $completed++;
+
+        // Driving licenses
+        if ($this->drivingLicenses()->exists()) $completed++;
+
+        // Additional info
+        if ($this->additionalInfo()->exists()) $completed++;
+
+        return round(($completed / $total) * 100);
+    }
+
+    // Mutators
+    public function setNikAttribute($value)
+    {
+        $this->attributes['nik'] = preg_replace('/[^0-9]/', '', $value);
+    }
+
+    public function setPhoneNumberAttribute($value)
+    {
+        $this->attributes['phone_number'] = preg_replace('/[^0-9+]/', '', $value);
+    }
+
+    public function setPhoneAlternativeAttribute($value)
+    {
+        $this->attributes['phone_alternative'] = preg_replace('/[^0-9+]/', '', $value);
+    }
+
+    // Boot method for auto-generating candidate code
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($candidate) {
+            if (empty($candidate->candidate_code)) {
+                $candidate->candidate_code = self::generateCandidateCode();
+            }
+        });
+    }
+
+    public static function generateCandidateCode()
+    {
+        $prefix = 'CND';
+        $year = date('Y');
+        $month = date('m');
+        
+        $lastCandidate = self::whereYear('created_at', $year)
+                            ->whereMonth('created_at', $month)
+                            ->orderBy('id', 'desc')
+                            ->first();
+        
+        $sequence = $lastCandidate ? (int)substr($lastCandidate->candidate_code, -4) + 1 : 1;
+        
+        return $prefix . $year . $month . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+    }
+
+    // Static methods for options
+    public static function getStatusOptions()
     {
         return [
             self::STATUS_DRAFT => 'Draft',
@@ -54,784 +421,141 @@ class Candidate extends Model
         ];
     }
 
-    public static function getTestStatuses()
+    public static function getGenderOptions()
     {
         return [
-            self::TEST_NOT_STARTED => 'Belum Dimulai',
-            self::TEST_IN_PROGRESS => 'Sedang Berlangsung',
-            self::TEST_COMPLETED => 'Selesai'
+            self::GENDER_MALE => 'Laki-laki',
+            self::GENDER_FEMALE => 'Perempuan'
         ];
     }
 
-    // ========== BASIC RELATIONSHIPS ==========
-    public function position()
+    public static function getMaritalStatusOptions()
     {
-        return $this->belongsTo(Position::class);
-    }
-    
-    public function personalData()
-    {
-        return $this->hasOne(PersonalData::class);
-    }
-
-    public function drivingLicenses()
-    {
-        return $this->hasMany(DrivingLicense::class);
-    }
-
-    public function familyMembers()
-    {
-        return $this->hasMany(FamilyMember::class);
-    }
-
-    public function formalEducation()
-    {
-        return $this->hasMany(FormalEducation::class);
-    }
-
-    public function nonFormalEducation()
-    {
-        return $this->hasMany(NonFormalEducation::class);
-    }
-
-    public function languageSkills()
-    {
-        return $this->hasMany(LanguageSkill::class);
-    }
-
-    public function computerSkills()
-    {
-        return $this->hasOne(ComputerSkill::class);
-    }
-    
-    public function otherSkills()
-    {
-        return $this->hasOne(OtherSkill::class);
-    }
-
-    public function socialActivities()
-    {
-         return $this->hasMany(SocialActivity::class)->whereNull('deleted_at');
-    }
-
-    public function achievements()
-    {
-        return $this->hasMany(Achievement::class);
-    }
-
-    public function workExperiences()
-    {
-        return $this->hasMany(WorkExperience::class);
-    }
-
-    public function generalInformation()
-    {
-        return $this->hasOne(GeneralInformation::class);
-    }
-
-    public function applicationLogs()
-    {
-        return $this->hasMany(ApplicationLog::class);
-    }
-
-    public function interviews()
-    {
-        return $this->hasMany(Interview::class);
-    }
-
-    public function documentUploads()
-    {
-        return $this->hasMany(DocumentUpload::class);
-    }
-
-    // ========== KRAEPLIN TEST RELATIONSHIPS ==========
-    public function kraeplinTestSessions()
-    {
-        return $this->hasMany(KraeplinTestSession::class);
-    }
-
-    public function kraeplinTestResults()
-    {
-        return $this->hasMany(KraeplinTestResult::class);
-    }
-
-    public function latestKraeplinTest()
-    {
-        return $this->hasOne(KraeplinTestSession::class)->latest();
-    }
-
-    public function completedKraeplinTest()
-    {
-        return $this->hasOne(KraeplinTestSession::class)->where('status', self::TEST_COMPLETED);
-    }
-
-    public function kraeplinTestResult()
-    {
-        return $this->hasOne(KraeplinTestResult::class)->latest();
-    }
-
-    // ========== DISC 3D TEST RELATIONSHIPS - UPDATED ==========
-    public function disc3DTestSessions()
-    {
-        return $this->hasMany(Disc3DTestSession::class);
-    }
-
-    public function disc3DTestResults()
-    {
-        return $this->hasMany(Disc3DResult::class);
-    }
-
-    public function disc3DResponses()
-    {
-        return $this->hasMany(Disc3DResponse::class);
-    }
-
-    public function disc3DAnalytics()
-    {
-        return $this->hasMany(Disc3DTestAnalytics::class);
-    }
-
-    public function latestDisc3DTest()
-    {
-        return $this->hasOne(Disc3DTestSession::class)->latest();
-    }
-
-    public function completedDisc3DTest()
-    {
-        return $this->hasOne(Disc3DTestSession::class)->where('status', 'completed');
-    }
-
-    public function disc3DTestResult()
-    {
-        return $this->hasOne(Disc3DResult::class)->latest();
-    }
-
-    // ========== DISC TEST RELATIONSHIPS - DISC 3D ONLY ==========
-    public function discTestSessions()
-    {
-        return $this->disc3DTestSessions();
-    }
-
-    public function discTestResults()
-    {
-        return $this->disc3DTestResults();
-    }
-
-    public function latestDiscTest()
-    {
-        return $this->latestDisc3DTest();
-    }
-
-    public function completedDiscTest()
-    {
-        return $this->completedDisc3DTest();
-    }
-
-    public function discTestResult()
-    {
-        return $this->disc3DTestResult();
-    }
-
-    // ========== BASIC SCOPES ==========
-    public function scopeByStatus($query, $status)
-    {
-        return $query->where('application_status', $status);
-    }
-
-    public function scopeSubmitted($query)
-    {
-        return $query->where('application_status', self::STATUS_SUBMITTED);
-    }
-
-    public function scopeByPosition($query, $position)
-    {
-        return $query->where('position_applied', $position);
-    }
-
-    // ========== KRAEPLIN TEST SCOPES ==========
-    public function scopeWithKraeplinTest($query)
-    {
-        return $query->whereHas('kraeplinTestSessions', function($q) {
-            $q->where('status', self::TEST_COMPLETED);
-        });
-    }
-
-    public function scopeWithoutKraeplinTest($query)
-    {
-        return $query->whereDoesntHave('kraeplinTestSessions', function($q) {
-            $q->where('status', self::TEST_COMPLETED);
-        });
-    }
-
-    public function scopeKraeplinInProgress($query)
-    {
-        return $query->whereHas('kraeplinTestSessions', function($q) {
-            $q->where('status', self::TEST_IN_PROGRESS);
-        });
-    }
-
-    // ========== DISC 3D TEST SCOPES - NEW ==========
-    public function scopeWithDisc3DTest($query)
-    {
-        return $query->whereHas('disc3DTestSessions', function($q) {
-            $q->where('status', 'completed');
-        });
-    }
-
-    public function scopeWithoutDisc3DTest($query)
-    {
-        return $query->whereDoesntHave('disc3DTestSessions', function($q) {
-            $q->where('status', 'completed');
-        });
-    }
-
-    public function scopeDisc3DInProgress($query)
-    {
-        return $query->whereHas('disc3DTestSessions', function($q) {
-            $q->where('status', 'in_progress');
-        });
-    }
-
-    // ========== DISC TEST SCOPES - DISC 3D ONLY ==========
-    public function scopeWithDiscTest($query)
-    {
-        return $this->scopeWithDisc3DTest($query);
-    }
-
-    public function scopeWithoutDiscTest($query)
-    {
-        return $this->scopeWithoutDisc3DTest($query);
-    }
-
-    public function scopeDiscInProgress($query)
-    {
-        return $this->scopeDisc3DInProgress($query);
-    }
-
-    public function scopeWithAllTests($query)
-    {
-        return $query->whereHas('kraeplinTestSessions', function($q) {
-            $q->where('status', self::TEST_COMPLETED);
-        })->whereHas('disc3DTestSessions', function($q) {
-            $q->where('status', 'completed');
-        });
-    }
-
-    // ========== BASIC ACCESSORS ==========
-    public function getFullNameAttribute()
-    {
-        return $this->personalData?->full_name ?? 'N/A';
-    }
-
-    public function getEmailAttribute()
-    {
-        return $this->personalData?->email ?? 'N/A';
-    }
-
-    public function getPhoneAttribute()
-    {
-        return $this->personalData?->phone_number ?? 'N/A';
-    }
-    
-    public function getStatusBadgeClassAttribute()
-    {
-        return match($this->application_status) {
-            'draft' => 'status-draft',
-            'submitted' => 'status-submitted',
-            'screening' => 'status-screening',
-            'interview' => 'status-interview',
-            'offered' => 'status-offered',
-            'accepted' => 'status-accepted',
-            'rejected' => 'status-rejected',
-            default => 'status-pending'
-        };
-    }
-
-    public function getFormattedExpectedSalaryAttribute()
-    {
-        return $this->expected_salary ? 'Rp ' . number_format($this->expected_salary, 0, ',', '.') : 'N/A';
-    }
-
-    // ========== KRAEPLIN TEST ACCESSORS ==========
-    public function getKraeplinStatusAttribute()
-    {
-        $session = $this->kraeplinTestSessions()->latest()->first();
-        
-        if (!$session) {
-            return self::TEST_NOT_STARTED;
-        }
-
-        return $session->status;
-    }
-
-    public function getKraeplinStatusLabelAttribute()
-    {
-        $statuses = self::getTestStatuses();
-        return $statuses[$this->kraeplin_status] ?? 'Tidak Diketahui';
-    }
-
-    public function getKraeplinStatusBadgeClassAttribute()
-    {
-        return match($this->kraeplin_status) {
-            self::TEST_NOT_STARTED => 'status-pending',
-            self::TEST_IN_PROGRESS => 'status-submitted',
-            self::TEST_COMPLETED => 'status-accepted',
-            default => 'status-pending'
-        };
-    }
-
-    public function getKraeplinScoreAttribute()
-    {
-        $result = $this->kraeplinTestResult;
-        return $result ? $result->overall_score : null;
-    }
-
-    public function getKraeplinPerformanceCategoryAttribute()
-    {
-        $result = $this->kraeplinTestResult;
-        return $result ? $result->performance_category : null;
-    }
-
-    // ========== DISC 3D TEST ACCESSORS - NEW ==========
-    public function getDisc3DStatusAttribute()
-    {
-        $session = $this->disc3DTestSessions()->latest()->first();
-        
-        if (!$session) {
-            return 'not_started';
-        }
-
-        return $session->status;
-    }
-
-    public function getDisc3DStatusLabelAttribute()
-    {
-        $statusLabels = [
-            'not_started' => 'Belum Dimulai',
-            'in_progress' => 'Sedang Berlangsung',
-            'completed' => 'Selesai',
-            'timeout' => 'Timeout',
-            'interrupted' => 'Terputus'
+        return [
+            self::MARITAL_SINGLE => 'Lajang',
+            self::MARITAL_MARRIED => 'Menikah',
+            self::MARITAL_WIDOW => 'Janda',
+            self::MARITAL_WIDOWER => 'Duda'
         ];
-        
-        return $statusLabels[$this->disc_3d_status] ?? 'Tidak Diketahui';
     }
 
-    public function getDisc3DStatusBadgeClassAttribute()
+    public static function getAddressStatusOptions()
     {
-        return match($this->disc_3d_status) {
-            'not_started' => 'status-pending',
-            'in_progress' => 'status-submitted',
-            'completed' => 'status-accepted',
-            'timeout' => 'status-rejected',
-            'interrupted' => 'status-rejected',
-            default => 'status-pending'
-        };
+        return [
+            self::ADDRESS_OWN => 'Milik Sendiri',
+            self::ADDRESS_PARENTS => 'Orang Tua',
+            self::ADDRESS_CONTRACT => 'Kontrak',
+            self::ADDRESS_RENT => 'Sewa'
+        ];
     }
 
-    public function getDisc3DPrimaryTypeAttribute()
+    public static function getVaccinationStatusOptions()
     {
-        $result = $this->disc3DTestResult;
-        return $result ? $result->primary_type : null;
+        return [
+            self::VACCINE_1 => 'Vaksin 1',
+            self::VACCINE_2 => 'Vaksin 2',
+            self::VACCINE_3 => 'Vaksin 3',
+            self::VACCINE_BOOSTER => 'Booster'
+        ];
     }
 
-    public function getDisc3DSecondaryTypeAttribute()
-    {
-        $result = $this->disc3DTestResult;
-        return $result ? $result->secondary_type : null;
-    }
-
-    public function getDisc3DPersonalityProfileAttribute()
-    {
-        $result = $this->disc3DTestResult;
-        return $result ? $result->personality_profile : null;
-    }
-
-    public function getDisc3DPrimaryPercentageAttribute()
-    {
-        $result = $this->disc3DTestResult;
-        return $result ? $result->primary_percentage : null;
-    }
-
-    public function getDisc3DSummaryAttribute()
-    {
-        $result = $this->disc3DTestResult;
-        return $result ? $result->brief_summary : null;
-    }
-
-    public function getDisc3DStressLevelAttribute()
-    {
-        $result = $this->disc3DTestResult;
-        return $result ? $result->stress_level : null;
-    }
-
-    public function getDisc3DAdaptationPatternAttribute()
-    {
-        $result = $this->disc3DTestResult;
-        return $result ? $result->adaptation_pattern : null;
-    }
-
-    // ========== DISC TEST ACCESSORS - DISC 3D ONLY ==========
-    public function getDiscStatusAttribute()
-    {
-        return $this->getDisc3DStatusAttribute();
-    }
-
-    public function getDiscStatusLabelAttribute()
-    {
-        return $this->getDisc3DStatusLabelAttribute();
-    }
-
-    public function getDiscStatusBadgeClassAttribute()
-    {
-        return $this->getDisc3DStatusBadgeClassAttribute();
-    }
-
-    public function getDiscPrimaryTypeAttribute()
-    {
-        return $this->getDisc3DPrimaryTypeAttribute();
-    }
-
-    public function getDiscSecondaryTypeAttribute()
-    {
-        return $this->getDisc3DSecondaryTypeAttribute();
-    }
-
-    public function getDiscPersonalityProfileAttribute()
-    {
-        return $this->getDisc3DPersonalityProfileAttribute();
-    }
-
-    public function getDiscPrimaryPercentageAttribute()
-    {
-        return $this->getDisc3DPrimaryPercentageAttribute();
-    }
-
-    // ========== TEST HELPER METHODS ==========
-    public function hasCompletedKraeplinTest()
-    {
-        return $this->kraeplinTestSessions()
-            ->where('status', self::TEST_COMPLETED)
-            ->exists();
-    }
-
-    public function hasStartedKraeplinTest()
-    {
-        return $this->kraeplinTestSessions()
-            ->whereIn('status', [self::TEST_IN_PROGRESS, self::TEST_COMPLETED])
-            ->exists();
-    }
-
-    // ========== DISC 3D TEST HELPER METHODS - NEW ==========
+    /**
+     * DISC 3D Test Helper Methods
+     */
     public function hasCompletedDisc3DTest()
     {
         return $this->disc3DTestSessions()
-            ->where('status', 'completed')
-            ->exists();
-    }
-
-    public function hasStartedDisc3DTest()
-    {
-        return $this->disc3DTestSessions()
-            ->whereIn('status', ['in_progress', 'completed'])
+            ->where('status', Disc3DTestSession::STATUS_COMPLETED)
             ->exists();
     }
 
     public function canStartDisc3DTest()
     {
-        return $this->hasCompletedKraeplinTest() && !$this->hasCompletedDisc3DTest();
+        // Bisa mulai DISC jika belum ada test yang completed atau in progress
+        return !$this->disc3DTestSessions()
+            ->whereIn('status', [
+                Disc3DTestSession::STATUS_COMPLETED,
+                Disc3DTestSession::STATUS_IN_PROGRESS
+            ])->exists();
     }
 
-    public function getDisc3DTestProgress()
+    public function getDisc3DProgressAttribute()
     {
-        $session = $this->latestDisc3DTest;
+        $latestSession = $this->latestDisc3DTest;
         
-        if (!$session) {
+        if (!$latestSession) {
             return 0;
         }
+        
+        return $latestSession->progress ?? 0;
+    }
 
-        if ($session->status === 'completed') {
-            return 100;
+    public function getDisc3DStatusAttribute()
+    {
+        $latestSession = $this->latestDisc3DTest;
+        
+        if (!$latestSession) {
+            return 'not_started';
         }
-
-        return $session->progress ?? 0;
+        
+        return $latestSession->status;
     }
 
-    // ========== DISC TEST HELPER METHODS - DISC 3D ONLY ==========
-    public function hasCompletedDiscTest()
+    /**
+     * KRAEPLIN TEST RELATIONSHIPS
+     */
+    public function kraeplinTestSessions(): HasMany
     {
-        return $this->hasCompletedDisc3DTest();
+        return $this->hasMany(KraeplinTestSession::class);
     }
 
-    public function hasStartedDiscTest()
+    public function kraeplinTestResult(): HasOne
     {
-        return $this->hasStartedDisc3DTest();
+        return $this->hasOne(KraeplinTestResult::class);
     }
 
-    public function canStartDiscTest()
+    public function latestKraeplinTest(): HasOne
     {
-        return $this->canStartDisc3DTest();
+        return $this->hasOne(KraeplinTestSession::class)->latest('completed_at');
     }
 
-    public function getDiscTestProgress()
+    // Helper methods
+    public function hasCompletedKraeplinTest()
     {
-        return $this->getDisc3DTestProgress();
-    }
-
-    // ========== UNIFIED TEST METHODS ==========
-    public function hasCompletedAllTests()
-    {
-        return $this->hasCompletedKraeplinTest() && $this->hasCompletedDisc3DTest();
+        return $this->kraeplinTestSessions()
+            ->where('status', KraeplinTestSession::STATUS_COMPLETED)
+            ->exists();
     }
 
     public function canStartKraeplinTest()
     {
-        return $this->application_status === self::STATUS_SUBMITTED && !$this->hasCompletedKraeplinTest();
+        // Bisa mulai KRAEPLIN jika belum ada test yang completed atau in progress
+        return !$this->kraeplinTestSessions()
+            ->whereIn('status', [
+                KraeplinTestSession::STATUS_COMPLETED,
+                KraeplinTestSession::STATUS_IN_PROGRESS
+            ])->exists();
     }
 
-    public function isTestingRequired()
+    public function getKraeplinProgressAttribute()
     {
-        return $this->application_status === self::STATUS_SUBMITTED && !$this->hasCompletedAllTests();
-    }
-
-    // ========== TEST PROGRESS METHODS ==========
-    public function getKraeplinTestProgress()
-    {
-        $session = $this->latestKraeplinTest;
+        $latestSession = $this->latestKraeplinTest;
         
-        if (!$session) {
+        if (!$latestSession) {
             return 0;
         }
-
-        if ($session->status === self::TEST_COMPLETED) {
-            return 100;
-        }
-
-        return $session->progress ?? 0;
+        
+        return $latestSession->progress ?? 0;
     }
 
-    // ========== COMPREHENSIVE TEST SUMMARY - DISC 3D ONLY ==========
-    public function getTestSummary()
+    public function getKraeplinStatusAttribute()
     {
-        $kraeplinSession = $this->latestKraeplinTest;
-        $kraeplinResult = $this->kraeplinTestResult;
-        $discSession = $this->latestDisc3DTest;
-        $discResult = $this->disc3DTestResult;
+        $latestSession = $this->latestKraeplinTest;
         
-        return [
-            'kraeplin' => [
-                'status' => $this->kraeplin_status,
-                'status_label' => $this->kraeplin_status_label,
-                'progress' => $this->getKraeplinTestProgress(),
-                'started_at' => $kraeplinSession?->started_at,
-                'completed_at' => $kraeplinSession?->completed_at,
-                'duration' => $kraeplinSession?->formatted_duration,
-                'score' => $kraeplinResult?->overall_score,
-                'accuracy' => $kraeplinResult?->accuracy_percentage,
-                'performance_category' => $kraeplinResult?->performance_category
-            ],
-            'disc' => [
-                'status' => $this->disc_3d_status,
-                'status_label' => $this->disc_3d_status_label,
-                'progress' => $this->getDisc3DTestProgress(),
-                'started_at' => $discSession?->started_at,
-                'completed_at' => $discSession?->completed_at,
-                'duration' => $discSession?->formatted_duration,
-                'primary_type' => $discResult?->primary_type,
-                'secondary_type' => $discResult?->secondary_type,
-                'personality_profile' => $discResult?->personality_profile,
-                'primary_percentage' => $discResult?->primary_percentage,
-                'summary' => $this->disc_3d_summary,
-                'stress_level' => $this->disc_3d_stress_level,
-                'adaptation_pattern' => $this->disc_3d_adaptation_pattern
-            ],
-            'overall' => [
-                'all_completed' => $this->hasCompletedAllTests(),
-                'next_step' => $this->getNextTestStep(),
-                'completion_percentage' => $this->getOverallTestCompletion()
-            ]
-        ];
-    }
-
-    public function getNextTestStep()
-    {
-        if (!$this->hasCompletedKraeplinTest()) {
-            return 'kraeplin';
+        if (!$latestSession) {
+            return 'not_started';
         }
         
-        if (!$this->hasCompletedDisc3DTest()) {
-            return 'disc';
-        }
-        
-        return 'completed';
-    }
-
-    public function getOverallTestCompletion()
-    {
-        $completed = 0;
-        $total = 2; // Kraeplin + DISC
-        
-        if ($this->hasCompletedKraeplinTest()) {
-            $completed++;
-        }
-        
-        if ($this->hasCompletedDisc3DTest()) {
-            $completed++;
-        }
-        
-        return round(($completed / $total) * 100, 2);
-    }
-
-    public function getApplicationCompletionStatus()
-    {
-        $steps = [
-            'form_submitted' => $this->application_status !== self::STATUS_DRAFT,
-            'kraeplin_completed' => $this->hasCompletedKraeplinTest(),
-            'disc_completed' => $this->hasCompletedDisc3DTest(),
-            'documents_uploaded' => $this->documentUploads()->count() > 0,
-        ];
-
-        $completed = array_filter($steps);
-        $total = count($steps);
-        $completedCount = count($completed);
-
-        return [
-            'steps' => $steps,
-            'completed' => $completedCount,
-            'total' => $total,
-            'percentage' => round(($completedCount / $total) * 100, 2)
-        ];
-    }
-
-    // ========== DISC 3D SPECIFIC METHODS ==========
-    
-    /**
-     * Get comprehensive DISC 3D analysis
-     */
-    public function getDisc3DAnalysis()
-    {
-        $result = $this->disc3DTestResult;
-        $analytics = $this->disc3DAnalytics()->latest()->first();
-        
-        if (!$result) {
-            return null;
-        }
-
-        return [
-            'basic_info' => [
-                'primary_type' => $result->primary_type,
-                'secondary_type' => $result->secondary_type,
-                'personality_profile' => $result->personality_profile,
-                'summary' => $result->summary
-            ],
-            'three_graphs' => [
-                'most' => $result->most_scores,
-                'least' => $result->least_scores,
-                'change' => $result->change_scores
-            ],
-            'interpretations' => [
-                'public_self' => $result->public_self_summary,
-                'private_self' => $result->private_self_summary,
-                'adaptation' => $result->adaptation_summary,
-                'overall' => $result->overall_profile
-            ],
-            'analytics' => [
-                'engagement_level' => $analytics?->engagement_level,
-                'quality_level' => $analytics?->quality_level,
-                'completion_rate' => $analytics?->completion_rate,
-                'total_time' => $analytics?->formatted_total_time,
-                'suspicious_patterns' => $analytics?->suspicious_patterns
-            ],
-            'validity' => [
-                'is_valid' => $result->is_valid,
-                'consistency_score' => $result->consistency_score,
-                'validity_flags' => $result->validity_flags
-            ]
-        ];
-    }
-
-    /**
-     * Get DISC 3D responses breakdown
-     */
-    public function getDisc3DResponsesBreakdown()
-    {
-        return $this->disc3DResponses()
-            ->with(['section', 'mostChoice', 'leastChoice'])
-            ->orderBy('section_number')
-            ->get()
-            ->map(function($response) {
-                return [
-                    'section' => $response->section_number,
-                    'most_choice' => $response->most_choice,
-                    'least_choice' => $response->least_choice,
-                    'most_text' => $response->mostChoice?->localized_text,
-                    'least_text' => $response->leastChoice?->localized_text,
-                    'net_scores' => $response->net_scores,
-                    'time_spent' => $response->formatted_time
-                ];
-            });
-    }
-
-    /**
-     * Check if candidate has valid DISC 3D result
-     */
-    public function hasValidDisc3DResult()
-    {
-        $result = $this->disc3DTestResult;
-        return $result && $result->is_valid;
-    }
-
-    /**
-     * Get DISC 3D recommended actions based on results
-     */
-    public function getDisc3DRecommendations()
-    {
-        $result = $this->disc3DTestResult;
-        
-        if (!$result) {
-            return null;
-        }
-
-        $recommendations = [];
-
-        // Based on primary type
-        switch ($result->primary_type) {
-            case 'D':
-                $recommendations['role_fit'] = ['Leadership positions', 'Decision-making roles', 'Goal-oriented tasks'];
-                $recommendations['management_tips'] = ['Give autonomy', 'Set clear objectives', 'Avoid micromanagement'];
-                break;
-            case 'I':
-                $recommendations['role_fit'] = ['People-facing roles', 'Communication positions', 'Team collaboration'];
-                $recommendations['management_tips'] = ['Provide social interaction', 'Recognize achievements publicly', 'Allow creative expression'];
-                break;
-            case 'S':
-                $recommendations['role_fit'] = ['Support roles', 'Steady environments', 'Team member positions'];
-                $recommendations['management_tips'] = ['Provide stability', 'Give advance notice of changes', 'Appreciate loyalty'];
-                break;
-            case 'C':
-                $recommendations['role_fit'] = ['Detail-oriented tasks', 'Quality control', 'Analysis positions'];
-                $recommendations['management_tips'] = ['Provide clear procedures', 'Allow time for thoroughness', 'Value accuracy'];
-                break;
-        }
-
-        // Based on stress level
-        if ($result->stress_level === 'High') {
-            $recommendations['stress_management'] = [
-                'Monitor workload carefully',
-                'Provide stress management resources',
-                'Consider role adjustments'
-            ];
-        }
-
-        // Based on adaptation pattern
-        if ($result->hasHighAdaptation()) {
-            $recommendations['adaptation_support'] = [
-                'Acknowledge adaptation efforts',
-                'Provide authentic environment',
-                'Regular check-ins on satisfaction'
-            ];
-        }
-
-        return $recommendations;
+        return $latestSession->status;
     }
 }

@@ -6,22 +6,18 @@ use App\Models\{
     Candidate, 
     Position, 
     ApplicationLog,
-    PersonalData,
     FamilyMember,
-    FormalEducation,
-    NonFormalEducation,
+    Education,
     WorkExperience,
     LanguageSkill,
-    ComputerSkill,
-    OtherSkill,
-    SocialActivity,
-    Achievement,
+    CandidateAdditionalInfo,
+    Activity,
     DrivingLicense,
-    GeneralInformation,
     DocumentUpload,
     Interview,
-    Disc3DResult,
-    Disc3DTestSession
+    KraeplinTestSession,
+    KraeplinTestResult,
+    KraeplinAnswer
 };
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -29,7 +25,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
-use App\Models\DiscProfileInrepresentation;
 
 class CandidateController extends Controller
 {
@@ -40,18 +35,16 @@ class CandidateController extends Controller
     {
         Gate::authorize('hr-access');
         
-        $query = Candidate::with(['personalData', 'position'])
+        $query = Candidate::with(['position'])
             ->latest();
         
-        // Search functionality
+        // Search functionality - sesuai dengan struktur baru (data di candidates table)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('candidate_code', 'like', "%{$search}%")
-                  ->orWhereHas('personalData', function ($q) use ($search) {
-                      $q->where('full_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                  });
+                  ->orWhere('full_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
             });
         }
         
@@ -88,60 +81,46 @@ class CandidateController extends Controller
         Gate::authorize('hr-access');
         
         $candidate = Candidate::with([
-            'personalData',
             'familyMembers',
-            'formalEducation',
-            'nonFormalEducation',
-            'workExperiences',
+            'education' => function($query) {
+                $query->orderBy('education_type')->orderBy('end_year', 'desc');
+            },
+            'workExperiences' => function($query) {
+                $query->orderBy('end_year', 'desc');
+            },
             'languageSkills',
-            'computerSkills',
-            'otherSkills',
-            'socialActivities',
-            'achievements',
+            'additionalInfo',
+            'activities' => function($query) {
+                $query->orderBy('activity_type')->orderBy('field_or_year', 'desc');
+            },
             'drivingLicenses',
-            'generalInformation',
             'documentUploads',
-            'applicationLogs.user',
+            'applicationLogs.user' => function($query) {
+                $query->orderBy('created_at', 'desc');
+            },
             'interviews.interviewer',
             'position',
-            'kraeplinTestResult',
+            // DISC 3D Test Relationships
+            'disc3DTestSessions' => function($query) {
+                $query->latest('completed_at');
+            },
+            'disc3DResult',
+            'latestDisc3DTest',
+            // KRAEPLIN TEST RELATIONSHIPS
+            'kraeplinTestSessions',
             'kraeplinTestResult.testSession',
             'latestKraeplinTest'
         ])->findOrFail($id);
         
-         // Debug Kraeplin data dengan detail
-            if ($candidate->kraeplinTestResult) {
-                $testResult = $candidate->kraeplinTestResult;
-                
-                // Log raw data from database
-                $rawData = DB::table('kraeplin_test_results')
-                    ->where('id', $testResult->id)
-                    ->first();
-                    
-                Log::info('Kraeplin Raw DB Data', [
-                    'raw_column_correct_count' => $rawData->column_correct_count,
-                    'is_string' => is_string($rawData->column_correct_count)
-                ]);
-                
-                // Log after model processing
-                Log::info('Kraeplin Model Data', [
-                    'column_correct_count' => $testResult->column_correct_count,
-                    'type' => gettype($testResult->column_correct_count),
-                    'is_array' => is_array($testResult->column_correct_count)
-                ]);
-                
-                // Force refresh jika perlu
-                $testResult->refresh();
-            }
         // Log view action
-            ApplicationLog::create([
-                'candidate_id' => $candidate->id,
-                'user_id' => Auth::id(),
-                'action_type' => 'data_update',
-                'action_description' => 'Profile viewed by ' . Auth::user()->full_name
-            ]);
+        ApplicationLog::logAction(
+            $candidate->id,
+            Auth::id(),
+            ApplicationLog::ACTION_DATA_UPDATE,
+            'Profile viewed by ' . Auth::user()->full_name
+        );
         
-         return view('candidates.show', compact('candidate'));
+        return view('candidates.show', compact('candidate'));
     }
 
     /**
@@ -152,18 +131,13 @@ class CandidateController extends Controller
         Gate::authorize('hr-access');
         
         $candidate = Candidate::with([
-            'personalData',
             'familyMembers',
-            'formalEducation',
-            'nonFormalEducation',
+            'education',
             'workExperiences',
             'languageSkills',
-            'computerSkills',
-            'otherSkills',
-            'socialActivities',
-            'achievements',
-            'drivingLicenses',
-            'generalInformation'
+            'additionalInfo',
+            'activities',
+            'drivingLicenses'
         ])->findOrFail($id);
         
         $positions = Position::where('is_active', true)->get();
@@ -180,73 +154,92 @@ class CandidateController extends Controller
         
         $candidate = Candidate::findOrFail($id);
         
-        // Validation rules would go here
+        // Basic validation
+        $request->validate([
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:candidates,email,' . $id,
+            'nik' => 'required|string|size:16|unique:candidates,nik,' . $id,
+            'position_applied' => 'required|string|max:255',
+            'expected_salary' => 'nullable|numeric|min:0'
+        ]);
         
         try {
             DB::beginTransaction();
             
-            // Update candidate basic info
+            // Update candidate data (personal data now in same table)
             $candidate->update([
                 'position_applied' => $request->position_applied,
                 'expected_salary' => $request->expected_salary,
+                'nik' => $request->nik,
+                'full_name' => $request->full_name,
+                'email' => $request->email,
+                'phone_number' => $request->phone_number,
+                'phone_alternative' => $request->phone_alternative,
+                'birth_place' => $request->birth_place,
+                'birth_date' => $request->birth_date,
+                'gender' => $request->gender,
+                'religion' => $request->religion,
+                'marital_status' => $request->marital_status,
+                'ethnicity' => $request->ethnicity,
+                'current_address' => $request->current_address,
+                'current_address_status' => $request->current_address_status,
+                'ktp_address' => $request->ktp_address,
+                'height_cm' => $request->height_cm,
+                'weight_kg' => $request->weight_kg,
+                'vaccination_status' => $request->vaccination_status
             ]);
-            
-            // Update personal data
-            if ($candidate->personalData) {
-                $candidate->personalData->update([
-                    'full_name' => $request->full_name,
-                    'email' => $request->email,
-                    'phone_number' => $request->phone_number,
-                    'phone_alternative' => $request->phone_alternative,
-                    'birth_place' => $request->birth_place,
-                    'birth_date' => $request->birth_date,
-                    'gender' => $request->gender,
-                    'religion' => $request->religion,
-                    'marital_status' => $request->marital_status,
-                    'ethnicity' => $request->ethnicity,
-                    'current_address' => $request->current_address,
-                    'current_address_status' => $request->current_address_status,
-                    'ktp_address' => $request->ktp_address,
-                    'height_cm' => $request->height_cm,
-                    'weight_kg' => $request->weight_kg,
-                    'vaccination_status' => $request->vaccination_status
-                ]);
-            }
             
             // Update family members
             if ($request->has('family_members')) {
-                // Delete existing family members
                 $candidate->familyMembers()->delete();
                 
-                // Create new family members
                 foreach ($request->family_members as $member) {
                     if (!empty($member['name']) || !empty($member['relationship'])) {
                         FamilyMember::create([
                             'candidate_id' => $candidate->id,
-                            'relationship' => $member['relationship'],
-                            'name' => $member['name'],
-                            'age' => $member['age'],
-                            'education' => $member['education'],
-                            'occupation' => $member['occupation']
+                            'relationship' => $member['relationship'] ?? null,
+                            'name' => $member['name'] ?? null,
+                            'age' => $member['age'] ?? null,
+                            'education' => $member['education'] ?? null,
+                            'occupation' => $member['occupation'] ?? null
                         ]);
                     }
                 }
             }
             
-            // Update formal education
+            // Update education (using merged Education model)
             if ($request->has('formal_education')) {
-                $candidate->formalEducation()->delete();
+                $candidate->education()->where('education_type', 'formal')->delete();
                 
                 foreach ($request->formal_education as $education) {
                     if (!empty($education['education_level'])) {
-                        FormalEducation::create([
+                        Education::create([
                             'candidate_id' => $candidate->id,
+                            'education_type' => 'formal',
                             'education_level' => $education['education_level'],
-                            'institution_name' => $education['institution_name'],
-                            'major' => $education['major'],
-                            'start_year' => $education['start_year'],
-                            'end_year' => $education['end_year'],
-                            'gpa' => $education['gpa']
+                            'institution_name' => $education['institution_name'] ?? null,
+                            'major' => $education['major'] ?? null,
+                            'start_year' => $education['start_year'] ?? null,
+                            'end_year' => $education['end_year'] ?? null,
+                            'gpa' => $education['gpa'] ?? null
+                        ]);
+                    }
+                }
+            }
+
+            // Update non-formal education
+            if ($request->has('non_formal_education')) {
+                $candidate->education()->where('education_type', 'non_formal')->delete();
+                
+                foreach ($request->non_formal_education as $education) {
+                    if (!empty($education['course_name'])) {
+                        Education::create([
+                            'candidate_id' => $candidate->id,
+                            'education_type' => 'non_formal',
+                            'course_name' => $education['course_name'],
+                            'organizer' => $education['organizer'] ?? null,
+                            'date' => $education['date'] ?? null,
+                            'description' => $education['description'] ?? null
                         ]);
                     }
                 }
@@ -261,82 +254,127 @@ class CandidateController extends Controller
                         WorkExperience::create([
                             'candidate_id' => $candidate->id,
                             'company_name' => $experience['company_name'],
-                            'company_address' => $experience['company_address'],
-                            'company_field' => $experience['company_field'],
-                            'position' => $experience['position'],
-                            'start_year' => $experience['start_year'],
-                            'end_year' => $experience['end_year'],
-                            'salary' => $experience['salary'],
-                            'reason_for_leaving' => $experience['reason_for_leaving'],
-                            'supervisor_contact' => $experience['supervisor_contact']
+                            'company_address' => $experience['company_address'] ?? null,
+                            'company_field' => $experience['company_field'] ?? null,
+                            'position' => $experience['position'] ?? null,
+                            'start_year' => $experience['start_year'] ?? null,
+                            'end_year' => $experience['end_year'] ?? null,
+                            'salary' => $experience['salary'] ?? null,
+                            'reason_for_leaving' => $experience['reason_for_leaving'] ?? null,
+                            'supervisor_contact' => $experience['supervisor_contact'] ?? null
                         ]);
                     }
                 }
             }
             
-            // Update skills
-            if ($request->has('hardware_skills') || $request->has('software_skills')) {
-                // DIPERBAIKI: Tidak perlu first() untuk hasOne relationship
-                $computerSkill = $candidate->computerSkills;
-                if ($computerSkill) {
-                    $computerSkill->update([
-                        'hardware_skills' => $request->hardware_skills,
-                        'software_skills' => $request->software_skills
-                    ]);
-                } else {
-                    ComputerSkill::create([
-                        'candidate_id' => $candidate->id,
-                        'hardware_skills' => $request->hardware_skills,
-                        'software_skills' => $request->software_skills
-                    ]);
-                }
-            }
-            if ($request->has('other_skills')) {
-                // DIPERBAIKI: Tidak perlu first() untuk hasOne relationship
-                $otherSkill = $candidate->otherSkills;
-                if ($otherSkill) {
-                    $otherSkill->update([
-                        'other_skills' => $request->other_skills
-                    ]);
-                } else {
-                    OtherSkill::create([
-                        'candidate_id' => $candidate->id,
-                        'other_skills' => $request->other_skills
-                    ]);
+            // Update language skills
+            if ($request->has('language_skills')) {
+                $candidate->languageSkills()->delete();
+                
+                foreach ($request->language_skills as $skill) {
+                    if (!empty($skill['language'])) {
+                        LanguageSkill::create([
+                            'candidate_id' => $candidate->id,
+                            'language' => $skill['language'],
+                            'speaking_level' => $skill['speaking_level'] ?? null,
+                            'writing_level' => $skill['writing_level'] ?? null
+                        ]);
+                    }
                 }
             }
             
-            // Update general information
-            if ($candidate->generalInformation) {
-                $candidate->generalInformation->update([
-                    'willing_to_travel' => $request->boolean('willing_to_travel'),
-                    'has_vehicle' => $request->boolean('has_vehicle'),
-                    'vehicle_types' => $request->vehicle_types,
-                    'motivation' => $request->motivation,
-                    'strengths' => $request->strengths,
-                    'weaknesses' => $request->weaknesses,
-                    'other_income' => $request->other_income,
-                    'has_police_record' => $request->boolean('has_police_record'),
-                    'police_record_detail' => $request->police_record_detail,
-                    'has_serious_illness' => $request->boolean('has_serious_illness'),
-                    'illness_detail' => $request->illness_detail,
-                    'has_tattoo_piercing' => $request->boolean('has_tattoo_piercing'),
-                    'tattoo_piercing_detail' => $request->tattoo_piercing_detail,
-                    'has_other_business' => $request->boolean('has_other_business'),
-                    'other_business_detail' => $request->other_business_detail,
-                    'absence_days' => $request->absence_days,
-                    'start_work_date' => $request->start_work_date,
-                    'information_source' => $request->information_source
-                ]);
+            // Update activities (social activities and achievements)
+            if ($request->has('social_activities')) {
+                $candidate->activities()->where('activity_type', 'social_activity')->delete();
+                
+                foreach ($request->social_activities as $activity) {
+                    if (!empty($activity['title'])) {
+                        Activity::create([
+                            'candidate_id' => $candidate->id,
+                            'activity_type' => 'social_activity',
+                            'title' => $activity['title'],
+                            'field_or_year' => $activity['field'] ?? null,
+                            'period' => $activity['period'] ?? null,
+                            'description' => $activity['description'] ?? null
+                        ]);
+                    }
+                }
+            }
+
+            if ($request->has('achievements')) {
+                $candidate->activities()->where('activity_type', 'achievement')->delete();
+                
+                foreach ($request->achievements as $achievement) {
+                    if (!empty($achievement['name'])) {
+                        Activity::create([
+                            'candidate_id' => $candidate->id,
+                            'activity_type' => 'achievement',
+                            'title' => $achievement['name'],
+                            'field_or_year' => $achievement['year'] ?? null,
+                            'description' => $achievement['description'] ?? null
+                        ]);
+                    }
+                }
+            }
+
+            // Update driving licenses
+            if ($request->has('driving_licenses')) {
+                $candidate->drivingLicenses()->delete();
+                
+                foreach ($request->driving_licenses as $license) {
+                    if (!empty($license['license_type'])) {
+                        DrivingLicense::create([
+                            'candidate_id' => $candidate->id,
+                            'license_type' => $license['license_type']
+                        ]);
+                    }
+                }
+            }
+
+            // Update additional info (merged from computer_skills, other_skills, general_information)
+            $additionalData = [];
+
+            // Skills data
+            if ($request->has('hardware_skills') || $request->has('software_skills') || $request->has('other_skills')) {
+                $additionalData['hardware_skills'] = $request->hardware_skills;
+                $additionalData['software_skills'] = $request->software_skills;
+                $additionalData['other_skills'] = $request->other_skills;
+            }
+
+            // General information fields
+            $generalFields = [
+                'willing_to_travel', 'has_vehicle', 'vehicle_types', 'motivation', 
+                'strengths', 'weaknesses', 'other_income', 'has_police_record', 
+                'police_record_detail', 'has_serious_illness', 'illness_detail', 
+                'has_tattoo_piercing', 'tattoo_piercing_detail', 'has_other_business', 
+                'other_business_detail', 'absence_days', 'start_work_date', 'information_source',
+                'agreement'
+            ];
+
+            foreach ($generalFields as $field) {
+                if ($request->has($field)) {
+                    if (in_array($field, ['willing_to_travel', 'has_vehicle', 'has_police_record', 'has_serious_illness', 'has_tattoo_piercing', 'has_other_business', 'agreement'])) {
+                        $additionalData[$field] = $request->boolean($field);
+                    } else {
+                        $additionalData[$field] = $request->$field;
+                    }
+                }
+            }
+
+            if (!empty($additionalData)) {
+                $candidate->additionalInfo()->updateOrCreate(
+                    ['candidate_id' => $candidate->id],
+                    $additionalData
+                );
             }
             
             // Log update action
-            ApplicationLog::create([
-                'candidate_id' => $candidate->id,
-                'user_id' => Auth::id(),
-                'action_type' => 'data_update',
-                'action_description' => 'Profile updated by ' . Auth::user()->full_name
-            ]);
+            ApplicationLog::logAction(
+                $candidate->id,
+                Auth::id(),
+                ApplicationLog::ACTION_DATA_UPDATE,
+                'Profile updated by ' . Auth::user()->full_name
+            );
             
             DB::commit();
             
@@ -345,6 +383,11 @@ class CandidateController extends Controller
                 
         } catch (\Exception $e) {
             DB::rollback();
+            Log::error('Error updating candidate', [
+                'candidate_id' => $id,
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
             return back()->with('error', 'Gagal memperbarui data kandidat: ' . $e->getMessage());
         }
     }
@@ -357,7 +400,7 @@ class CandidateController extends Controller
         Gate::authorize('hr-access');
         
         $request->validate([
-            'status' => 'required|in:submitted,screening,interview,offered,accepted,rejected,withdrawn'
+            'status' => 'required|in:draft,submitted,screening,interview,offered,accepted,rejected'
         ]);
         
         $candidate = Candidate::findOrFail($id);
@@ -368,17 +411,17 @@ class CandidateController extends Controller
         ]);
         
         // Log status change
-        ApplicationLog::create([
-            'candidate_id' => $candidate->id,
-            'user_id' => Auth::id(),
-            'action_type' => 'status_change',
-            'action_description' => sprintf(
+        ApplicationLog::logAction(
+            $candidate->id,
+            Auth::id(),
+            ApplicationLog::ACTION_STATUS_CHANGE,
+            sprintf(
                 'Status changed from %s to %s by %s',
-                $oldStatus,
-                $request->status,
+                ucfirst($oldStatus),
+                ucfirst($request->status),
                 Auth::user()->full_name
             )
-        ]);
+        );
         
         return response()->json([
             'success' => true,
@@ -393,7 +436,7 @@ class CandidateController extends Controller
     {
         Gate::authorize('hr-access');
         
-        $candidate = Candidate::with('personalData')->findOrFail($id);
+        $candidate = Candidate::findOrFail($id);
         
         // Get available interviewers
         $interviewers = \App\Models\User::whereIn('role', ['interviewer', 'hr', 'admin'])
@@ -404,6 +447,58 @@ class CandidateController extends Controller
     }
 
     /**
+     * Store interview schedule
+     */
+    public function storeInterview(Request $request, $id)
+    {
+        Gate::authorize('hr-access');
+        
+        $request->validate([
+            'interview_date' => 'required|date|after:today',
+            'interview_time' => 'required',
+            'location' => 'nullable|string|max:255',
+            'interviewer_id' => 'required|exists:users,id',
+            'notes' => 'nullable|string'
+        ]);
+        
+        $candidate = Candidate::findOrFail($id);
+        
+        try {
+            $interview = Interview::create([
+                'candidate_id' => $candidate->id,
+                'interview_date' => $request->interview_date,
+                'interview_time' => $request->interview_time,
+                'location' => $request->location,
+                'interviewer_id' => $request->interviewer_id,
+                'notes' => $request->notes,
+                'status' => Interview::STATUS_SCHEDULED
+            ]);
+            
+            // Update candidate status to interview
+            $candidate->update(['application_status' => 'interview']);
+            
+            // Log interview scheduling
+            ApplicationLog::logAction(
+                $candidate->id,
+                Auth::id(),
+                ApplicationLog::ACTION_STATUS_CHANGE,
+                'Interview scheduled for ' . $request->interview_date . ' by ' . Auth::user()->full_name
+            );
+            
+            return redirect()->route('candidates.show', $candidate->id)
+                ->with('success', 'Interview berhasil dijadwalkan');
+                
+        } catch (\Exception $e) {
+            Log::error('Error scheduling interview', [
+                'candidate_id' => $id,
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+            return back()->with('error', 'Gagal menjadwalkan interview: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Show preview page
      */
     public function preview($id)
@@ -411,94 +506,67 @@ class CandidateController extends Controller
         Gate::authorize('hr-access');
         
         $candidate = Candidate::with([
-            'personalData',
             'familyMembers',
-            'formalEducation',
-            'nonFormalEducation', 
+            'education',
             'workExperiences',
             'languageSkills',
-            'computerSkills',
-            'otherSkills',
-            'socialActivities',
-            'achievements',
+            'additionalInfo',
+            'activities',
             'drivingLicenses',
-            'generalInformation',
-            'position',
-            'kraeplinTestResult',            // TAMBAHAN
-            'kraeplinTestResult.testSession',// TAMBAHAN
-            'discTestResult',                // TAMBAHAN
-            'discTestResult.testSession'     // TAMBAHAN
+            'documentUploads',
+            'position'
         ])->findOrFail($id);
         
         return view('candidates.preview', compact('candidate'));
     }
 
-    /* Generate PDF for preview */
+    /**
+     * Generate PDF preview
+     */
     public function previewPdf($id)
     {
         Gate::authorize('hr-access');
         
         $candidate = Candidate::with([
-            'personalData',
             'familyMembers',
-            'formalEducation',
-            'nonFormalEducation',
+            'education',
             'workExperiences',
             'languageSkills',
-            'computerSkills',
-            'otherSkills',
-            'socialActivities',
-            'achievements',
+            'additionalInfo',
+            'activities',
             'drivingLicenses',
-            'generalInformation',
-            'position',
-            'kraeplinTestResult',            // TAMBAHAN
-            'kraeplinTestResult.testSession',// TAMBAHAN
-            'discTestResult',                // TAMBAHAN
-            'discTestResult.testSession'     // TAMBAHAN
+            'documentUploads',
+            'position'
         ])->findOrFail($id);
         
         $pdf = PDF::loadView('candidates.pdf.complete', compact('candidate'));
         $pdf->setPaper('A4', 'portrait');
         
-        // Alternative approach: Use stream() instead of output()
         return $pdf->stream('preview.pdf', array('Attachment' => false));
     }
     
     /**
-     * Generate HTML preview (alternative to PDF preview)
+     * Generate HTML preview
      */
     public function previewHtml($id)
     {
         Gate::authorize('hr-access');
         
         $candidate = Candidate::with([
-            'personalData',
             'familyMembers',
-            'formalEducation',
-            'nonFormalEducation',
+            'education',
             'workExperiences',
             'languageSkills',
-            'computerSkills',
-            'otherSkills',
-            'socialActivities',
-            'achievements',
+            'additionalInfo',
+            'activities',
             'drivingLicenses',
-            'generalInformation',
-            'position',
-            'kraeplinTestResult',            
-            'kraeplinTestResult.testSession',
-            'disc3DTestResult',              // FIXED: Gunakan disc3DTestResult, bukan discTestResult
-            'disc3DTestSessions' => function($query) {
-                $query->latest()->limit(1);
-            },
-            'latestDisc3DTest' => function($query) {
-                $query->latest();
-            }
+            'documentUploads',
+            'position'
         ])->findOrFail($id);
         
         return view('candidates.preview-html', compact('candidate'));
     }
+
     /**
      * Export single candidate to PDF
      */
@@ -507,37 +575,29 @@ class CandidateController extends Controller
         Gate::authorize('hr-access');
         
         $candidate = Candidate::with([
-            'personalData',
             'familyMembers',
-            'formalEducation',
-            'nonFormalEducation',
+            'education',
             'workExperiences',
             'languageSkills',
-            'computerSkills',
-            'otherSkills',
-            'socialActivities',
-            'achievements',
+            'additionalInfo',
+            'activities',
             'drivingLicenses',
-            'generalInformation',
-            'position',
-            'kraeplinTestResult',            // TAMBAHAN
-            'kraeplinTestResult.testSession',// TAMBAHAN
-            'discTestResult',                // TAMBAHAN
-            'discTestResult.testSession'     // TAMBAHAN
+            'documentUploads',
+            'position'
         ])->findOrFail($id);
         
         // Log export action
-        ApplicationLog::create([
-            'candidate_id' => $candidate->id,
-            'user_id' => Auth::id(),
-            'action_type' => 'export',
-            'action_description' => 'Profile exported to PDF by ' . Auth::user()->full_name
-        ]);
+        ApplicationLog::logAction(
+            $candidate->id,
+            Auth::id(),
+            ApplicationLog::ACTION_EXPORT,
+            'Profile exported to PDF by ' . Auth::user()->full_name
+        );
+        
+        $filename = 'FLK_' . str_replace(' ', '_', $candidate->full_name ?? 'Kandidat') . '_' . date('Ymd') . '.pdf';
         
         $pdf = PDF::loadView('candidates.pdf.complete', compact('candidate'));
         $pdf->setPaper('A4', 'portrait');
-        
-        $filename = 'FLK_' . str_replace(' ', '_', $candidate->personalData->full_name ?? 'Kandidat') . '_' . date('Ymd') . '.pdf';
         
         return $pdf->download($filename);
     }
@@ -549,17 +609,15 @@ class CandidateController extends Controller
     {
         Gate::authorize('hr-access');
         
-        $query = Candidate::with(['personalData', 'position']);
+        $query = Candidate::with(['position']);
         
         // Apply the same filters as index
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('candidate_code', 'like', "%{$search}%")
-                  ->orWhereHas('personalData', function ($q) use ($search) {
-                      $q->where('full_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                  });
+                  ->orWhere('full_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
             });
         }
         
@@ -573,7 +631,10 @@ class CandidateController extends Controller
         
         // Get selected candidates or all filtered
         if ($request->filled('selected_ids')) {
-            $query->whereIn('id', $request->selected_ids);
+            $selectedIds = is_array($request->selected_ids) 
+                ? $request->selected_ids 
+                : explode(',', $request->selected_ids);
+            $query->whereIn('id', $selectedIds);
         }
         
         $candidates = $query->orderBy('created_at', 'desc')->get();
@@ -594,27 +655,26 @@ class CandidateController extends Controller
         Gate::authorize('hr-access');
         
         $candidate = Candidate::with([
-            'personalData',
             'familyMembers',
-            'formalEducation',
-            'nonFormalEducation',
+            'education',
             'workExperiences',
             'languageSkills',
-            'computerSkills',
-            'otherSkills',
-            'generalInformation',
+            'additionalInfo',
+            'activities',
+            'drivingLicenses',
+            'documentUploads',
             'position'
         ])->findOrFail($id);
         
         // Log export action
-        ApplicationLog::create([
-            'candidate_id' => $candidate->id,
-            'user_id' => Auth::id(),
-            'action_type' => 'export',
-            'action_description' => 'Profile exported to Word by ' . Auth::user()->full_name
-        ]);
+        ApplicationLog::logAction(
+            $candidate->id,
+            Auth::id(),
+            ApplicationLog::ACTION_EXPORT,
+            'Profile exported to Word by ' . Auth::user()->full_name
+        );
         
-        $filename = 'FLK_' . str_replace(' ', '_', $candidate->personalData->full_name ?? 'Kandidat') . '_' . date('Ymd') . '.doc';
+        $filename = 'FLK_' . str_replace(' ', '_', $candidate->full_name ?? 'Kandidat') . '_' . date('Ymd') . '.doc';
         
         $headers = [
             "Content-type" => "text/html",
@@ -626,45 +686,187 @@ class CandidateController extends Controller
         return response($content, 200, $headers);
     }
 
-    public function discResult($id)
+    /**
+     * Soft delete candidate
+     */
+    public function destroy($id)
     {
+        Gate::authorize('hr-access');
+        
         try {
-            $candidate = Candidate::with([
-                'personalData',
-                'position',
-                'discTestSessions' => function($query) {
-                    $query->latest();
-                },
-                'discTestResults' => function($query) {
-                    $query->latest();
-                }
-            ])->findOrFail($id);
+            $candidate = Candidate::findOrFail($id);
+            $candidateName = $candidate->full_name ?? 'Unknown';
             
-            // Get latest DISC test result
-            $discResult = $candidate->discTestResults()->latest()->first();
+            $candidate->delete(); // Soft delete
             
-            if (!$discResult) {
-                return redirect()->route('candidates.show', $id)
-                    ->with('error', 'Kandidat belum menyelesaikan test DISC.');
-            }
+            // Log delete action
+            ApplicationLog::logAction(
+                $candidate->id,
+                Auth::id(),
+                ApplicationLog::ACTION_DATA_UPDATE,
+                'Candidate soft deleted by ' . Auth::user()->full_name
+            );
             
-            // Get DISC profile descriptions
-            $profiles = \App\Models\Disc3DProfileInterpretation::all()->keyBy('dimension');
-            
-            // Get test session info
-            $discSession = $candidate->discTestSessions()->latest()->first();
-            
-            return view('hr.candidates.disc-result', compact('candidate', 'discResult', 'profiles', 'discSession'));
+            return response()->json([
+                'success' => true,
+                'message' => "Kandidat {$candidateName} berhasil dihapus dan dapat dipulihkan dari menu kandidat terhapus"
+            ]);
             
         } catch (\Exception $e) {
-            Log::error('Error displaying DISC result for HR', [
+            Log::error('Error deleting candidate', [
                 'candidate_id' => $id,
                 'error' => $e->getMessage(),
                 'user_id' => Auth::id()
             ]);
             
-            return redirect()->route('candidates.index')
-                ->with('error', 'Terjadi kesalahan saat menampilkan hasil DISC test.');
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus kandidat: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk soft delete candidates
+     */
+    public function bulkDelete(Request $request)
+    {
+        Gate::authorize('hr-access');
+        
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:candidates,id'
+        ]);
+        
+        try {
+            $candidateIds = $request->ids;
+            $candidates = Candidate::whereIn('id', $candidateIds)->get();
+            
+            foreach ($candidates as $candidate) {
+                $candidate->delete(); // Soft delete
+                
+                // Log delete action
+                ApplicationLog::logAction(
+                    $candidate->id,
+                    Auth::id(),
+                    ApplicationLog::ACTION_DATA_UPDATE,
+                    'Candidate bulk soft deleted by ' . Auth::user()->full_name
+                );
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => count($candidateIds) . ' kandidat berhasil dihapus dan dapat dipulihkan dari menu kandidat terhapus'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error bulk deleting candidates', [
+                'candidate_ids' => $request->ids,
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus kandidat: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Show trashed candidates
+     */
+    public function trashed(Request $request)
+    {
+        Gate::authorize('hr-access');
+        
+        $query = Candidate::onlyTrashed()->with(['position'])
+            ->latest('deleted_at');
+        
+        // Search functionality
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('candidate_code', 'like', "%{$search}%")
+                  ->orWhere('full_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+        
+        $candidates = $query->paginate(15)->withQueryString();
+        
+        return view('candidates.trashed', compact('candidates'));
+    }
+
+    /**
+     * Restore soft deleted candidate
+     */
+    public function restore($id)
+    {
+        Gate::authorize('hr-access');
+        
+        try {
+            $candidate = Candidate::onlyTrashed()->findOrFail($id);
+            $candidateName = $candidate->full_name ?? 'Unknown';
+            
+            $candidate->restore();
+            
+            // Log restore action
+            ApplicationLog::logAction(
+                $candidate->id,
+                Auth::id(),
+                ApplicationLog::ACTION_DATA_UPDATE,
+                'Candidate restored by ' . Auth::user()->full_name
+            );
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Kandidat {$candidateName} berhasil dipulihkan"
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error restoring candidate', [
+                'candidate_id' => $id,
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memulihkan kandidat: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Force delete candidate permanently
+     */
+    public function forceDelete($id)
+    {
+        Gate::authorize('hr-access');
+        
+        try {
+            $candidate = Candidate::onlyTrashed()->findOrFail($id);
+            $candidateName = $candidate->full_name ?? 'Unknown';
+            
+            $candidate->forceDelete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Kandidat {$candidateName} berhasil dihapus permanen"
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error force deleting candidate', [
+                'candidate_id' => $id,
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus kandidat secara permanen: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

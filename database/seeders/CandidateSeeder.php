@@ -316,7 +316,7 @@ class CandidateSeeder extends Seeder
 
         // Insert data untuk setiap kandidat
         foreach ($candidates as $candidateData) {
-            // Insert candidate
+            // Insert candidate dengan personal data (merged table structure)
             $candidateId = DB::table('candidates')->insertGetId([
                 'candidate_code' => $candidateData['candidate_code'],
                 'position_id' => $candidateData['position_id'],
@@ -324,19 +324,27 @@ class CandidateSeeder extends Seeder
                 'expected_salary' => $candidateData['expected_salary'],
                 'application_status' => $candidateData['application_status'],
                 'application_date' => $candidateData['application_date'],
+                // Personal data merged into candidates table
+                'nik' => $candidateData['nik'],
+                'full_name' => $candidateData['personal_data']['full_name'],
+                'email' => $candidateData['personal_data']['email'],
+                'phone_number' => $candidateData['personal_data']['phone_number'],
+                'phone_alternative' => $candidateData['personal_data']['phone_alternative'],
+                'birth_place' => $candidateData['personal_data']['birth_place'],
+                'birth_date' => $candidateData['personal_data']['birth_date'],
+                'gender' => $candidateData['personal_data']['gender'],
+                'religion' => $candidateData['personal_data']['religion'],
+                'marital_status' => $candidateData['personal_data']['marital_status'],
+                'ethnicity' => $candidateData['personal_data']['ethnicity'],
+                'current_address' => $candidateData['personal_data']['current_address'],
+                'current_address_status' => $candidateData['personal_data']['current_address_status'],
+                'ktp_address' => $candidateData['personal_data']['ktp_address'],
+                'height_cm' => $candidateData['personal_data']['height_cm'],
+                'weight_kg' => $candidateData['personal_data']['weight_kg'],
+                'vaccination_status' => $candidateData['personal_data']['vaccination_status'],
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
-
-            // Insert personal data
-            DB::table('personal_data')->insert(array_merge(
-                $candidateData['personal_data'],
-                [
-                    'candidate_id' => $candidateId,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]
-            ));
 
             // Insert driving licenses
             foreach ($candidateData['driving_licenses'] as $license) {
@@ -362,26 +370,32 @@ class CandidateSeeder extends Seeder
 
             // Insert formal education
             foreach ($candidateData['formal_education'] as $education) {
-                DB::table('formal_education')->insert(array_merge(
-                    $education,
-                    [
-                        'candidate_id' => $candidateId,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]
-                ));
+                DB::table('education')->insert([
+                    'candidate_id' => $candidateId,
+                    'education_type' => 'formal',
+                    'education_level' => $education['education_level'],
+                    'institution_name' => $education['institution_name'],
+                    'major' => $education['major'],
+                    'start_year' => $education['start_year'],
+                    'end_year' => $education['end_year'],
+                    'gpa' => $education['gpa'],
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
             }
 
             // Insert non formal education
             foreach ($candidateData['non_formal_education'] as $nonFormal) {
-                DB::table('non_formal_education')->insert(array_merge(
-                    $nonFormal,
-                    [
-                        'candidate_id' => $candidateId,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]
-                ));
+                DB::table('education')->insert([
+                    'candidate_id' => $candidateId,
+                    'education_type' => 'non_formal',
+                    'course_name' => $nonFormal['course_name'],
+                    'organizer' => $nonFormal['organizer'],
+                    'date' => $nonFormal['date'],
+                    'description' => $nonFormal['description'],
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
             }
 
             // Insert language skills
@@ -396,9 +410,9 @@ class CandidateSeeder extends Seeder
                 ));
             }
 
-            // Insert computer skills
-            DB::table('computer_skills')->insert(array_merge(
-                $candidateData['computer_skills'],
+            // Insert candidate additional info (merged table)
+            DB::table('candidate_additional_info')->insert(array_merge(
+                $candidateData['additional_info'],
                 [
                     'candidate_id' => $candidateId,
                     'created_at' => now(),
@@ -406,26 +420,17 @@ class CandidateSeeder extends Seeder
                 ]
             ));
 
-            // Insert other skills
-            DB::table('other_skills')->insert(array_merge(
-                $candidateData['other_skills'],
-                [
-                    'candidate_id' => $candidateId,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]
-            ));
-
-            // Insert achievements
+            // Insert achievements as activities
             foreach ($candidateData['achievements'] as $achievement) {
-                DB::table('achievements')->insert(array_merge(
-                    $achievement,
-                    [
-                        'candidate_id' => $candidateId,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]
-                ));
+                DB::table('activities')->insert([
+                    'candidate_id' => $candidateId,
+                    'activity_type' => 'achievement',
+                    'title' => $achievement['achievement'],
+                    'field_or_year' => $achievement['year'],
+                    'description' => $achievement['description'],
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
             }
 
             // Insert work experiences
@@ -440,27 +445,19 @@ class CandidateSeeder extends Seeder
                 ));
             }
 
-            // Insert social activities
+            // Insert social activities as activities
             foreach ($candidateData['social_activities'] as $social) {
-                DB::table('social_activities')->insert(array_merge(
-                    $social,
-                    [
-                        'candidate_id' => $candidateId,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]
-                ));
-            }
-
-            // Insert general information
-            DB::table('general_information')->insert(array_merge(
-                $candidateData['general_information'],
-                [
+                DB::table('activities')->insert([
                     'candidate_id' => $candidateId,
+                    'activity_type' => 'social_activity',
+                    'title' => $social['organization_name'],
+                    'field_or_year' => $social['field'],
+                    'period' => $social['period'],
+                    'description' => $social['description'],
                     'created_at' => now(),
                     'updated_at' => now()
-                ]
-            ));
+                ]);
+            }
 
             // Insert sample document uploads
             $documentTypes = ['cv', 'photo', 'certificates'];
@@ -469,7 +466,7 @@ class CandidateSeeder extends Seeder
                     'candidate_id' => $candidateId,
                     'document_type' => $docType,
                     'document_name' => $docType . '_' . $candidateData['candidate_code'],
-                    'original_filename' => $docType . '_' . strtolower($candidateData['personal_data']['full_name']) . '.pdf',
+                    'original_filename' => $docType . '_' . strtolower(str_replace(' ', '_', $candidateData['personal_data']['full_name'])) . '.pdf',
                     'file_path' => 'uploads/candidates/' . $candidateId . '/' . $docType . '.pdf',
                     'file_size' => rand(100000, 2000000),
                     'mime_type' => $docType == 'photo' ? 'image/jpeg' : 'application/pdf',

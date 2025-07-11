@@ -2,9 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Candidate;
 use Illuminate\Database\Seeder;
-use Illuminate\Validation\Rules\Can;
 
 class DatabaseSeeder extends Seeder
 {
@@ -45,8 +43,8 @@ class DatabaseSeeder extends Seeder
 
         // Seed positions and candidates
         $this->call([
-            PositionsTableSeeder::class
-            // CandidateSeeder::class,
+            PositionsTableSeeder::class,
+            // CandidateSeeder::class, // Aktifkan seeder kandidat
         ]);
     }
 }

@@ -8,6 +8,7 @@ class CandidateDetailPage {
         this.kraeplinChart = null;
         this.discGraph = null;
         this.isInitialized = false;
+        this.updateActiveNav = this.updateActiveNav.bind(this);
     }
 
     initSidebar() {
@@ -67,6 +68,28 @@ class CandidateDetailPage {
         });
     }
 
+    updateActiveNav() {
+        const sectionNavLinks = document.querySelectorAll('.section-nav-link');
+        const sections = document.querySelectorAll('.content-section');
+        
+        if (sectionNavLinks.length === 0 || sections.length === 0) return;
+
+        let current = '';
+        sections.forEach((section) => {
+            const sectionTop = section.offsetTop;
+            if (window.pageYOffset >= sectionTop - 200) {
+                current = section.getAttribute('id');
+            }
+        });
+
+        sectionNavLinks.forEach((link) => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + current) {
+                link.classList.add('active');
+            }
+        });
+    }
+
     initSectionNavigation() {
         const sectionNavLinks = document.querySelectorAll('.section-nav-link');
         const sections = document.querySelectorAll('.content-section');
@@ -76,25 +99,8 @@ class CandidateDetailPage {
             return;
         }
 
-        const updateActiveNav = () => {
-            let current = '';
-            sections.forEach((section) => {
-                const sectionTop = section.offsetTop;
-                if (window.pageYOffset >= sectionTop - 200) {
-                    current = section.getAttribute('id');
-                }
-            });
-
-            sectionNavLinks.forEach((link) => {
-                link.classList.remove('active');
-                if (link.getAttribute('href') === '#' + current) {
-                    link.classList.add('active');
-                }
-            });
-        };
-
         // Scroll event listener
-        window.addEventListener('scroll', updateActiveNav);
+        window.addEventListener('scroll', this.updateActiveNav);
 
         // Click event listeners
         sectionNavLinks.forEach((link) => {
@@ -129,7 +135,7 @@ class CandidateDetailPage {
             if (sectionNavLinks.length > 0) {
                 sectionNavLinks[0].classList.add('active');
             }
-            updateActiveNav();
+            this.updateActiveNav();
         }, 100);
     }
 
@@ -163,8 +169,8 @@ class CandidateDetailPage {
                     throw new Error('CSRF token not found');
                 }
                 
-                // Make API call (URL needs to be provided from PHP)
-                const response = await fetch(window.updateStatusUrl || '#', {
+                // Make API call
+                const response = await fetch(window.candidateDetailConfig?.updateStatusUrl || '#', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -179,6 +185,7 @@ class CandidateDetailPage {
                 const data = await response.json();
                 
                 if (data.success) {
+                    alert('Status berhasil diperbarui');
                     window.location.reload();
                 } else {
                     alert(data.message || 'Gagal update status');
@@ -241,11 +248,6 @@ class CandidateDetailPage {
         
         if (config.discData) {
             this.initDiscGraph(config.discData);
-        }
-        
-        // Set URLs for API calls
-        if (config.updateStatusUrl) {
-            window.updateStatusUrl = config.updateStatusUrl;
         }
         
         this.isInitialized = true;

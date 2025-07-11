@@ -512,7 +512,7 @@
             
             @if($candidate->canStartDisc3DTest())
                 <div style="margin-top: 20px;">
-                    <a href="{{ route('disc.instructions', $candidate->candidate_code) }}" 
+                    <a href="{{ route('disc3d.instructions', $candidate->candidate_code) }}" 
                        class="btn btn-primary" target="_blank">
                         <i class="fas fa-play"></i>
                         Mulai Tes DISC 3D

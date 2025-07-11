@@ -48,7 +48,7 @@ return new class extends Migration
             $table->index(['username', 'email', 'role']);
         });
 
-        // 3. Candidates table (main table)
+        // 3. Candidates table (MERGED with personal_data)
         Schema::create('candidates', function (Blueprint $table) {
             $table->id();
             $table->string('candidate_code')->unique();
@@ -60,17 +60,9 @@ return new class extends Migration
                 'offered', 'accepted', 'rejected'
             ])->default('submitted');
             $table->date('application_date')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
             
-            $table->index(['candidate_code', 'application_status', 'position_id']);
-        });
-
-        // 4. Personal Data table
-        Schema::create('personal_data', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('candidate_id')->unique()->constrained('candidates')->onDelete('cascade');
-            $table->string('nik', 16)->unique(); // CHANGED: Removed nullable()
+            // Personal Data (merged from personal_data table)
+            $table->string('nik', 16)->unique();
             $table->string('full_name');
             $table->string('email')->unique();
             $table->string('phone_number')->nullable();
@@ -87,151 +79,81 @@ return new class extends Migration
             $table->integer('height_cm')->nullable();
             $table->integer('weight_kg')->nullable();
             $table->enum('vaccination_status', ['Vaksin 1', 'Vaksin 2', 'Vaksin 3', 'Booster'])->nullable();
+            
             $table->timestamps();
             $table->softDeletes();
             
-            $table->index(['email', 'candidate_id', 'nik']); 
+            $table->index(['candidate_code', 'application_status', 'position_id']);
+            $table->index(['email', 'nik']);
         });
 
-        // 5. Family Members table
+        // 4. Family Members table
         Schema::create('family_members', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->enum('relationship', ['Pasangan', 'Anak', 'Ayah', 'Ibu', 'Saudara'])->nullable();
-            $table->string('name')->nullable();
-            $table->integer('age')->nullable();
-            $table->string('education')->nullable();
-            $table->string('occupation')->nullable();
+            $table->enum('relationship', ['Pasangan', 'Anak', 'Ayah', 'Ibu', 'Saudara'])->nullable()->default(null);
+            $table->string('name')->nullable()->default(null);
+            $table->integer('age')->nullable()->default(null);
+            $table->string('education')->nullable()->default(null);
+            $table->string('occupation')->nullable()->default(null);
             $table->timestamps();
             $table->softDeletes();
             
             $table->index('candidate_id');
         });
 
-        // 6. Education tables (Formal & Non-formal)
-        Schema::create('formal_education', function (Blueprint $table) {
+        // 5. Education table (MERGED formal & non-formal education)
+        Schema::create('education', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->enum('education_level', ['SMA/SMK', 'Diploma', 'S1', 'S2', 'S3'])->nullable();
-            $table->string('institution_name')->nullable();
-            $table->string('major')->nullable();
-            $table->year('start_year')->nullable();
-            $table->year('end_year')->nullable();
-            $table->decimal('gpa', 3, 2)->nullable();
+            $table->enum('education_type', ['formal', 'non_formal']);
+            
+            // For formal education
+            $table->enum('education_level', ['SMA/SMK', 'Diploma', 'S1', 'S2', 'S3'])->nullable()->default(null);
+            $table->string('institution_name')->nullable()->default(null);
+            $table->string('major')->nullable()->default(null);
+            $table->year('start_year')->nullable()->default(null);
+            $table->year('end_year')->nullable()->default(null);
+            $table->decimal('gpa', 3, 2)->nullable()->default(null);
+            
+            // For non-formal education
+            $table->string('course_name')->nullable()->default(null);
+            $table->string('organizer')->nullable()->default(null);
+            $table->date('date')->nullable()->default(null);
+            $table->text('description')->nullable()->default(null);
+            
             $table->timestamps();
             $table->softDeletes();
             
-            $table->index('candidate_id');
+            $table->index(['candidate_id', 'education_type']);
         });
 
-        Schema::create('non_formal_education', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->string('course_name')->nullable();
-            $table->string('organizer')->nullable();
-            $table->date('date')->nullable();
-            $table->text('description')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-            
-            $table->index('candidate_id');
-        });
-
-        // 7. Skills tables (Language, Computer, Other)
+        // 6. Language Skills table
         Schema::create('language_skills', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->string('language')->nullable();
-            $table->enum('speaking_level', ['Pemula', 'Menengah', 'Mahir'])->nullable();
-            $table->enum('writing_level', ['Pemula', 'Menengah', 'Mahir'])->nullable();
+            $table->string('language')->nullable()->default(null);
+            $table->enum('speaking_level', ['Pemula', 'Menengah', 'Mahir'])->nullable()->default(null);
+            $table->enum('writing_level', ['Pemula', 'Menengah', 'Mahir'])->nullable()->default(null);
             $table->timestamps();
             $table->softDeletes();
             
             $table->index('candidate_id');
         });
 
-        Schema::create('computer_skills', function (Blueprint $table) {
+        // 7. Candidate Additional Info (MERGED computer_skills + other_skills + general_information)
+        Schema::create('candidate_additional_info', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->unique()->constrained('candidates')->onDelete('cascade');
+            
+            // Computer Skills
             $table->text('hardware_skills')->nullable();
             $table->text('software_skills')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
             
-            $table->index('candidate_id');
-        });
-
-        Schema::create('other_skills', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('candidate_id')->unique()->constrained('candidates')->onDelete('cascade');
+            // Other Skills
             $table->text('other_skills')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
             
-            $table->index('candidate_id');
-        });
-
-        // 8. Driving Licenses table
-        Schema::create('driving_licenses', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->enum('license_type', ['A', 'B1', 'B2', 'C'])->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-            
-            $table->unique(['candidate_id', 'license_type']);
-            $table->index('candidate_id');
-        });
-
-        // 9. Work Experience table
-        Schema::create('work_experiences', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->string('company_name')->nullable();
-            $table->string('company_address')->nullable();
-            $table->string('company_field')->nullable();
-            $table->string('position')->nullable();
-            $table->year('start_year')->nullable();
-            $table->year('end_year')->nullable();
-            $table->decimal('salary', 12, 2)->nullable();
-            $table->string('reason_for_leaving')->nullable();
-            $table->string('supervisor_contact')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-            
-            $table->index('candidate_id');
-        });
-
-        // 10. Achievements & Social Activities
-        Schema::create('achievements', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->string('achievement')->nullable();
-            $table->year('year')->nullable();
-            $table->text('description')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-            
-            $table->index('candidate_id');
-        });
-
-        Schema::create('social_activities', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->string('organization_name')->nullable();
-            $table->string('field')->nullable();
-            $table->string('period')->nullable();
-            $table->text('description')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-            
-            $table->index('candidate_id');
-        });
-
-        // 11. General Information table
-        Schema::create('general_information', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('candidate_id')->unique()->constrained('candidates')->onDelete('cascade');
+            // General Information
             $table->boolean('willing_to_travel')->default(false);
             $table->boolean('has_vehicle')->default(false);
             $table->string('vehicle_types')->nullable();
@@ -251,13 +173,60 @@ return new class extends Migration
             $table->date('start_work_date')->nullable();
             $table->string('information_source')->nullable();
             $table->boolean('agreement')->default(false);
+            
             $table->timestamps();
             $table->softDeletes();
             
             $table->index('candidate_id');
         });
 
-        // 12. Document Uploads table
+        // 8. Driving Licenses table
+        Schema::create('driving_licenses', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
+            $table->enum('license_type', ['A', 'B1', 'B2', 'C'])->nullable()->default(null);
+            $table->timestamps();
+            $table->softDeletes();
+            
+            $table->unique(['candidate_id', 'license_type']);
+            $table->index('candidate_id');
+        });
+
+        // 9. Work Experience table
+        Schema::create('work_experiences', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
+            $table->string('company_name')->nullable()->default(null);
+            $table->string('company_address')->nullable()->default(null);
+            $table->string('company_field')->nullable()->default(null);
+            $table->string('position')->nullable()->default(null);
+            $table->year('start_year')->nullable()->default(null);
+            $table->year('end_year')->nullable()->default(null);
+            $table->decimal('salary', 12, 2)->nullable()->default(null);
+            $table->string('reason_for_leaving')->nullable()->default(null);
+            $table->string('supervisor_contact')->nullable()->default(null);
+            $table->timestamps();
+            $table->softDeletes();
+            
+            $table->index('candidate_id');
+        });
+
+        // 10. Activities table (MERGED achievements + social_activities)
+        Schema::create('activities', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
+            $table->enum('activity_type', ['achievement', 'social_activity']);
+            $table->string('title')->nullable()->default(null); // achievement name or organization name
+            $table->string('field_or_year')->nullable()->default(null); // field for social, year for achievement
+            $table->string('period')->nullable()->default(null); // for social activities
+            $table->text('description')->nullable()->default(null);
+            $table->timestamps();
+            $table->softDeletes();
+            
+            $table->index(['candidate_id', 'activity_type']);
+        });
+
+        // 11. Document Uploads table
         Schema::create('document_uploads', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
@@ -273,7 +242,7 @@ return new class extends Migration
             $table->index(['candidate_id', 'document_type']);
         });
 
-        // 13. HR System tables (Application Logs, Interviews, Email Templates)
+        // 12. Application Logs table
         Schema::create('application_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
@@ -286,6 +255,7 @@ return new class extends Migration
             $table->index(['candidate_id', 'user_id', 'action_type']);
         });
 
+        // 13. Interviews table
         Schema::create('interviews', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
@@ -301,6 +271,7 @@ return new class extends Migration
             $table->index(['candidate_id', 'interviewer_id', 'status']);
         });
 
+        // 14. Email Templates table
         Schema::create('email_templates', function (Blueprint $table) {
             $table->id();
             $table->string('template_name', 100);
@@ -314,7 +285,7 @@ return new class extends Migration
             $table->index(['template_type', 'is_active']);
         });
 
-        // 14. Sessions table (for Laravel)
+        // 15. Sessions table (for Laravel)
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->foreignId('user_id')->nullable()->index();
@@ -322,7 +293,7 @@ return new class extends Migration
             $table->text('user_agent')->nullable();
             $table->longText('payload');
             $table->integer('last_activity')->index();
-            $table->softDeletes(); // ADDED: Soft delete for sessions
+            $table->softDeletes();
         });
     }
 
@@ -337,18 +308,13 @@ return new class extends Migration
         Schema::dropIfExists('interviews');
         Schema::dropIfExists('application_logs');
         Schema::dropIfExists('document_uploads');
-        Schema::dropIfExists('general_information');
-        Schema::dropIfExists('social_activities');
-        Schema::dropIfExists('achievements');
+        Schema::dropIfExists('activities');
         Schema::dropIfExists('work_experiences');
         Schema::dropIfExists('driving_licenses');
-        Schema::dropIfExists('other_skills');
-        Schema::dropIfExists('computer_skills');
+        Schema::dropIfExists('candidate_additional_info');
         Schema::dropIfExists('language_skills');
-        Schema::dropIfExists('non_formal_education');
-        Schema::dropIfExists('formal_education');
+        Schema::dropIfExists('education');
         Schema::dropIfExists('family_members');
-        Schema::dropIfExists('personal_data');
         Schema::dropIfExists('candidates');
         Schema::dropIfExists('users');
         Schema::dropIfExists('positions');
