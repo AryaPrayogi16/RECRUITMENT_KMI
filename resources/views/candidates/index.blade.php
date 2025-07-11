@@ -808,6 +808,10 @@
                     <h1 class="page-title">Manajemen Kandidat</h1>
                 </div>
                 <div class="header-right">
+                    <a href="{{ route('candidates.trashed') }}" class="btn-secondary">
+                        <i class="fas fa-trash"></i>
+                        Kandidat Terhapus
+                    </a>
                     {{-- <button class="notification-btn">
                         <i class="fas fa-bell"></i>
                         <span class="notification-badge">{{ $newApplicationsCount ?? 0 }}</span>
@@ -839,7 +843,7 @@
                                 <label class="filter-label">Status</label>
                                 <select class="filter-select" id="statusFilter">
                                     <option value="">Semua Status</option>
-                                    @foreach(\App\Models\Candidate::getStatuses() as $statusKey => $statusLabel)
+                                    @foreach(\App\Models\Candidate::getStatusOptions() as $statusKey => $statusLabel)
                                         <option value="{{ $statusKey }}" 
                                                 {{ request('status') == $statusKey ? 'selected' : '' }}>
                                             {{ $statusLabel }}
@@ -874,6 +878,16 @@
                         </div>
                     </form>
                 </div>
+                <div class="bulk-action-toolbar" id="bulkActionToolbar" style="display: none;">
+                    <div class="bulk-action-content">
+                        <span><span id="selectedCount">0</span> kandidat terpilih</span>
+                        <div class="bulk-actions">
+                            <button type="button" class="btn-small btn-danger" onclick="bulkDelete()">
+                                <i class="fas fa-trash"></i> Hapus Terpilih
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Candidates Table -->
                 <div class="table-container">
@@ -890,6 +904,9 @@
                         <thead>
                             <tr>
                                 <th width="5%">No</th>
+                                <th width="3%">
+                                    <input type="checkbox" id="selectAll" style="margin: 0;">
+                                </th>
                                 <th width="10%">Kode</th>
                                 <th width="25%">Kandidat</th>
                                 <th width="15%">Posisi</th>
@@ -904,6 +921,9 @@
                             <tr>
                                 <td>{{ $candidates->firstItem() + $index }}</td>
                                 <td>
+                                    <input type="checkbox" class="candidate-checkbox" value="{{ $candidate->id }}" style="margin: 0;">
+                                </td>
+                                <td>
                                     <span style="font-weight: 600; color: #4f46e5;">
                                         {{ $candidate->candidate_code }}
                                     </span>
@@ -911,14 +931,14 @@
                                 <td>
                                     <div class="candidate-info">
                                         <div class="candidate-avatar">
-                                            {{ substr($candidate->personalData->full_name ?? 'N/A', 0, 2) }}
+                                            {{ substr($candidate->full_name ?? 'N/A', 0, 2) }}
                                         </div>
                                         <div class="candidate-details">
                                             <div class="candidate-name">
-                                                {{ $candidate->personalData->full_name ?? 'N/A' }}
+                                                {{ $candidate->full_name ?? 'N/A' }}
                                             </div>
                                             <div class="candidate-email">
-                                                {{ $candidate->personalData->email ?? 'N/A' }}
+                                                {{ $candidate->email ?? 'N/A' }}
                                             </div>
                                         </div>
                                     </div>
@@ -926,7 +946,7 @@
                                 <td>{{ $candidate->position_applied }}</td>
                                 <td>
                                     <span class="status-badge {{ $candidate->status_badge_class }}">
-                                        {{ \App\Models\Candidate::getStatuses()[$candidate->application_status] ?? ucfirst($candidate->application_status) }}
+                                        {{ \App\Models\Candidate::getStatusOptions()[$candidate->application_status] ?? ucfirst($candidate->application_status) }}
                                     </span>
                                 </td>
                                 <td>{{ $candidate->created_at->format('d M Y') }}</td>
@@ -937,20 +957,32 @@
                                         <span style="color: #718096;">Tidak disebutkan</span>
                                     @endif
                                 </td>
-
-                                    <td>
-                                        <a href="{{ route('candidates.show', $candidate->id) }}" 
-                                        class="action-btn" 
-                                        data-tooltip="Lihat Detail Kandidat"
-                                        title="Lihat Detail Kandidat">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                
+                                <td>
+                                    <div class="action-dropdown">
+                                        <button class="action-btn" onclick="toggleDropdown(this)">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <a href="{{ route('candidates.show', $candidate->id) }}" class="dropdown-item">
+                                                <i class="fas fa-eye"></i>
+                                                Lihat Detail
+                                            </a>
+                                            <a href="{{ route('candidates.edit', $candidate->id) }}" class="dropdown-item">
+                                                <i class="fas fa-edit"></i>
+                                                Edit
+                                            </a>
+                                            <div class="dropdown-divider"></div>
+                                            <a href="#" class="dropdown-item" onclick="deleteCandidate({{ $candidate->id }}, '{{ $candidate->full_name ?? 'Unknown' }}')">
+                                                <i class="fas fa-trash"></i>
+                                                Hapus
+                                            </a>
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" style="text-align: center; padding: 40px; color: #718096;">
+                                <td colspan="9" style="text-align: center; padding: 40px; color: #718096;">
                                     <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 10px; display: block;"></i>
                                     Tidak ada data kandidat
                                     @if(request()->hasAny(['search', 'status', 'position']))
@@ -1075,33 +1107,65 @@
             window.location.href = '{{ route('candidates.index') }}';
         }
 
-        // Update status
-        function updateStatus(candidateId, status) {
-            const statusLabels = {!! json_encode(\App\Models\Candidate::getStatuses()) !!};
-            const statusLabel = statusLabels[status] || status;
-            
-            if (confirm(`Apakah Anda yakin ingin mengubah status kandidat ini menjadi "${statusLabel}"?`)) {
+        // Update selected count and toggle bulk action toolbar
+        function updateSelectedCount() {
+            const selectedCount = document.querySelectorAll('.candidate-checkbox:checked').length;
+            document.getElementById('selectedCount').innerText = selectedCount;
+
+            const bulkActionToolbar = document.getElementById('bulkActionToolbar');
+            if (selectedCount > 0) {
+                bulkActionToolbar.style.display = 'flex';
+            } else {
+                bulkActionToolbar.style.display = 'none';
+            }
+        }
+
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const isChecked = this.checked;
+            document.querySelectorAll('.candidate-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            updateSelectedCount();
+        });
+
+        document.querySelectorAll('.candidate-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectedCount);
+        });
+
+        // Bulk delete candidates
+        function bulkDelete() {
+            const selectedIds = [];
+            document.querySelectorAll('.candidate-checkbox:checked').forEach(checkbox => {
+                selectedIds.push(checkbox.value);
+            });
+
+            if (selectedIds.length === 0) {
+                alert('Tidak ada kandidat yang dipilih');
+                return;
+            }
+
+            if (confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} kandidat terpilih?`)) {
                 document.getElementById('loadingOverlay').style.display = 'flex';
-                
-                fetch(`/candidates/${candidateId}/status`, {
-                    method: 'PATCH',
+
+                fetch('{{ route('candidates.bulk-delete') }}', {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({ status: status })
+                    body: JSON.stringify({ ids: selectedIds })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('Gagal mengubah status kandidat: ' + (data.message || 'Unknown error'));
+                        alert('Gagal menghapus kandidat: ' + (data.message || 'Unknown error'));
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Terjadi kesalahan saat mengubah status');
+                    alert('Terjadi kesalahan saat menghapus kandidat');
                 })
                 .finally(() => {
                     document.getElementById('loadingOverlay').style.display = 'none';
@@ -1109,44 +1173,34 @@
             }
         }
 
-        // Schedule interview
-        function scheduleInterview(candidateId) {
-            // Redirect to interview scheduling page
-            window.location.href = `/candidates/${candidateId}/schedule-interview`;
+        // Delete candidate
+        function deleteCandidate(candidateId, candidateName) {
+            if (confirm(`Apakah Anda yakin ingin menghapus kandidat "${candidateName}"?`)) {
+                document.getElementById('loadingOverlay').style.display = 'flex';
+
+                fetch(`/candidates/${candidateId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert('Gagal menghapus kandidat: ' + (data.message || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Terjadi kesalahan saat menghapus kandidat');
+                })
+                .finally(() => {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                });
+            }
         }
-
-        // Export functionality
-        document.querySelector('.btn-export').addEventListener('click', function() {
-            const params = new URLSearchParams(window.location.search);
-            
-            // Optional: Jika ingin export hanya yang dipilih
-            const selectedIds = [];
-            document.querySelectorAll('input[name="candidate_ids[]"]:checked').forEach(cb => {
-                selectedIds.push(cb.value);
-            });
-            
-            if (selectedIds.length > 0) {
-                params.append('selected_ids', selectedIds.join(','));
-            }
-            
-            window.location.href = `{{ route('candidates.export.multiple') ?? '#' }}?${params.toString()}`;
-        });
-
-        // Initialize filter values on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set filter values from URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            
-            if (urlParams.get('search')) {
-                searchInput.value = urlParams.get('search');
-            }
-            if (urlParams.get('status')) {
-                statusFilter.value = urlParams.get('status');
-            }
-            if (urlParams.get('position')) {
-                positionFilter.value = urlParams.get('position');
-            }
-        });
     </script>
 </body>
 </html>

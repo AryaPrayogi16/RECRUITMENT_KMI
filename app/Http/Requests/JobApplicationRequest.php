@@ -24,8 +24,8 @@ class JobApplicationRequest extends FormRequest
             // Required fields
             'position_applied' => 'required|string|max:255',
             'full_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:personal_data,email',
-            'nik' => 'required|string|size:16|regex:/^[0-9]{16}$/|unique:personal_data,nik',
+            'email' => 'required|email|unique:candidates,email',
+            'nik' => 'required|string|size:16|regex:/^[0-9]{16}$/|unique:candidates,nik',
             'agreement' => 'required|accepted',
             
             // Personal Data
@@ -59,7 +59,19 @@ class JobApplicationRequest extends FormRequest
             'formal_education.*.institution_name' => 'required|string|max:255',
             'formal_education.*.major' => 'required|string|max:100',
             'formal_education.*.start_year' => 'required|integer|min:1950|max:2030',
-            'formal_education.*.end_year' => 'required|integer|min:1950|max:2030',
+            'formal_education.*.end_year' => [
+                'required',
+                'integer',
+                'min:1950',
+                'max:2030',
+                function ($attribute, $value, $fail) {
+                    $index = explode('.', $attribute)[1];
+                    $startYear = request("formal_education.{$index}.start_year");
+                    if ($startYear && $value < $startYear) {
+                        $fail('Tahun selesai harus sama atau setelah tahun mulai.');
+                    }
+                },
+            ],
             'formal_education.*.gpa' => 'required|numeric|min:0|max:4',
             
             // Non-Formal Education - Optional
@@ -89,7 +101,19 @@ class JobApplicationRequest extends FormRequest
             'work_experiences.*.company_field' => 'nullable|string|max:100',
             'work_experiences.*.position' => 'nullable|string|max:100',
             'work_experiences.*.start_year' => 'nullable|integer|min:1950|max:2030',
-            'work_experiences.*.end_year' => 'nullable|integer|min:1950|max:2030',
+            'work_experiences.*.end_year' => [
+                'nullable',
+                'integer',
+                'min:1950',
+                'max:2030',
+                function ($attribute, $value, $fail) {
+                    $index = explode('.', $attribute)[1];
+                    $startYear = request("work_experiences.{$index}.start_year");
+                    if ($startYear && $value && $value < $startYear) {
+                        $fail('Tahun selesai kerja harus sama atau setelah tahun mulai.');
+                    }
+                },
+            ],
             'work_experiences.*.salary' => 'nullable|numeric|min:0',
             'work_experiences.*.reason_for_leaving' => 'nullable|string|max:255',
             'work_experiences.*.supervisor_contact' => 'nullable|string|max:255',

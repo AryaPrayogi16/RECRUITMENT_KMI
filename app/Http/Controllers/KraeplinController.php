@@ -29,7 +29,7 @@ class KraeplinController extends Controller
             
         if ($existingSession) {
             // UPDATED: Redirect to DISC test instead of success page
-            return redirect()->route('disc.instructions', $candidateCode)
+            return redirect()->route('disc3d.instructions', $candidateCode)
                 ->with('success', 'Test Kraeplin sudah selesai. Silakan lanjutkan dengan Test DISC.');
         }
         
@@ -54,7 +54,7 @@ class KraeplinController extends Controller
             if ($existingCompleted) {
                 DB::rollback();
                 // UPDATED: Redirect to DISC test instead of success page
-                return redirect()->route('disc.instructions', $candidateCode)
+                return redirect()->route('disc3d.instructions', $candidateCode)
                     ->with('success', 'Test Kraeplin sudah selesai. Silakan lanjutkan dengan Test DISC.');
             }
             
@@ -180,7 +180,7 @@ class KraeplinController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Test Kraeplin berhasil diselesaikan. Lanjutkan dengan Test DISC.',
-                'redirect_url' => route('disc.instructions', ['candidateCode' => $session->candidate->candidate_code])
+                'redirect_url' => route('disc3d.instructions', ['candidateCode' => $session->candidate->candidate_code])
             ]);
             
         } catch (\Illuminate\Validation\ValidationException $e) {

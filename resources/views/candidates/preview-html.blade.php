@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Preview FLK - {{ $candidate->personalData->full_name ?? 'Kandidat' }}</title>
+    <title>Preview FLK - {{ $candidate->full_name ?? 'Kandidat' }}</title>
     <style>
         @page {
             size: A4;
@@ -392,8 +392,8 @@
                 </div>
                 
                 <div class="header-text">
-                    <h1>{{ $candidate->personalData->full_name ?? 'Data Tidak Tersedia' }}</h1>
-                    <div class="subtitle">{{ $candidate->personalData->email ?? '-' }} | {{ $candidate->personalData->phone_number ?? '-' }}</div>
+                    <h1>{{ $candidate->full_name ?? 'Data Tidak Tersedia' }}</h1>
+                    <div class="subtitle">{{ $candidate->email ?? '-' }} | {{ $candidate->phone_number ?? '-' }}</div>
                     <div class="meta">Kode: {{ $candidate->candidate_code }} | Status: {{ ucfirst($candidate->application_status) }} | {{ $candidate->created_at->format('d/m/Y') }}</div>
                 </div>
             </div>
@@ -425,61 +425,60 @@
                 <div class="info-col">
                     <div class="info-item">
                         <span class="info-label">Nama Lengkap:</span>
-                        <span class="info-value">{{ $candidate->personalData->full_name ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->full_name ?? '-' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Tempat, Tgl Lahir:</span>
-                        <span class="info-value">{{ $candidate->personalData->birth_place ?? '-' }}, {{ $candidate->personalData->birth_date ? \Carbon\Carbon::parse($candidate->personalData->birth_date)->format('d/m/Y') : '-' }}</span>
+                        <span class="info-value">{{ $candidate->birth_place ?? '-' }}, {{ $candidate->birth_date ? \Carbon\Carbon::parse($candidate->birth_date)->format('d/m/Y') : '-' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Jenis Kelamin:</span>
-                        <span class="info-value">{{ $candidate->personalData->gender ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->gender ?? '-' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Agama:</span>
-                        <span class="info-value">{{ $candidate->personalData->religion ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->religion ?? '-' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Status Pernikahan:</span>
-                        <span class="info-value">{{ $candidate->personalData->marital_status ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->marital_status ?? '-' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Suku Bangsa:</span>
-                        <span class="info-value">{{ $candidate->personalData->ethnicity ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->ethnicity ?? '-' }}</span>
                     </div>
                 </div>
                 <div class="info-col">
                     <div class="info-item">
                         <span class="info-label">Email:</span>
-                        <span class="info-value">{{ $candidate->personalData->email ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->email ?? '-' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">No. Telepon:</span>
-                        <span class="info-value">{{ $candidate->personalData->phone_number ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->phone_number ?? '-' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Telepon Alternatif:</span>
-                        <span class="info-value">{{ $candidate->personalData->phone_alternative ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->phone_alternative ?? '-' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Tinggi/Berat:</span>
-                        <span class="info-value">{{ $candidate->personalData->height_cm ?? '-' }} cm / {{ $candidate->personalData->weight_kg ?? '-' }} kg</span>
+                        <span class="info-value">{{ $candidate->height_cm ?? '-' }} cm / {{ $candidate->weight_kg ?? '-' }} kg</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Status Vaksinasi:</span>
-                        <span class="info-value">{{ $candidate->personalData->vaccination_status ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->vaccination_status ?? '-' }}</span>
                     </div>
                 </div>
             </div>
-            
             <h3>Alamat</h3>
             <div class="info-item">
                 <span class="info-label">Alamat Saat Ini:</span>
-                <span class="info-value">{{ $candidate->personalData->current_address ?? '-' }} ({{ $candidate->personalData->current_address_status ?? '-' }})</span>
+                <span class="info-value">{{ $candidate->current_address ?? '-' }} ({{ $candidate->current_address_status ?? '-' }})</span>
             </div>
             <div class="info-item">
                 <span class="info-label">Alamat KTP:</span>
-                <span class="info-value">{{ $candidate->personalData->ktp_address ?? '-' }}</span>
+                <span class="info-value">{{ $candidate->ktp_address ?? '-' }}</span>
             </div>
         </div>
 

@@ -12,10 +12,7 @@
     
     {{-- Custom Assets --}}
     <link href="{{ asset('css/candidate-detail.css') }}" rel="stylesheet">
-    <script src="{{ asset('js/kraeplin-chart.js') }}" defer></script>
-    <script src="{{ asset('js/candidate-detail.js') }}" defer></script>
     <link href="{{ asset('css/disc-3d-styles.css') }}" rel="stylesheet">
-    <script src="{{ asset('js/disc-3d-manager.js') }}" defer></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -51,6 +48,14 @@
                         <span>Dashboard</span>
                     </a>
                 </div>
+                @if(in_array(Auth::user()->role, ['admin']))
+                    <div class="nav-item">
+                        <a href="{{ route('admin.users') }}" class="nav-link">
+                            <i class="fas fa-users"></i>
+                            <span>User Management</span>
+                        </a>
+                    </div>
+                @endif
                 @if(in_array(Auth::user()->role, ['admin', 'hr']))
                     <div class="nav-item">
                         <a href="{{ route('candidates.index') }}" class="nav-link active">
@@ -112,17 +117,16 @@
                                 @php
                                     $photoDocument = $candidate->documentUploads->where('document_type', 'photo')->first();
                                 @endphp
-                                
                                 @if($photoDocument)
                                     <img src="{{ Storage::url($photoDocument->file_path) }}" 
-                                        alt="Foto {{ $candidate->personalData->full_name ?? 'Kandidat' }}" 
+                                        alt="Foto {{ $candidate->full_name ?? 'Kandidat' }}" 
                                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                                 @else
                                     <i class="fas fa-user"></i>
                                 @endif
                             </div>
                             <div class="candidate-details-header">
-                                <h2 class="candidate-name">{{ $candidate->personalData->full_name ?? 'N/A' }}</h2>
+                                <h2 class="candidate-name">{{ $candidate->full_name ?? 'N/A' }}</h2>
                                 <p class="candidate-position">
                                     {{ $candidate->position->position_name ?? $candidate->position_applied }}
                                     @if($candidate->expected_salary)
@@ -136,11 +140,11 @@
                                     </div>
                                     <div class="meta-item">
                                         <i class="fas fa-envelope"></i>
-                                        <span>{{ $candidate->personalData->email ?? 'N/A' }}</span>
+                                        <span>{{ $candidate->email ?? 'N/A' }}</span>
                                     </div>
                                     <div class="meta-item">
                                         <i class="fas fa-phone"></i>
-                                        <span>{{ $candidate->personalData->phone_number ?? 'N/A' }}</span>
+                                        <span>{{ $candidate->phone_number ?? 'N/A' }}</span>
                                     </div>
                                     <div class="meta-item">
                                         <span class="status-badge status-{{ $candidate->application_status }}">
@@ -219,7 +223,6 @@
                         <i class="fas fa-user-circle"></i>
                         Data Pribadi
                     </h2>
-                    
                     <div class="info-grid">
                         <div class="info-card">
                             <h3 class="info-card-title">
@@ -228,30 +231,34 @@
                             </h3>
                             <div class="info-row">
                                 <span class="info-label">Nama Lengkap</span>
-                                <span class="info-value">{{ $candidate->personalData->full_name ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->full_name ?? 'N/A' }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">NIK</span>
+                                <span class="info-value">{{ $candidate->nik ?? 'N/A' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Tempat, Tanggal Lahir</span>
                                 <span class="info-value">
-                                    {{ $candidate->personalData->birth_place ?? 'N/A' }}, 
-                                    {{ $candidate->personalData->birth_date ? \Carbon\Carbon::parse($candidate->personalData->birth_date)->format('d M Y') : 'N/A' }}
+                                    {{ $candidate->birth_place ?? 'N/A' }}, 
+                                    {{ $candidate->birth_date ? \Carbon\Carbon::parse($candidate->birth_date)->format('d M Y') : 'N/A' }}
                                 </span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Jenis Kelamin</span>
-                                <span class="info-value">{{ $candidate->personalData->gender ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->gender ?? 'N/A' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Agama</span>
-                                <span class="info-value">{{ $candidate->personalData->religion ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->religion ?? 'N/A' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Status Pernikahan</span>
-                                <span class="info-value">{{ $candidate->personalData->marital_status ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->marital_status ?? 'N/A' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Suku Bangsa</span>
-                                <span class="info-value">{{ $candidate->personalData->ethnicity ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->ethnicity ?? 'N/A' }}</span>
                             </div>
                         </div>
 
@@ -262,15 +269,15 @@
                             </h3>
                             <div class="info-row">
                                 <span class="info-label">Email</span>
-                                <span class="info-value">{{ $candidate->personalData->email ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->email ?? 'N/A' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">No. Telepon</span>
-                                <span class="info-value">{{ $candidate->personalData->phone_number ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->phone_number ?? 'N/A' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">No. Alternatif</span>
-                                <span class="info-value">{{ $candidate->personalData->phone_alternative ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->phone_alternative ?? 'N/A' }}</span>
                             </div>
                         </div>
 
@@ -281,15 +288,15 @@
                             </h3>
                             <div class="info-row">
                                 <span class="info-label">Alamat Saat Ini</span>
-                                <span class="info-value">{{ $candidate->personalData->current_address ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->current_address ?? 'N/A' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Status Tempat Tinggal</span>
-                                <span class="info-value">{{ $candidate->personalData->current_address_status ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->current_address_status ?? 'N/A' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Alamat KTP</span>
-                                <span class="info-value">{{ $candidate->personalData->ktp_address ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->ktp_address ?? 'N/A' }}</span>
                             </div>
                         </div>
 
@@ -300,15 +307,15 @@
                             </h3>
                             <div class="info-row">
                                 <span class="info-label">Tinggi Badan</span>
-                                <span class="info-value">{{ $candidate->personalData->height_cm ?? 'N/A' }} cm</span>
+                                <span class="info-value">{{ $candidate->height_cm ? $candidate->height_cm . ' cm' : 'N/A' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Berat Badan</span>
-                                <span class="info-value">{{ $candidate->personalData->weight_kg ?? 'N/A' }} kg</span>
+                                <span class="info-value">{{ $candidate->weight_kg ? $candidate->weight_kg . ' kg' : 'N/A' }}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Status Vaksinasi</span>
-                                <span class="info-value">{{ $candidate->personalData->vaccination_status ?? 'N/A' }}</span>
+                                <span class="info-value">{{ $candidate->vaccination_status ?? 'N/A' }}</span>
                             </div>
                         </div>
                     </div>
@@ -331,11 +338,11 @@
                             <tbody>
                                 @foreach($candidate->familyMembers as $member)
                                     <tr>
-                                        <td>{{ $member->relationship }}</td>
-                                        <td>{{ $member->name }}</td>
-                                        <td>{{ $member->age }} tahun</td>
-                                        <td>{{ $member->education }}</td>
-                                        <td>{{ $member->occupation }}</td>
+                                        <td>{{ $member->relationship ?? 'N/A' }}</td>
+                                        <td>{{ $member->name ?? 'N/A' }}</td>
+                                        <td>{{ $member->age ? $member->age . ' tahun' : 'N/A' }}</td>
+                                        <td>{{ $member->education ?? 'N/A' }}</td>
+                                        <td>{{ $member->occupation ?? 'N/A' }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -350,7 +357,12 @@
                         Pendidikan
                     </h2>
 
-                    @if($candidate->formalEducation->count() > 0)
+                    @php
+                        $formalEducation = $candidate->education->where('education_type', 'formal');
+                        $nonFormalEducation = $candidate->education->where('education_type', 'non_formal');
+                    @endphp
+
+                    @if($formalEducation->count() > 0)
                         <h3 class="info-card-title">
                             <i class="fas fa-university"></i>
                             Pendidikan Formal
@@ -366,12 +378,12 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($candidate->formalEducation as $edu)
+                                @foreach($formalEducation as $edu)
                                     <tr>
-                                        <td>{{ $edu->education_level }}</td>
-                                        <td>{{ $edu->institution_name }}</td>
-                                        <td>{{ $edu->major }}</td>
-                                        <td>{{ $edu->start_year }} - {{ $edu->end_year }}</td>
+                                        <td>{{ $edu->education_level ?? 'N/A' }}</td>
+                                        <td>{{ $edu->institution_name ?? 'N/A' }}</td>
+                                        <td>{{ $edu->major ?? 'N/A' }}</td>
+                                        <td>{{ $edu->start_year }} - {{ $edu->end_year ?? 'Sekarang' }}</td>
                                         <td>{{ $edu->gpa ?? 'N/A' }}</td>
                                     </tr>
                                 @endforeach
@@ -379,7 +391,7 @@
                         </table>
                     @endif
 
-                    @if($candidate->nonFormalEducation->count() > 0)
+                    @if($nonFormalEducation->count() > 0)
                         <h3 class="info-card-title" style="margin-top: 30px;">
                             <i class="fas fa-certificate"></i>
                             Pendidikan Non-Formal
@@ -394,10 +406,10 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($candidate->nonFormalEducation as $course)
+                                @foreach($nonFormalEducation as $course)
                                     <tr>
-                                        <td>{{ $course->course_name }}</td>
-                                        <td>{{ $course->organizer }}</td>
+                                        <td>{{ $course->course_name ?? 'N/A' }}</td>
+                                        <td>{{ $course->organizer ?? 'N/A' }}</td>
                                         <td>{{ $course->date ? \Carbon\Carbon::parse($course->date)->format('d M Y') : 'N/A' }}</td>
                                         <td>{{ $course->description ?? '-' }}</td>
                                     </tr>
@@ -406,7 +418,7 @@
                         </table>
                     @endif
 
-                    @if($candidate->formalEducation->count() == 0 && $candidate->nonFormalEducation->count() == 0)
+                    @if($formalEducation->count() == 0 && $nonFormalEducation->count() == 0)
                         <div class="empty-state">
                             <i class="fas fa-graduation-cap"></i>
                             <p>Tidak ada data pendidikan</p>
@@ -426,15 +438,19 @@
                             <div class="info-card" style="margin-bottom: 20px;">
                                 <h3 class="info-card-title">
                                     <i class="fas fa-building"></i>
-                                    {{ $exp->company_name }}
+                                    {{ $exp->company_name ?? 'N/A' }}
                                 </h3>
                                 <div class="info-row">
                                     <span class="info-label">Posisi</span>
-                                    <span class="info-value">{{ $exp->position }}</span>
+                                    <span class="info-value">{{ $exp->position ?? 'N/A' }}</span>
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Periode</span>
-                                    <span class="info-value">{{ $exp->start_year }} - {{ $exp->end_year ?? 'Sekarang' }}</span>
+                                    <span class="info-value">{{ $exp->start_year ?? 'N/A' }} - {{ $exp->end_year ?? 'Sekarang' }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Alamat Perusahaan</span>
+                                    <span class="info-value">{{ $exp->company_address ?? 'N/A' }}</span>
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Bidang Usaha</span>
@@ -486,32 +502,32 @@
                                 </h3>
                                 @foreach($candidate->languageSkills as $lang)
                                     <div class="info-row">
-                                        <span class="info-label">{{ $lang->language }}</span>
+                                        <span class="info-label">{{ $lang->language ?? 'N/A' }}</span>
                                         <span class="info-value">
-                                            Bicara: {{ $lang->speaking_level }}, 
-                                            Tulis: {{ $lang->writing_level }}
+                                            Bicara: {{ $lang->speaking_level ?? 'N/A' }}, 
+                                            Tulis: {{ $lang->writing_level ?? 'N/A' }}
                                         </span>
                                     </div>
                                 @endforeach
                             </div>
                         @endif
 
-                        @if($candidate->computerSkills)
+                        @if($candidate->additionalInfo && ($candidate->additionalInfo->hardware_skills || $candidate->additionalInfo->software_skills))
                             <div class="info-card">
                                 <h3 class="info-card-title">
                                     <i class="fas fa-laptop"></i>
                                     Kemampuan Komputer
                                 </h3>
-                                @if($candidate->computerSkills->hardware_skills)
+                                @if($candidate->additionalInfo->hardware_skills)
                                     <div class="info-row">
                                         <span class="info-label">Hardware</span>
-                                        <span class="info-value">{{ $candidate->computerSkills->hardware_skills }}</span>
+                                        <span class="info-value">{{ $candidate->additionalInfo->hardware_skills }}</span>
                                     </div>
                                 @endif
-                                @if($candidate->computerSkills->software_skills)
+                                @if($candidate->additionalInfo->software_skills)
                                     <div class="info-row">
                                         <span class="info-label">Software</span>
-                                        <span class="info-value">{{ $candidate->computerSkills->software_skills }}</span>
+                                        <span class="info-value">{{ $candidate->additionalInfo->software_skills }}</span>
                                     </div>
                                 @endif
                             </div>
@@ -526,29 +542,24 @@
                                 @foreach($candidate->drivingLicenses as $license)
                                     <div class="info-row">
                                         <span class="info-label">SIM {{ $license->license_type }}</span>
-                                        <span class="info-value">
-                                            No: {{ $license->license_number ?? 'N/A' }}
-                                            @if($license->expiry_date)
-                                                <br>Exp: {{ \Carbon\Carbon::parse($license->expiry_date)->format('d M Y') }}
-                                            @endif
-                                        </span>
+                                        <span class="info-value">✓</span>
                                     </div>
                                 @endforeach
                             </div>
                         @endif
                     </div>
 
-                    @if($candidate->otherSkills)
+                    @if($candidate->additionalInfo && $candidate->additionalInfo->other_skills)
                         <div class="info-card" style="margin-top: 20px;">
                             <h3 class="info-card-title">
                                 <i class="fas fa-star"></i>
                                 Kemampuan Lainnya
                             </h3>
-                            <p class="info-text">{{ $candidate->otherSkills->other_skills }}</p>
+                            <p class="info-text">{{ $candidate->additionalInfo->other_skills }}</p>
                         </div>
                     @endif
 
-                    @if($candidate->languageSkills->count() == 0 && !$candidate->computerSkills && !$candidate->otherSkills && $candidate->drivingLicenses->count() == 0)
+                    @if($candidate->languageSkills->count() == 0 && (!$candidate->additionalInfo || (!$candidate->additionalInfo->hardware_skills && !$candidate->additionalInfo->software_skills && !$candidate->additionalInfo->other_skills)) && $candidate->drivingLicenses->count() == 0)
                         <div class="empty-state">
                             <i class="fas fa-cogs"></i>
                             <p>Tidak ada data keterampilan</p>
@@ -563,7 +574,12 @@
                         Aktivitas & Prestasi
                     </h2>
 
-                    @if($candidate->socialActivities->count() > 0)
+                    @php
+                        $socialActivities = $candidate->activities->where('activity_type', 'social_activity');
+                        $achievements = $candidate->activities->where('activity_type', 'achievement');
+                    @endphp
+
+                    @if($socialActivities->count() > 0)
                         <h3 class="info-card-title">
                             <i class="fas fa-users"></i>
                             Kegiatan Sosial/Organisasi
@@ -572,17 +588,17 @@
                             <thead>
                                 <tr>
                                     <th>Nama Organisasi</th>
-                                    <th>Posisi</th>
+                                    <th>Bidang</th>
                                     <th>Periode</th>
                                     <th>Keterangan</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($candidate->socialActivities as $activity)
+                                @foreach($socialActivities as $activity)
                                     <tr>
-                                        <td>{{ $activity->organization_name }}</td>
-                                        <td>{{ $activity->position }}</td>
-                                        <td>{{ $activity->start_year }} - {{ $activity->end_year ?? 'Sekarang' }}</td>
+                                        <td>{{ $activity->title ?? 'N/A' }}</td>
+                                        <td>{{ $activity->field_or_year ?? 'N/A' }}</td>
+                                        <td>{{ $activity->period ?? 'N/A' }}</td>
                                         <td>{{ $activity->description ?? '-' }}</td>
                                     </tr>
                                 @endforeach
@@ -590,7 +606,7 @@
                         </table>
                     @endif
 
-                    @if($candidate->achievements->count() > 0)
+                    @if($achievements->count() > 0)
                         <h3 class="info-card-title" style="margin-top: 30px;">
                             <i class="fas fa-trophy"></i>
                             Prestasi
@@ -599,17 +615,15 @@
                             <thead>
                                 <tr>
                                     <th>Nama Prestasi</th>
-                                    <th>Penyelenggara</th>
                                     <th>Tahun</th>
                                     <th>Keterangan</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($candidate->achievements as $achievement)
+                                @foreach($achievements as $achievement)
                                     <tr>
-                                        <td>{{ $achievement->achievement_name }}</td>
-                                        <td>{{ $achievement->issuer }}</td>
-                                        <td>{{ $achievement->year }}</td>
+                                        <td>{{ $achievement->title ?? 'N/A' }}</td>
+                                        <td>{{ $achievement->field_or_year ?? 'N/A' }}</td>
                                         <td>{{ $achievement->description ?? '-' }}</td>
                                     </tr>
                                 @endforeach
@@ -617,7 +631,7 @@
                         </table>
                     @endif
 
-                    @if($candidate->socialActivities->count() == 0 && $candidate->achievements->count() == 0)
+                    @if($socialActivities->count() == 0 && $achievements->count() == 0)
                         <div class="empty-state">
                             <i class="fas fa-hands-helping"></i>
                             <p>Tidak ada data aktivitas atau prestasi</p>
@@ -631,8 +645,7 @@
                         <i class="fas fa-info-circle"></i>
                         Informasi Umum
                     </h2>
-
-                    @if($candidate->generalInformation)
+                    @if($candidate->additionalInfo)
                         <div class="info-grid">
                             <div class="info-card">
                                 <h3 class="info-card-title">
@@ -642,31 +655,43 @@
                                 <div class="info-row">
                                     <span class="info-label">Bersedia Dinas Luar Kota</span>
                                     <span class="info-value">
-                                        <span class="{{ $candidate->generalInformation->willing_to_travel ? 'yes-badge' : 'no-badge' }}">
-                                            {{ $candidate->generalInformation->willing_to_travel ? 'Ya' : 'Tidak' }}
+                                        <span class="{{ $candidate->additionalInfo->willing_to_travel ? 'yes-badge' : 'no-badge' }}">
+                                            {{ $candidate->additionalInfo->willing_to_travel ? 'Ya' : 'Tidak' }}
                                         </span>
                                     </span>
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Memiliki Kendaraan</span>
                                     <span class="info-value">
-                                        <span class="{{ $candidate->generalInformation->has_vehicle ? 'yes-badge' : 'no-badge' }}">
-                                            {{ $candidate->generalInformation->has_vehicle ? 'Ya' : 'Tidak' }}
+                                        <span class="{{ $candidate->additionalInfo->has_vehicle ? 'yes-badge' : 'no-badge' }}">
+                                            {{ $candidate->additionalInfo->has_vehicle ? 'Ya' : 'Tidak' }}
                                         </span>
                                     </span>
                                 </div>
+                                @if($candidate->additionalInfo->vehicle_types)
+                                    <div class="info-row">
+                                        <span class="info-label">Jenis Kendaraan</span>
+                                        <span class="info-value">{{ $candidate->additionalInfo->vehicle_types }}</span>
+                                    </div>
+                                @endif
                                 <div class="info-row">
                                     <span class="info-label">Tanggal Bisa Mulai Kerja</span>
                                     <span class="info-value">
-                                        {{ $candidate->generalInformation->start_work_date ? \Carbon\Carbon::parse($candidate->generalInformation->start_work_date)->format('d M Y') : 'N/A' }}
+                                        {{ $candidate->additionalInfo->start_work_date ? \Carbon\Carbon::parse($candidate->additionalInfo->start_work_date)->format('d M Y') : 'N/A' }}
                                     </span>
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Sumber Informasi Lowongan</span>
-                                    <span class="info-value">{{ $candidate->generalInformation->information_source ?? 'N/A' }}</span>
+                                    <span class="info-value">{{ $candidate->additionalInfo->information_source ?? 'N/A' }}</span>
                                 </div>
+                                @if($candidate->additionalInfo->absence_days)
+                                    <div class="info-row">
+                                        <span class="info-label">Hari Tidak Masuk (per tahun)</span>
+                                        <span class="info-value">{{ $candidate->additionalInfo->absence_days }} hari</span>
+                                    </div>
+                                @endif
                             </div>
-
+                            
                             <div class="info-card">
                                 <h3 class="info-card-title">
                                     <i class="fas fa-user-check"></i>
@@ -675,47 +700,47 @@
                                 <div class="info-row">
                                     <span class="info-label">Catatan Kriminal</span>
                                     <span class="info-value">
-                                        <span class="{{ !$candidate->generalInformation->has_police_record ? 'yes-badge' : 'no-badge' }}">
-                                            {{ $candidate->generalInformation->has_police_record ? 'Ada' : 'Tidak Ada' }}
+                                        <span class="{{ !$candidate->additionalInfo->has_police_record ? 'yes-badge' : 'no-badge' }}">
+                                            {{ $candidate->additionalInfo->has_police_record ? 'Ada' : 'Tidak Ada' }}
                                         </span>
                                     </span>
                                 </div>
-                                @if($candidate->generalInformation->police_record_detail)
+                                @if($candidate->additionalInfo->police_record_detail)
                                     <div class="info-row">
                                         <span class="info-label">Detail Catatan</span>
-                                        <span class="info-value">{{ $candidate->generalInformation->police_record_detail }}</span>
+                                        <span class="info-value">{{ $candidate->additionalInfo->police_record_detail }}</span>
                                     </div>
                                 @endif
                                 <div class="info-row">
                                     <span class="info-label">Riwayat Penyakit Serius</span>
                                     <span class="info-value">
-                                        <span class="{{ !$candidate->generalInformation->has_serious_illness ? 'yes-badge' : 'no-badge' }}">
-                                            {{ $candidate->generalInformation->has_serious_illness ? 'Ada' : 'Tidak Ada' }}
+                                        <span class="{{ !$candidate->additionalInfo->has_serious_illness ? 'yes-badge' : 'no-badge' }}">
+                                            {{ $candidate->additionalInfo->has_serious_illness ? 'Ada' : 'Tidak Ada' }}
                                         </span>
                                     </span>
                                 </div>
-                                @if($candidate->generalInformation->illness_detail)
+                                @if($candidate->additionalInfo->illness_detail)
                                     <div class="info-row">
                                         <span class="info-label">Detail Penyakit</span>
-                                        <span class="info-value">{{ $candidate->generalInformation->illness_detail }}</span>
+                                        <span class="info-value">{{ $candidate->additionalInfo->illness_detail }}</span>
                                     </div>
                                 @endif
                                 <div class="info-row">
                                     <span class="info-label">Tato/Tindik</span>
                                     <span class="info-value">
-                                        <span class="{{ !$candidate->generalInformation->has_tattoo_piercing ? 'yes-badge' : 'no-badge' }}">
-                                            {{ $candidate->generalInformation->has_tattoo_piercing ? 'Ada' : 'Tidak Ada' }}
+                                        <span class="{{ !$candidate->additionalInfo->has_tattoo_piercing ? 'yes-badge' : 'no-badge' }}">
+                                            {{ $candidate->additionalInfo->has_tattoo_piercing ? 'Ada' : 'Tidak Ada' }}
                                         </span>
                                     </span>
                                 </div>
-                                @if($candidate->generalInformation->tattoo_piercing_detail)
+                                @if($candidate->additionalInfo->tattoo_piercing_detail)
                                     <div class="info-row">
                                         <span class="info-label">Detail Tato/Tindik</span>
-                                        <span class="info-value">{{ $candidate->generalInformation->tattoo_piercing_detail }}</span>
+                                        <span class="info-value">{{ $candidate->additionalInfo->tattoo_piercing_detail }}</span>
                                     </div>
                                 @endif
                             </div>
-
+                            
                             <div class="info-card">
                                 <h3 class="info-card-title">
                                     <i class="fas fa-store"></i>
@@ -724,48 +749,63 @@
                                 <div class="info-row">
                                     <span class="info-label">Memiliki Usaha Lain</span>
                                     <span class="info-value">
-                                        <span class="{{ $candidate->generalInformation->has_other_business ? 'yes-badge' : 'no-badge' }}">
-                                            {{ $candidate->generalInformation->has_other_business ? 'Ya' : 'Tidak' }}
+                                        <span class="{{ $candidate->additionalInfo->has_other_business ? 'yes-badge' : 'no-badge' }}">
+                                            {{ $candidate->additionalInfo->has_other_business ? 'Ya' : 'Tidak' }}
                                         </span>
                                     </span>
                                 </div>
-                                @if($candidate->generalInformation->other_business_detail)
+                                @if($candidate->additionalInfo->other_business_detail)
                                     <div class="info-row">
                                         <span class="info-label">Detail Usaha</span>
-                                        <span class="info-value">{{ $candidate->generalInformation->other_business_detail }}</span>
+                                        <span class="info-value">{{ $candidate->additionalInfo->other_business_detail }}</span>
                                     </div>
                                 @endif
-                                @if($candidate->generalInformation->other_income)
+                                @if($candidate->additionalInfo->other_income)
                                     <div class="info-row">
                                         <span class="info-label">Penghasilan Lain</span>
-                                        <span class="info-value">{{ $candidate->generalInformation->other_income }}</span>
+                                        <span class="info-value">{{ $candidate->additionalInfo->other_income }}</span>
                                     </div>
                                 @endif
                             </div>
+                            
+                            <div class="info-card">
+                                <h3 class="info-card-title">
+                                    <i class="fas fa-clipboard-check"></i>
+                                    Persetujuan
+                                </h3>
+                                <div class="info-row">
+                                    <span class="info-label">Persetujuan Data</span>
+                                    <span class="info-value">
+                                        <span class="{{ $candidate->additionalInfo->agreement ? 'yes-badge' : 'no-badge' }}">
+                                            {{ $candidate->additionalInfo->agreement ? 'Setuju' : 'Tidak Setuju' }}
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-
-                        @if($candidate->generalInformation->motivation || $candidate->generalInformation->strengths || $candidate->generalInformation->weaknesses)
+                        
+                        @if($candidate->additionalInfo->motivation || $candidate->additionalInfo->strengths || $candidate->additionalInfo->weaknesses)
                             <div class="info-card" style="margin-top: 20px;">
                                 <h3 class="info-card-title">
                                     <i class="fas fa-lightbulb"></i>
                                     Motivasi & Karakter
                                 </h3>
-                                @if($candidate->generalInformation->motivation)
+                                @if($candidate->additionalInfo->motivation)
                                     <div style="margin-bottom: 15px;">
                                         <strong>Motivasi Bekerja:</strong>
-                                        <p class="info-text">{{ $candidate->generalInformation->motivation }}</p>
+                                        <p class="info-text">{{ $candidate->additionalInfo->motivation }}</p>
                                     </div>
                                 @endif
-                                @if($candidate->generalInformation->strengths)
+                                @if($candidate->additionalInfo->strengths)
                                     <div style="margin-bottom: 15px;">
                                         <strong>Kelebihan:</strong>
-                                        <p class="info-text">{{ $candidate->generalInformation->strengths }}</p>
+                                        <p class="info-text">{{ $candidate->additionalInfo->strengths }}</p>
                                     </div>
                                 @endif
-                                @if($candidate->generalInformation->weaknesses)
+                                @if($candidate->additionalInfo->weaknesses)
                                     <div>
                                         <strong>Kekurangan:</strong>
-                                        <p class="info-text">{{ $candidate->generalInformation->weaknesses }}</p>
+                                        <p class="info-text">{{ $candidate->additionalInfo->weaknesses }}</p>
                                     </div>
                                 @endif
                             </div>
@@ -798,8 +838,7 @@
                                     'cv' => ['icon' => 'fa-file-alt', 'label' => 'CV/Resume'],
                                     'photo' => ['icon' => 'fa-image', 'label' => 'Foto'],
                                     'transcript' => ['icon' => 'fa-file-pdf', 'label' => 'Transkrip Nilai'],
-                                    'certificates' => ['icon' => 'fa-certificate', 'label' => 'Sertifikat'],
-                                    'other' => ['icon' => 'fa-file', 'label' => 'Dokumen Lainnya']
+                                    'certificates' => ['icon' => 'fa-certificate', 'label' => 'Sertifikat']
                                 ];
                             @endphp
 
@@ -827,7 +866,7 @@
                                                     <div class="document-details">
                                                         <div class="document-name">{{ $doc->document_name ?: $doc->original_filename ?: 'Dokumen' }}</div>
                                                         <div class="document-meta">
-                                                            {{ number_format($doc->file_size / 1024, 2) }} KB • 
+                                                            {{ $doc->file_size ? number_format($doc->file_size / 1024, 2) . ' KB' : 'Unknown size' }} • 
                                                             {{ $doc->created_at->format('d M Y') }}
                                                         </div>
                                                     </div>
@@ -913,7 +952,6 @@
                         <option value="offered">Offered</option>
                         <option value="accepted">Accepted</option>
                         <option value="rejected">Rejected</option>
-                        <option value="withdrawn">Withdrawn</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -927,5 +965,20 @@
             </form>
         </div>
     </div>
+
+    {{-- Script Configuration --}}
+    <script>
+        // Set configuration for candidate detail page
+        window.candidateDetailConfig = {
+            updateStatusUrl: '{{ route('candidates.update-status', $candidate->id) }}',
+            kraeplinData: null, // Will be set when test results are available
+            discData: null      // Will be set when test results are available
+        };
+    </script>
+
+    {{-- Load JS modules --}}
+    <script src="{{ asset('js/kraeplin-chart.js') }}" defer></script>
+    <script src="{{ asset('js/disc-3d-manager.js') }}" defer></script>
+    <script src="{{ asset('js/candidate-detail.js') }}" defer></script>
 </body>
 </html>

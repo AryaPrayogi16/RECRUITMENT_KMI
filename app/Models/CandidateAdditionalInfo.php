@@ -7,29 +7,52 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class DocumentUpload extends Model
+class CandidateAdditionalInfo extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'candidate_additional_info';
+
     protected $fillable = [
         'candidate_id',
-        'document_type',
-        'document_name',
-        'original_filename',
-        'file_path',
-        'file_size',
-        'mime_type'
+        // Computer Skills
+        'hardware_skills',
+        'software_skills',
+        // Other Skills
+        'other_skills',
+        // General Information
+        'willing_to_travel',
+        'has_vehicle',
+        'vehicle_types',
+        'motivation',
+        'strengths',
+        'weaknesses',
+        'other_income',
+        'has_police_record',
+        'police_record_detail',
+        'has_serious_illness',
+        'illness_detail',
+        'has_tattoo_piercing',
+        'tattoo_piercing_detail',
+        'has_other_business',
+        'other_business_detail',
+        'absence_days',
+        'start_work_date',
+        'information_source',
+        'agreement'
     ];
 
     protected $casts = [
-        'file_size' => 'integer'
+        'willing_to_travel' => 'boolean',
+        'has_vehicle' => 'boolean',
+        'has_police_record' => 'boolean',
+        'has_serious_illness' => 'boolean',
+        'has_tattoo_piercing' => 'boolean',
+        'has_other_business' => 'boolean',
+        'agreement' => 'boolean',
+        'absence_days' => 'integer',
+        'start_work_date' => 'date'
     ];
-
-    // Constants
-    const TYPE_CV = 'cv';
-    const TYPE_PHOTO = 'photo';
-    const TYPE_CERTIFICATES = 'certificates';
-    const TYPE_TRANSCRIPT = 'transcript';
 
     // Relationships
     public function candidate(): BelongsTo

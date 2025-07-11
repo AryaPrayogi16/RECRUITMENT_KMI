@@ -19,14 +19,6 @@ Route::prefix('kraeplin')->name('kraeplin.')->group(function () {
     Route::get('/{candidateCode}/result', [KraeplinController::class, 'showResult'])->name('result');
 });
 
-// DISC TEST ROUTES (Public - for candidates) - UPDATED
-Route::prefix('disc')->name('disc.')->group(function () {
-    Route::get('/{candidateCode}/instructions', [DiscController::class, 'showInstructions'])->name('instructions');
-    Route::post('/{candidateCode}/start', [DiscController::class, 'startTest'])->name('start');
-    Route::post('/submit-test', [DiscController::class, 'submitSection'])->name('submit.test');
-    Route::post('/complete-test', [DiscController::class, 'completeTest'])->name('complete.test');
-    Route::get('/{candidateCode}/result', [DiscController::class, 'showResult'])->name('result');
-});
 
 // DISC 3D SPECIFIC ROUTES - NEW SECTION
 Route::prefix('disc3d')->name('disc3d.')->group(function () {
@@ -109,6 +101,15 @@ Route::middleware('auth')->group(function () {
             
             // Keep legacy disc result route for backward compatibility
             Route::get('/{id}/disc-result', [CandidateController::class, 'discResult'])->name('disc.result');
+            
+            // Soft delete routes
+            Route::delete('/{id}', [CandidateController::class, 'destroy'])->name('destroy');
+            Route::post('/bulk-delete', [CandidateController::class, 'bulkDelete'])->name('bulk-delete');
+
+            // Trashed candidates routes
+            Route::get('/trashed', [CandidateController::class, 'trashed'])->name('trashed');
+            Route::post('/{id}/restore', [CandidateController::class, 'restore'])->name('restore');
+            Route::delete('/{id}/force', [CandidateController::class, 'forceDelete'])->name('force-delete');
         });
         
         // HR DISC 3D Management
