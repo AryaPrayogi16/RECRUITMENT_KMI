@@ -338,7 +338,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('job.application.submit') }}" enctype="multipart/form-data" id="applicationForm">
+        <form id="applicationForm" method="POST" action="{{ route('job.application.submit') }}" enctype="multipart/form-data">
             @csrf
 
             <!-- 1. Informasi Posisi -->
@@ -1796,7 +1796,7 @@
                             <label class="form-label">Alasan Berhenti</label>
                             <input type="text" name="work_experiences[${workIndex}][reason_for_leaving]" class="form-input">
                         </div>
-                        <div class="form-group md:col-span-2">
+                        <div class="form-group">
                             <label class="form-label">Nama & No Telp Atasan Langsung</label>
                             <input type="text" name="work_experiences[${workIndex}][supervisor_contact]" class="form-input" 
                                    placeholder="contoh: Bpk. Ahmad - 081234567890">
