@@ -257,6 +257,119 @@
         /* Prevent empty space */
         .no-margin { margin: 0; }
         .tight { line-height: 1; }
+
+        /* SVG Chart Styles */
+        .chart-container {
+            width: 100%;
+            margin: 8pt 0;
+            page-break-inside: avoid;
+            text-align: center;
+        }
+        .chart-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 5pt;
+            font-size: 9pt;
+        }
+        .chart-svg {
+            width: 100%;
+            max-width: 700px; /* Sesuaikan dengan width SVG */
+            height: auto;
+            border: 0.5pt solid #e5e7eb;
+            background: white;
+        }
+        .chart-legend {
+            margin-top: 5pt;
+            font-size: 7pt;
+            text-align: center;
+        }
+        .legend-item {
+            display: inline-block;
+            margin: 0 5pt;
+        }
+        .legend-color {
+            display: inline-block;
+            width: 8pt;
+            height: 8pt;
+            margin-right: 3pt;
+            vertical-align: middle;
+        }
+        /* Kraeplin Chart Styles */
+        .kraeplin-chart-container {
+            width: 100%;
+            margin: 8pt 0;
+            page-break-inside: avoid;
+            text-align: center;
+        }
+
+        .kraeplin-chart-container h3 {
+            color: #1f2937;
+            margin-bottom: 5pt;
+            font-size: 9pt;
+            font-weight: bold;
+        }
+
+        .kraeplin-chart-svg {
+            width: 100%;
+            max-width: 500px; /* Diperkecil dari 600px */
+            height: auto;
+            border: 0.5pt solid #e5e7eb;
+            background: white;
+            margin: 0 auto;
+            display: block;
+        }
+
+        /* Compact chart sections */
+        .kraeplin-charts-section {
+            margin-top: 15pt;
+        }
+
+        .kraeplin-charts-section h3 {
+            margin-top: 15pt;
+            margin-bottom: 8pt;
+            padding-top: 8pt;
+            border-top: 0.5pt solid #e5e7eb;
+            font-size: 9pt;
+        }
+
+        .kraeplin-charts-section h3:first-child {
+            margin-top: 15pt;
+            border-top: none;
+            padding-top: 0;
+        }
+
+        /* Navigation buttons */
+        .chart-navigation {
+            margin: 20pt 0;
+            text-align: center;
+        }
+
+        .chart-navigation button {
+            margin: 3pt;
+            padding: 6pt 12pt;
+            font-size: 9pt;
+            border: none;
+            border-radius: 3pt;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .chart-navigation button:hover {
+            opacity: 0.8;
+            transform: translateY(-1px);
+        }
+
+        /* Print optimization */
+        @media print {
+            .kraeplin-chart-container {
+                page-break-inside: avoid;
+                margin: 10pt 0;
+            }
+            
+            .chart-navigation {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -702,6 +815,285 @@
             </table>
             @endif
         </div>
+
+        <!-- 9. Hasil Tes Kraeplin -->
+        @if($candidate->kraeplinTestResult)
+        <div class="compact-section">
+            <h2>9. Hasil Tes Kraeplin</h2>
+            
+            <!-- Ringkasan Hasil -->
+            <div class="info-grid">
+                <div class="info-col">
+                    <div class="info-item">
+                        <span class="info-label">Total Soal Terjawab:</span>
+                        <span class="info-value">{{ $candidate->kraeplinTestResult->total_questions_answered ?? 0 }}/832</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Jawaban Benar:</span>
+                        <span class="info-value">{{ $candidate->kraeplinTestResult->total_correct_answers ?? 0 }} ({{ number_format($candidate->kraeplinTestResult->accuracy_percentage ?? 0, 1) }}%)</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Kecepatan Rata-rata:</span>
+                        <span class="info-value">{{ $candidate->kraeplinTestResult->formatted_average_time ?? 'N/A' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Durasi Total:</span>
+                        <span class="info-value">{{ $candidate->kraeplinTestResult->testSession->formatted_duration ?? 'N/A' }}</span>
+                    </div>
+                </div>
+                <div class="info-col">
+                    <div class="info-item">
+                        <span class="info-label">Skor Keseluruhan:</span>
+                        <span class="info-value">{{ number_format($candidate->kraeplinTestResult->overall_score ?? 0, 1) }}/100</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Grade:</span>
+                        <span class="info-value">{{ $candidate->kraeplinTestResult->grade ?? 'N/A' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Kategori Performa:</span>
+                        <span class="info-value">{{ $candidate->kraeplinTestResult->performance_category_label ?? 'N/A' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tanggal Tes:</span>
+                        <span class="info-value">{{ $candidate->kraeplinTestResult->testSession->completed_at ? $candidate->kraeplinTestResult->testSession->completed_at->format('d/m/Y H:i') : 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            @if($candidate->kraeplinTestResult->getScoreInterpretation())
+            <div class="text-box">
+                <strong>Interpretasi:</strong> {{ $candidate->kraeplinTestResult->getScoreInterpretation() }}
+            </div>
+            @endif
+
+            <!-- ANALISIS PERFORMA LENGKAP (3 in 1) -->
+            <h3>Analisis Performa Lengkap</h3>
+            <div class="kraeplin-chart-container">
+                {!! \App\Services\KraeplinChartGenerator::generateChart($candidate) !!}
+            </div>
+
+            <!-- TINGKAT AKURASI -->
+            <h3>Tingkat Akurasi per Kolom</h3>
+            <div class="kraeplin-chart-container">
+                {!! \App\Services\KraeplinChartGenerator::generateAccuracyChart($candidate) !!}
+            </div>
+
+            <!-- SOAL TERJAWAB -->
+            <h3>Soal Terjawab per Kolom</h3>
+            <div class="kraeplin-chart-container">
+                {!! \App\Services\KraeplinChartGenerator::generateAnsweredChart($candidate) !!}
+            </div>
+
+            <!-- KECEPATAN PENGERJAAN (WAKTU RATA-RATA) -->
+            <h3>Waktu Rata-rata per Kolom</h3>
+            <div class="kraeplin-chart-container">
+                {!! \App\Services\KraeplinChartGenerator::generateSpeedChart($candidate) !!}
+            </div>
+        </div>
+        @endif
+
+        <!-- 10. Hasil Tes DISC 3D - FIXED VERSION -->
+        @if($candidate->disc3DTestResult)
+        <div class="compact-section">
+            <h2>10. Hasil Tes DISC 3D - Analisis Kepribadian</h2>
+            
+            <!-- Profile Summary -->
+            <div class="info-grid">
+                <div class="info-col">
+                    <div class="info-item">
+                        <span class="info-label">Tipe Kepribadian:</span>
+                        <span class="info-value">{{ ($candidate->disc3DTestResult->primary_type ?? 'D') . ($candidate->disc3DTestResult->secondary_type ?? 'I') }} - {{ $candidate->disc3DTestResult->primary_type_label ?? 'Unknown Type' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Sekunder:</span>
+                        <span class="info-value">{{ $candidate->disc3DTestResult->secondary_type_label ?? 'Unknown' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Pattern Segment:</span>
+                        <span class="info-value">{{ ($candidate->disc3DTestResult->most_d_segment ?? 1) }}-{{ ($candidate->disc3DTestResult->most_i_segment ?? 1) }}-{{ ($candidate->disc3DTestResult->most_s_segment ?? 1) }}-{{ ($candidate->disc3DTestResult->most_c_segment ?? 1) }}</span>
+                    </div>
+                </div>
+                <div class="info-col">
+                    <div class="info-item">
+                        <span class="info-label">Dominan:</span>
+                        <span class="info-value">{{ number_format($candidate->disc3DTestResult->primary_percentage ?? 0, 1) }}%</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tanggal Tes:</span>
+                        <span class="info-value">{{ $candidate->latestDisc3DTest->completed_at ? $candidate->latestDisc3DTest->completed_at->format('d/m/Y') : 'N/A' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Durasi:</span>
+                        <span class="info-value">{{ $candidate->latestDisc3DTest->formatted_duration ?? 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Interpretasi 3 Grafik -->
+            <h3>Interpretasi Grafik</h3>
+            <table>
+                <tr>
+                    <td style="width: 33%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #4f46e5;">📊 MOST (Topeng/Publik)</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                            Menampilkan bagaimana Anda berperilaku di depan umum atau dalam situasi kerja formal. Grafik ini menunjukkan adaptasi perilaku sesuai ekspektasi lingkungan.
+                        </div>
+                    </td>
+                    <td style="width: 33%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #4f46e5;">📊 LEAST (Inti/Pribadi)</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                            Menggambarkan kepribadian alami Anda yang sesungguhnya tanpa pengaruh eksternal. Ini adalah "diri sejati" yang cenderung muncul saat stres atau rileks.
+                        </div>
+                    </td>
+                    <td style="width: 34%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #4f46e5;">📊 CHANGE (Adaptasi)</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                            Menunjukkan tekanan dan adaptasi yang dialami. Nilai positif (+) = peningkatan, nilai negatif (-) = penurunan dari kondisi natural.
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Analisis Perilaku Mendalam -->
+            <h3>Analisis Perilaku Mendalam</h3>
+            <table>
+                <tr>
+                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #4f46e5;">💼 Gaya Kerja Detail</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->overall_profile ?? 'Bekerja dengan tempo tinggi dan fokus pada hasil. Menyukai lingkungan yang dinamis dengan kebebasan untuk mengambil keputusan.', 180) }}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #4f46e5;">🎤 Gaya Komunikasi Detail</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->personality_profile ?? 'Komunikasi yang langsung, jelas, dan persuasif. Mampu menyampaikan visi dan memotivasi tim.', 180) }}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #4f46e5;">🎭 Analisis Diri Publik (MOST)</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->public_self_summary ?? 'Di lingkungan publik, menampilkan sosok yang percaya diri, tegas, dan berorientasi pada hasil.', 180) }}
+                            </div>
+                        </div>
+                    </td>
+                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #4f46e5;">❤️ Analisis Diri Pribadi (LEAST)</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->private_self_summary ?? 'Secara pribadi, lebih reflektif dan mempertimbangkan berbagai aspek sebelum mengambil keputusan.', 180) }}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #4f46e5;">🔄 Analisis Adaptasi (CHANGE)</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->adaptation_summary ?? 'Mengalami tekanan untuk tampil lebih dominan dan ekspresif di lingkungan kerja.', 180) }}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #4f46e5;">📄 Ringkasan Profil Keseluruhan</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->summary ?? $candidate->disc3DTestResult->brief_summary ?? 'Belum tersedia', 180) }}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- FIXED: Kelebihan & Area Pengembangan (TANPA Indikator Stres) -->
+            @if($candidate->disc3DTestResult->behavioral_insights)
+            <h3>Kelebihan & Area Pengembangan</h3>
+            <table>
+                <tr>
+                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #059669;">⭐ Kelebihan & Kekuatan</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
+                            @php
+                                $strengths = $candidate->disc3DTestResult->behavioral_insights['strengths'] ?? [
+                                    'Kepemimpinan Natural', 'Pengambilan Keputusan Cepat', 'Orientasi Hasil Tinggi'
+                                ];
+                            @endphp
+                            @if(is_array($strengths))
+                                {{ implode(', ', array_slice($strengths, 0, 8)) }}
+                            @else
+                                {{ $strengths }}
+                            @endif
+                        </div>
+                    </td>
+                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #dc2626;">📈 Area Pengembangan</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
+                            @php
+                                $developmentAreas = $candidate->disc3DTestResult->behavioral_insights['development_areas'] ?? [
+                                    'Kesabaran dalam Proses', 'Perhatian pada Detail', 'Konsistensi Follow-up'
+                                ];
+                            @endphp
+                            @if(is_array($developmentAreas))
+                                {{ implode(', ', array_slice($developmentAreas, 0, 8)) }}
+                            @else
+                                {{ $developmentAreas }}
+                            @endif
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            @endif
+
+            <!-- Motivator Utama (MENGHAPUS Indikator Stres) -->
+            @if($candidate->disc3DTestResult->behavioral_insights)
+            <h3>Motivator Utama</h3>
+            <div class="text-box">
+                <strong style="font-size: 8.5pt; color: #ea580c;">🔥 Motivator:</strong>
+                @php
+                    $motivators = $candidate->disc3DTestResult->behavioral_insights['motivators'] ?? [
+                        'Pencapaian Target', 'Pengakuan Prestasi', 'Tantangan Baru'
+                    ];
+                @endphp
+                @if(is_array($motivators))
+                    {{ implode(', ', array_slice($motivators, 0, 8)) }}
+                @else
+                    {{ $motivators }}
+                @endif
+            </div>
+            @endif
+
+            <!-- Profesi yang Cocok -->
+            @if($candidate->disc3DTestResult->recommended_roles)
+            <h3>Profesi yang Cocok</h3>
+            <div class="text-box">
+                @if(is_array($candidate->disc3DTestResult->recommended_roles))
+                    @foreach(array_slice($candidate->disc3DTestResult->recommended_roles, 0, 8) as $role)
+                        <span style="display: inline-block; background: #e5e7eb; padding: 2pt 6pt; margin: 2pt; border-radius: 3pt; font-size: 8pt;">{{ $role }}</span>
+                    @endforeach
+                @else
+                    {{ $candidate->disc3DTestResult->recommended_roles }}
+                @endif
+            </div>
+            @endif
+
+            <!-- FIXED: DISC CHART with segment values and negative display -->
+            <h3>Grafik DISC 3D (Segment Values)</h3>
+            <div class="chart-container">
+                {!! \App\Services\DiscChartGenerator::generateChart($candidate) !!}
+            </div>
+            
+            <!-- Note about methodology -->
+            <div style="margin-top: 8pt; padding: 4pt; background: #f0f9ff; border: 0.5pt solid #0ea5e9; border-radius: 3pt;">
+                <strong style="font-size: 7pt; color: #0c4a6e;">📌 Catatan Metodologi:</strong>
+                <span style="font-size: 7pt; color: #0c4a6e;">
+                    Grafik MOST & LEAST menggunakan skala segment 1-7 (bukan persentase). 
+                    Grafik CHANGE menampilkan nilai adaptasi yang dapat positif (+) atau negatif (-). 
+                    Persentase ditampilkan sebagai referensi tambahan.
+                </span>
+            </div>
+        </div>
+        @else
+        <div class="compact-section">
+            <h2>10. Hasil Tes DISC 3D - Analisis Kepribadian</h2>
+            <p class="empty">Kandidat belum menyelesaikan tes DISC 3D</p>
+        </div>
+        @endif
 
         <!-- Footer -->
         <div class="footer">

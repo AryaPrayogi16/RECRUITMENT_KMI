@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id-ID">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Language" content="id-ID">
     <title>Form Lamaran Kerja - PT Kayu Mebel Indonesia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
@@ -383,6 +384,14 @@
                     </div>
                     
                     <div class="form-group">
+                        <label class="form-label" for="nik">NIK (Nomor Induk Kependudukan) <span class="required-star">*</span></label>
+                        <input type="text" name="nik" id="nik" class="form-input" 
+                            value="{{ old('nik') }}" maxlength="16" pattern="[0-9]{16}" 
+                            placeholder="Masukkan 16 digit NIK" required>
+                        <small class="text-gray-500 text-xs">NIK harus 16 digit angka sesuai KTP</small>
+                    </div>
+                    
+                    <div class="form-group">
                         <label class="form-label" for="phone_number">Nomor Telepon <span class="required-star">*</span></label>
                         <input type="text" name="phone_number" id="phone_number" class="form-input" 
                                value="{{ old('phone_number') }}" placeholder="08xxxxxxxxxx" required>
@@ -403,7 +412,7 @@
                     <div class="form-group">
                         <label class="form-label" for="birth_date">Tanggal Lahir <span class="required-star">*</span></label>
                         <input type="date" name="birth_date" id="birth_date" class="form-input" 
-                               value="{{ old('birth_date') }}" required>
+                               value="{{ old('birth_date') }}" lang="id-ID" required>
                     </div>
                     
                     <div class="form-group">
@@ -809,7 +818,7 @@
                     <div class="form-group">
                         <label class="form-label" for="start_work_date">Jika diterima, kapan Anda dapat mulai bekerja? <span class="required-star">*</span></label>
                         <input type="date" name="start_work_date" id="start_work_date" class="form-input" 
-                               value="{{ old('start_work_date') }}" required>
+                               value="{{ old('start_work_date') }}" lang="id-ID" required>
                     </div>
                 </div>
                 
@@ -1385,11 +1394,12 @@
         
         // Required field IDs for validation
         const requiredFields = [
-            'position_applied', 'expected_salary', 'full_name', 'email', 'phone_number', 
-            'phone_alternative', 'birth_place', 'birth_date', 'gender', 'religion', 
-            'marital_status', 'ethnicity', 'current_address', 'current_address_status', 
-            'ktp_address', 'height_cm', 'weight_kg', 'motivation', 'strengths', 
-            'weaknesses', 'start_work_date', 'information_source', 'cv', 'photo', 'transcript'
+            'position_applied', 'expected_salary', 'full_name', 'email', 'nik', // TAMBAHKAN 'nik'
+            'phone_number', 'phone_alternative', 'birth_place', 'birth_date', 'gender', 
+            'religion', 'marital_status', 'ethnicity', 'current_address', 
+            'current_address_status', 'ktp_address', 'height_cm', 'weight_kg', 
+            'motivation', 'strengths', 'weaknesses', 'start_work_date', 
+            'information_source', 'cv', 'photo', 'transcript'
         ];
         
         // Load saved data on page load
@@ -1961,7 +1971,44 @@
                 }
             });
             
-            // Check required dynamic fields
+            // ✅ PERUBAHAN: Enhanced date validation dengan explicit parsing
+            const startWorkDate = document.getElementById('start_work_date');
+            if (startWorkDate && startWorkDate.value) {
+                console.log('Validating start_work_date:', startWorkDate.value);
+                
+                // Parse date using explicit format (YYYY-MM-DD)
+                const selectedDateParts = startWorkDate.value.split('-');
+                if (selectedDateParts.length === 3) {
+                    const selectedDate = new Date(
+                        parseInt(selectedDateParts[0]), // year
+                        parseInt(selectedDateParts[1]) - 1, // month (0-based)
+                        parseInt(selectedDateParts[2]) // day
+                    );
+                    
+                    const today = new Date();
+                    today.setHours(23, 59, 59, 999); // Set to end of today
+                    
+                    console.log('Selected date:', selectedDate);
+                    console.log('Today (end of day):', today);
+                    console.log('Is selected date after today?', selectedDate > today);
+                    
+                    if (selectedDate <= today) {
+                        hasError = true;
+                        startWorkDate.classList.add('error');
+                        const todayStr = new Date().toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: '2-digit', 
+                            year: 'numeric'
+                        });
+                        errors.push(`Tanggal mulai kerja harus setelah ${todayStr}`);
+                    }
+                } else {
+                    hasError = true;
+                    startWorkDate.classList.add('error');
+                    errors.push('Format tanggal mulai kerja tidak valid');
+                }
+            }
+
             const familyContainer = document.getElementById('familyMembers');
             const educationContainer = document.getElementById('formalEducation');
             const languageContainer = document.getElementById('languageSkills');
@@ -1981,7 +2028,6 @@
                 errors.push('Kemampuan bahasa minimal harus diisi 1 bahasa');
             }
             
-            // Check each dynamic group has all required fields filled
             [
                 {container: familyContainer, name: 'Data Keluarga'},
                 {container: educationContainer, name: 'Pendidikan Formal'},
@@ -1998,15 +2044,13 @@
                     });
                 });
             });
-            
-            // Check agreement checkbox
+
             const agreementCheckbox = document.querySelector('input[name="agreement"]');
             if (!agreementCheckbox.checked) {
                 hasError = true;
                 errors.push('Anda harus menyetujui pernyataan untuk melanjutkan');
             }
-            
-            // Enhanced file validation with async
+
             const fileInputs = ['cv', 'photo', 'transcript'];
             for (const fieldName of fileInputs) {
                 const input = document.getElementById(fieldName);
@@ -2063,6 +2107,27 @@
                 this.submit();
             }
         });
+
+        // NIK validation
+        const nikInput = document.getElementById('nik');
+        if (nikInput) {
+            nikInput.addEventListener('input', function(e) {
+                const nikValue = e.target.value;
+                const nikError = document.createElement('div');
+                // Remove existing error
+                const existingError = e.target.parentNode.querySelector('.nik-error');
+                if (existingError) existingError.remove();
+                // Validate NIK format
+                if (nikValue.length > 0 && (nikValue.length !== 16 || !/^[0-9]{16}$/.test(nikValue))) {
+                    nikError.className = 'nik-error text-red-500 text-xs mt-1';
+                    nikError.textContent = 'NIK harus 16 digit angka';
+                    e.target.parentNode.appendChild(nikError);
+                    e.target.classList.add('error');
+                } else {
+                    e.target.classList.remove('error');
+                }
+            });
+        }
 
         // Initialize remove button states
         document.addEventListener('DOMContentLoaded', function() {

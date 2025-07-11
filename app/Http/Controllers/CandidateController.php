@@ -19,7 +19,9 @@ use App\Models\{
     DrivingLicense,
     GeneralInformation,
     DocumentUpload,
-    Interview
+    Interview,
+    Disc3DResult,
+    Disc3DTestSession
 };
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -27,6 +29,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
+use App\Models\DiscProfileInrepresentation;
 
 class CandidateController extends Controller
 {
@@ -420,14 +423,17 @@ class CandidateController extends Controller
             'achievements',
             'drivingLicenses',
             'generalInformation',
-            'position'
+            'position',
+            'kraeplinTestResult',            // TAMBAHAN
+            'kraeplinTestResult.testSession',// TAMBAHAN
+            'discTestResult',                // TAMBAHAN
+            'discTestResult.testSession'     // TAMBAHAN
         ])->findOrFail($id);
         
         return view('candidates.preview', compact('candidate'));
     }
 
-      /* Generate PDF for preview
-     */
+    /* Generate PDF for preview */
     public function previewPdf($id)
     {
         Gate::authorize('hr-access');
@@ -445,7 +451,11 @@ class CandidateController extends Controller
             'achievements',
             'drivingLicenses',
             'generalInformation',
-            'position'
+            'position',
+            'kraeplinTestResult',            // TAMBAHAN
+            'kraeplinTestResult.testSession',// TAMBAHAN
+            'discTestResult',                // TAMBAHAN
+            'discTestResult.testSession'     // TAMBAHAN
         ])->findOrFail($id);
         
         $pdf = PDF::loadView('candidates.pdf.complete', compact('candidate'));
@@ -476,7 +486,15 @@ class CandidateController extends Controller
             'drivingLicenses',
             'generalInformation',
             'position',
-            'documentUploads'
+            'kraeplinTestResult',            
+            'kraeplinTestResult.testSession',
+            'disc3DTestResult',              // FIXED: Gunakan disc3DTestResult, bukan discTestResult
+            'disc3DTestSessions' => function($query) {
+                $query->latest()->limit(1);
+            },
+            'latestDisc3DTest' => function($query) {
+                $query->latest();
+            }
         ])->findOrFail($id);
         
         return view('candidates.preview-html', compact('candidate'));
@@ -501,7 +519,11 @@ class CandidateController extends Controller
             'achievements',
             'drivingLicenses',
             'generalInformation',
-            'position'
+            'position',
+            'kraeplinTestResult',            // TAMBAHAN
+            'kraeplinTestResult.testSession',// TAMBAHAN
+            'discTestResult',                // TAMBAHAN
+            'discTestResult.testSession'     // TAMBAHAN
         ])->findOrFail($id);
         
         // Log export action
@@ -627,7 +649,7 @@ class CandidateController extends Controller
             }
             
             // Get DISC profile descriptions
-            $profiles = \App\Models\DiscProfileDescription::all()->keyBy('dimension');
+            $profiles = \App\Models\Disc3DProfileInterpretation::all()->keyBy('dimension');
             
             // Get test session info
             $discSession = $candidate->discTestSessions()->latest()->first();
