@@ -17,31 +17,31 @@ class DatabaseSeeder extends Seeder
         \App\Models\User::create([
             'username' => 'admin',
             'email' => 'admin@pawindo.com',
-            'password' => bcrypt('admin123'),
+            'password' => bcrypt('Adminnumber1'),
             'full_name' => 'Administrator',
             'role' => 'admin',
             'is_active' => true,
         ]);
 
-        // Create HR user
-        \App\Models\User::create([
-            'username' => 'hr_manager',
-            'email' => 'hr@pawindo.com',
-            'password' => bcrypt('hr123'),
-            'full_name' => 'HR Manager',
-            'role' => 'hr',
-            'is_active' => true,
-        ]);
+        // // Create HR user
+        // \App\Models\User::create([
+        //     'username' => 'hr_manager',
+        //     'email' => 'hr@pawindo.com',
+        //     'password' => bcrypt('hr123'),
+        //     'full_name' => 'HR Manager',
+        //     'role' => 'hr',
+        //     'is_active' => true,
+        // ]);
 
-        // Create Interviewer user
-        \App\Models\User::create([
-            'username' => 'interviewer',
-            'email' => 'interviewer@pawindo.com',
-            'password' => bcrypt('int123'),
-            'full_name' => 'Interviewer',
-            'role' => 'interviewer',
-            'is_active' => true,
-        ]);
+        // // Create Interviewer user
+        // \App\Models\User::create([
+        //     'username' => 'interviewer',
+        //     'email' => 'interviewer@pawindo.com',
+        //     'password' => bcrypt('int123'),
+        //     'full_name' => 'Interviewer',
+        //     'role' => 'interviewer',
+        //     'is_active' => true,
+        // ]);
 
         // Seed positions and candidates
         $this->call([

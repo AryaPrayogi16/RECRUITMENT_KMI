@@ -684,7 +684,7 @@
                     </button>
 
                     <!-- Quick Login Buttons for Demo -->
-                    <div class="quick-login-btns">
+                    <!-- <div class="quick-login-btns">
                         <button type="button" class="quick-login-btn admin" onclick="fillCredentials('admin@pawindo.com', 'admin123')">
                             👑 Admin
                         </button>
@@ -694,7 +694,7 @@
                         <button type="button" class="quick-login-btn interviewer" onclick="fillCredentials('interviewer@pawindo.com', 'int123')">
                             🎯 Interviewer
                         </button>
-                    </div>
+                    </div> -->
                 </form>
 
                 <div class="footer-info">
