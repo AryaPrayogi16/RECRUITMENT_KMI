@@ -8,10 +8,18 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     * 
+     * STRATEGY: INTERNAL SYSTEM ONLY
+     * - No public registration
+     * - Admin/HR creates all users
+     * - No email verification needed
+     * - Focus on core HR functionality
      */
     public function up(): void
     {
-        // 1. Positions table (must be first due to foreign key)
+        // =====================================================================
+        // 1. POSITIONS TABLE - SIMPLIFIED
+        // =====================================================================
         Schema::create('positions', function (Blueprint $table) {
             $table->id();
             $table->string('position_name');
@@ -20,7 +28,7 @@ return new class extends Migration
             $table->text('requirements')->nullable();
             $table->decimal('salary_range_min', 12, 2)->nullable();
             $table->decimal('salary_range_max', 12, 2)->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->boolean('is_active')->default(true);        // Simple active/inactive
             $table->string('location')->nullable();
             $table->enum('employment_type', ['full-time', 'part-time', 'contract', 'internship'])->default('full-time');
             $table->date('posted_date')->nullable();
@@ -29,13 +37,17 @@ return new class extends Migration
             $table->softDeletes();
             
             $table->index(['position_name', 'is_active']);
+            $table->index('department');
         });
 
-        // 2. Users table (for HR system)
+        // =====================================================================
+        // 2. USERS TABLE - INTERNAL ONLY (SIMPLIFIED)
+        // =====================================================================
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('username')->unique();
             $table->string('email')->unique();
+            // ❌ REMOVED: email_verified_at (not needed for internal system)
             $table->string('password');
             $table->string('full_name');
             $table->enum('role', ['admin', 'hr', 'interviewer'])->default('hr');
@@ -45,14 +57,24 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
             
-            $table->index(['username', 'email', 'role']);
+            $table->index(['email', 'is_active']);
+            $table->index(['role', 'is_active']);
+            
+            // ✅ COMMENT: Internal users only - admin/HR creates all accounts
         });
 
-        // 3. Candidates table (MERGED with personal_data)
+        // =====================================================================
+        // 3. CANDIDATES TABLE - SIMPLIFIED with Position Protection
+        // =====================================================================
         Schema::create('candidates', function (Blueprint $table) {
             $table->id();
             $table->string('candidate_code')->unique();
-            $table->foreignId('position_id')->constrained('positions');
+            
+            // Position relationship with protection
+            $table->foreignId('position_id')
+                  ->constrained('positions')->onDelete('restrict');
+            $table->string('position_name_snapshot')->nullable(); // Simple backup
+            
             $table->string('position_applied');
             $table->decimal('expected_salary', 12, 2)->nullable();
             $table->enum('application_status', [
@@ -61,7 +83,7 @@ return new class extends Migration
             ])->default('submitted');
             $table->date('application_date')->nullable();
             
-            // Personal Data (merged from personal_data table)
+            // Personal Data (merged for performance)
             $table->string('nik', 16)->unique();
             $table->string('full_name');
             $table->string('email')->unique();
@@ -76,51 +98,58 @@ return new class extends Migration
             $table->text('current_address')->nullable();
             $table->enum('current_address_status', ['Milik Sendiri', 'Orang Tua', 'Kontrak', 'Sewa'])->nullable();
             $table->text('ktp_address')->nullable();
-            $table->integer('height_cm')->nullable();
-            $table->integer('weight_kg')->nullable();
+            $table->integer('height_cm')->unsigned()->nullable();
+            $table->integer('weight_kg')->unsigned()->nullable();
             $table->enum('vaccination_status', ['Vaksin 1', 'Vaksin 2', 'Vaksin 3', 'Booster'])->nullable();
             
             $table->timestamps();
             $table->softDeletes();
             
-            $table->index(['candidate_code', 'application_status', 'position_id']);
+            $table->index(['candidate_code', 'application_status']);
             $table->index(['email', 'nik']);
+            $table->index('position_id');
         });
 
-        // 4. Family Members table
+        // =====================================================================
+        // 4. FAMILY MEMBERS
+        // =====================================================================
         Schema::create('family_members', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->enum('relationship', ['Pasangan', 'Anak', 'Ayah', 'Ibu', 'Saudara'])->nullable()->default(null);
-            $table->string('name')->nullable()->default(null);
-            $table->integer('age')->nullable()->default(null);
-            $table->string('education')->nullable()->default(null);
-            $table->string('occupation')->nullable()->default(null);
+            $table->foreignId('candidate_id')
+                  ->constrained('candidates')->onDelete('cascade');
+            $table->enum('relationship', ['Pasangan', 'Anak', 'Ayah', 'Ibu', 'Saudara'])->nullable();
+            $table->string('name')->nullable();
+            $table->integer('age')->unsigned()->nullable();
+            $table->string('education')->nullable();
+            $table->string('occupation')->nullable();
             $table->timestamps();
             $table->softDeletes();
             
             $table->index('candidate_id');
         });
 
-        // 5. Education table (MERGED formal & non-formal education)
+        // =====================================================================
+        // 5. EDUCATION
+        // =====================================================================
         Schema::create('education', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
+            $table->foreignId('candidate_id')
+                  ->constrained('candidates')->onDelete('cascade');
             $table->enum('education_type', ['formal', 'non_formal']);
             
             // For formal education
-            $table->enum('education_level', ['SMA/SMK', 'Diploma', 'S1', 'S2', 'S3'])->nullable()->default(null);
-            $table->string('institution_name')->nullable()->default(null);
-            $table->string('major')->nullable()->default(null);
-            $table->year('start_year')->nullable()->default(null);
-            $table->year('end_year')->nullable()->default(null);
-            $table->decimal('gpa', 3, 2)->nullable()->default(null);
+            $table->enum('education_level', ['SMA/SMK', 'Diploma', 'S1', 'S2', 'S3'])->nullable();
+            $table->string('institution_name')->nullable();
+            $table->string('major')->nullable();
+            $table->year('start_year')->nullable();
+            $table->year('end_year')->nullable();
+            $table->decimal('gpa', 3, 2)->nullable();
             
             // For non-formal education
-            $table->string('course_name')->nullable()->default(null);
-            $table->string('organizer')->nullable()->default(null);
-            $table->date('date')->nullable()->default(null);
-            $table->text('description')->nullable()->default(null);
+            $table->string('course_name')->nullable();
+            $table->string('organizer')->nullable();
+            $table->date('date')->nullable();
+            $table->text('description')->nullable();
             
             $table->timestamps();
             $table->softDeletes();
@@ -128,29 +157,33 @@ return new class extends Migration
             $table->index(['candidate_id', 'education_type']);
         });
 
-        // 6. Language Skills table
+        // =====================================================================
+        // 6. LANGUAGE SKILLS
+        // =====================================================================
         Schema::create('language_skills', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->string('language')->nullable()->default(null);
-            $table->enum('speaking_level', ['Pemula', 'Menengah', 'Mahir'])->nullable()->default(null);
-            $table->enum('writing_level', ['Pemula', 'Menengah', 'Mahir'])->nullable()->default(null);
+            $table->foreignId('candidate_id')
+                  ->constrained('candidates')->onDelete('cascade');
+            $table->string('language')->nullable();
+            $table->enum('speaking_level', ['Pemula', 'Menengah', 'Mahir'])->nullable();
+            $table->enum('writing_level', ['Pemula', 'Menengah', 'Mahir'])->nullable();
             $table->timestamps();
             $table->softDeletes();
             
             $table->index('candidate_id');
         });
 
-        // 7. Candidate Additional Info (MERGED computer_skills + other_skills + general_information)
+        // =====================================================================
+        // 7. CANDIDATE ADDITIONAL INFO
+        // =====================================================================
         Schema::create('candidate_additional_info', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->unique()->constrained('candidates')->onDelete('cascade');
+            $table->foreignId('candidate_id')->unique()
+                  ->constrained('candidates')->onDelete('cascade');
             
-            // Computer Skills
+            // Skills
             $table->text('hardware_skills')->nullable();
             $table->text('software_skills')->nullable();
-            
-            // Other Skills
             $table->text('other_skills')->nullable();
             
             // General Information
@@ -169,7 +202,7 @@ return new class extends Migration
             $table->string('tattoo_piercing_detail')->nullable();
             $table->boolean('has_other_business')->default(false);
             $table->string('other_business_detail')->nullable();
-            $table->integer('absence_days')->nullable();
+            $table->integer('absence_days')->unsigned()->nullable();
             $table->date('start_work_date')->nullable();
             $table->string('information_source')->nullable();
             $table->boolean('agreement')->default(false);
@@ -180,11 +213,14 @@ return new class extends Migration
             $table->index('candidate_id');
         });
 
-        // 8. Driving Licenses table
+        // =====================================================================
+        // 8. DRIVING LICENSES
+        // =====================================================================
         Schema::create('driving_licenses', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->enum('license_type', ['A', 'B1', 'B2', 'C'])->nullable()->default(null);
+            $table->foreignId('candidate_id')
+                  ->constrained('candidates')->onDelete('cascade');
+            $table->enum('license_type', ['A', 'B1', 'B2', 'C'])->nullable();
             $table->timestamps();
             $table->softDeletes();
             
@@ -192,49 +228,58 @@ return new class extends Migration
             $table->index('candidate_id');
         });
 
-        // 9. Work Experience table
+        // =====================================================================
+        // 9. WORK EXPERIENCES
+        // =====================================================================
         Schema::create('work_experiences', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->string('company_name')->nullable()->default(null);
-            $table->string('company_address')->nullable()->default(null);
-            $table->string('company_field')->nullable()->default(null);
-            $table->string('position')->nullable()->default(null);
-            $table->year('start_year')->nullable()->default(null);
-            $table->year('end_year')->nullable()->default(null);
-            $table->decimal('salary', 12, 2)->nullable()->default(null);
-            $table->string('reason_for_leaving')->nullable()->default(null);
-            $table->string('supervisor_contact')->nullable()->default(null);
+            $table->foreignId('candidate_id')
+                  ->constrained('candidates')->onDelete('cascade');
+            $table->string('company_name')->nullable();
+            $table->string('company_address')->nullable();
+            $table->string('company_field')->nullable();
+            $table->string('position')->nullable();
+            $table->year('start_year')->nullable();
+            $table->year('end_year')->nullable();
+            $table->decimal('salary', 12, 2)->nullable();
+            $table->string('reason_for_leaving')->nullable();
+            $table->string('supervisor_contact')->nullable();
             $table->timestamps();
             $table->softDeletes();
             
             $table->index('candidate_id');
         });
 
-        // 10. Activities table (MERGED achievements + social_activities)
+        // =====================================================================
+        // 10. ACTIVITIES
+        // =====================================================================
         Schema::create('activities', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
+            $table->foreignId('candidate_id')
+                  ->constrained('candidates')->onDelete('cascade');
             $table->enum('activity_type', ['achievement', 'social_activity']);
-            $table->string('title')->nullable()->default(null); // achievement name or organization name
-            $table->string('field_or_year')->nullable()->default(null); // field for social, year for achievement
-            $table->string('period')->nullable()->default(null); // for social activities
-            $table->text('description')->nullable()->default(null);
+            $table->string('title')->nullable();
+            $table->string('field_or_year')->nullable();
+            $table->string('period')->nullable();
+            $table->text('description')->nullable();
             $table->timestamps();
             $table->softDeletes();
             
             $table->index(['candidate_id', 'activity_type']);
         });
 
-        // 11. Document Uploads table
+        // =====================================================================
+        // 11. DOCUMENT UPLOADS
+        // =====================================================================
         Schema::create('document_uploads', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
+            $table->foreignId('candidate_id')
+                  ->constrained('candidates')->onDelete('cascade');
             $table->enum('document_type', ['cv', 'photo', 'certificates', 'transcript']);
             $table->string('document_name');
             $table->string('original_filename');
             $table->string('file_path');
-            $table->integer('file_size')->nullable();
+            $table->integer('file_size')->unsigned()->nullable();
             $table->string('mime_type')->nullable();
             $table->timestamps();
             $table->softDeletes();
@@ -242,36 +287,46 @@ return new class extends Migration
             $table->index(['candidate_id', 'document_type']);
         });
 
-        // 12. Application Logs table
+        // =====================================================================
+        // 12. APPLICATION LOGS
+        // =====================================================================
         Schema::create('application_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
-            $table->foreignId('user_id')->nullable()->constrained('users');
+            $table->foreignId('candidate_id')
+                  ->constrained('candidates')->onDelete('cascade');
+            $table->foreignId('user_id')->nullable()
+                  ->constrained('users')->onDelete('set null');
             $table->enum('action_type', ['status_change', 'document_upload', 'data_update']);
             $table->text('action_description');
             $table->timestamps();
             $table->softDeletes();
             
-            $table->index(['candidate_id', 'user_id', 'action_type']);
+            $table->index(['candidate_id', 'action_type']);
         });
 
-        // 13. Interviews table
+        // =====================================================================
+        // 13. INTERVIEWS
+        // =====================================================================
         Schema::create('interviews', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->constrained('candidates')->onDelete('cascade');
+            $table->foreignId('candidate_id')
+                  ->constrained('candidates')->onDelete('cascade');
             $table->date('interview_date');
             $table->time('interview_time');
             $table->string('location')->nullable();
-            $table->foreignId('interviewer_id')->nullable()->constrained('users');
+            $table->foreignId('interviewer_id')->nullable()
+                  ->constrained('users')->onDelete('set null');
             $table->enum('status', ['scheduled', 'completed', 'cancelled'])->default('scheduled');
             $table->text('notes')->nullable();
             $table->timestamps();
             $table->softDeletes();
             
-            $table->index(['candidate_id', 'interviewer_id', 'status']);
+            $table->index(['candidate_id', 'status']);
         });
 
-        // 14. Email Templates table
+        // =====================================================================
+        // 14. EMAIL TEMPLATES
+        // =====================================================================
         Schema::create('email_templates', function (Blueprint $table) {
             $table->id();
             $table->string('template_name', 100);
@@ -285,16 +340,31 @@ return new class extends Migration
             $table->index(['template_type', 'is_active']);
         });
 
-        // 15. Sessions table (for Laravel)
+        // =====================================================================
+        // 15. MINIMAL LARAVEL TABLES - INTERNAL SYSTEM ONLY
+        // =====================================================================
+        
+        // Sessions table - simplified for internal use
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
+            $table->foreignId('user_id')->nullable()
+                  ->constrained('users')->onDelete('cascade');
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
             $table->longText('payload');
             $table->integer('last_activity')->index();
-            $table->softDeletes();
         });
+
+        // Password Reset Tokens - keep for admin/HR password reset
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+
+        // ❌ REMOVED: personal_access_tokens (no API needed for internal system)
+        // ❌ REMOVED: failed_jobs (no queue processing needed initially)
+        // ❌ REMOVED: job_batches (no batch processing needed initially)
     }
 
     /**
@@ -302,7 +372,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Drop tables in reverse order to handle foreign key constraints
+        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
         Schema::dropIfExists('email_templates');
         Schema::dropIfExists('interviews');

@@ -519,7 +519,9 @@ class Candidate extends Model
         return $this->hasOne(KraeplinTestSession::class)->latest('completed_at');
     }
 
-    // Helper methods
+    /**
+     * ✅ FIXED: KRAEPLIN TEST HELPER METHODS
+     */
     public function hasCompletedKraeplinTest()
     {
         return $this->kraeplinTestSessions()
@@ -527,6 +529,7 @@ class Candidate extends Model
             ->exists();
     }
 
+    // ✅ FIXED: Ubah menjadi method bukan property  
     public function canStartKraeplinTest()
     {
         // Bisa mulai KRAEPLIN jika belum ada test yang completed atau in progress

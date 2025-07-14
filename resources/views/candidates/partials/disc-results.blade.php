@@ -275,7 +275,6 @@
             </div>
         </div>
 
-        {{-- Rest of the comprehensive analysis sections remain the same --}}
         {{-- COMPREHENSIVE PERSONALITY ANALYSIS --}}
         <div class="disc-comprehensive-analysis">
             <h3 class="disc-analysis-section-title">
@@ -509,20 +508,6 @@
         <div class="empty-state">
             <i class="fas fa-chart-pie"></i>
             <p>Kandidat belum menyelesaikan tes DISC 3D</p>
-            
-            @if($candidate->canStartDisc3DTest())
-                <div style="margin-top: 20px;">
-                    <a href="{{ route('disc3d.instructions', $candidate->candidate_code) }}" 
-                       class="btn btn-primary" target="_blank">
-                        <i class="fas fa-play"></i>
-                        Mulai Tes DISC 3D
-                    </a>
-                </div>
-            @elseif(!$candidate->hasCompletedKraeplinTest())
-                <div class="empty-note">
-                    Kandidat harus menyelesaikan tes Kraeplin terlebih dahulu
-                </div>
-            @endif
         </div>
     @endif
 </section>

@@ -232,19 +232,86 @@
                 </div>
             </div>
         </div>
+
     @else
+        {{-- ✅ SIMPLE: Empty State untuk kandidat belum mengerjakan tes --}}
         <div class="empty-state">
             <i class="fas fa-chart-line"></i>
             <p>Kandidat belum menyelesaikan tes Kraeplin</p>
-            @if($candidate->canStartKraeplinTest && $candidate->canStartKraeplinTest())
-                <div style="margin-top: 20px;">
-                    <a href="{{ route('kraeplin.instructions', $candidate->candidate_code) }}" 
-                       class="btn btn-primary" target="_blank">
-                        <i class="fas fa-play"></i>
-                        Mulai Tes Kraeplin
-                    </a>
-                </div>
-            @endif
         </div>
     @endif
 </section>
+
+<style>
+/* Additional styles for empty state */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.empty-note {
+    margin-top: 20px;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #4f46e5;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #4338ca;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-accepted {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+/* Grade badges */
+.grade-a { background-color: #d1fae5; color: #065f46; }
+.grade-b { background-color: #dbeafe; color: #1e40af; }
+.grade-c { background-color: #fef3c7; color: #92400e; }
+.grade-d { background-color: #fed7aa; color: #9a3412; }
+.grade-e { background-color: #fecaca; color: #991b1b; }
+.grade-n { background-color: #f3f4f6; color: #374151; }
+
+/* Performance categories */
+.performance-excellent { background-color: #d1fae5; color: #065f46; }
+.performance-good { background-color: #dbeafe; color: #1e40af; }
+.performance-average { background-color: #fef3c7; color: #92400e; }
+.performance-below_average { background-color: #fed7aa; color: #9a3412; }
+.performance-poor { background-color: #fecaca; color: #991b1b; }
+.performance-unknown { background-color: #f3f4f6; color: #374151; }
+
+/* Spinner animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>

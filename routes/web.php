@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\{AuthController, DashboardController, JobApplicationController, CandidateController, DiscController, KraeplinController};
+use App\Http\Controllers\{AuthController, DashboardController, JobApplicationController, CandidateController, PositionController, DiscController, KraeplinController};
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
@@ -18,7 +18,6 @@ Route::prefix('kraeplin')->name('kraeplin.')->group(function () {
     Route::post('/submit-test', [KraeplinController::class, 'submitTest'])->name('submit.test');
     Route::get('/{candidateCode}/result', [KraeplinController::class, 'showResult'])->name('result');
 });
-
 
 // DISC 3D SPECIFIC ROUTES - NEW SECTION
 Route::prefix('disc3d')->name('disc3d.')->group(function () {
@@ -73,6 +72,26 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin,hr')->group(function () {
         Route::get('/hr/dashboard', [DashboardController::class, 'hr'])->name('hr.dashboard');
         
+        // ✅ FIXED: Move positions routes OUTSIDE candidates group
+        Route::prefix('positions')->name('positions.')->group(function () {
+            Route::get('/', [PositionController::class, 'index'])->name('index');
+            Route::get('/create', [PositionController::class, 'create'])->name('create');
+            Route::post('/', [PositionController::class, 'store'])->name('store');
+            Route::get('/trashed', [PositionController::class, 'trashed'])->name('trashed');
+            Route::get('/{position}', [PositionController::class, 'show'])->name('show');
+            Route::get('/{position}/edit', [PositionController::class, 'edit'])->name('edit');
+            Route::put('/{position}', [PositionController::class, 'update'])->name('update');
+            Route::patch('/{position}/status', [PositionController::class, 'updateStatus'])->name('update-status');
+            Route::delete('/{position}', [PositionController::class, 'destroy'])->name('destroy');
+            Route::post('/{position}/close', [PositionController::class, 'close'])->name('close');
+            Route::post('/{id}/restore', [PositionController::class, 'restore'])->name('restore')
+                ->where('id', '[0-9]+');
+            Route::delete('/{id}/force-delete', [PositionController::class, 'forceDelete'])->name('force-delete')
+                ->where('id', '[0-9]+');
+            Route::post('/{position}/transfer', [PositionController::class, 'transferCandidates'])->name('transfer');
+            Route::get('/{position}/statistics', [PositionController::class, 'statistics'])->name('statistics');
+        });
+        
         // Candidate Management Routes
         Route::prefix('candidates')->name('candidates.')->group(function () {
             Route::get('/', [CandidateController::class, 'index'])->name('index');
@@ -80,36 +99,55 @@ Route::middleware('auth')->group(function () {
             Route::get('/export', [CandidateController::class, 'exportMultiple'])->name('export.multiple');
             Route::post('/bulk-action', [CandidateController::class, 'bulkAction'])->name('bulk-action');
             
+            // ✅ FIXED: Trashed candidates routes - moved BEFORE individual routes
+            Route::get('/trashed', [CandidateController::class, 'trashed'])->name('trashed');
+            
             // Individual candidate routes
-            Route::get('/{id}', [CandidateController::class, 'show'])->name('show');
-            Route::get('/{id}/edit', [CandidateController::class, 'edit'])->name('edit');
-            Route::put('/{id}', [CandidateController::class, 'update'])->name('update');
-            Route::patch('/{id}/status', [CandidateController::class, 'updateStatus'])->name('update-status');
-            Route::get('/{id}/schedule-interview', [CandidateController::class, 'scheduleInterview'])->name('schedule-interview');
+            Route::get('/{id}', [CandidateController::class, 'show'])->name('show')
+                ->where('id', '[0-9]+'); // Ensure ID is numeric
+            Route::get('/{id}/edit', [CandidateController::class, 'edit'])->name('edit')
+                ->where('id', '[0-9]+');
+            Route::put('/{id}', [CandidateController::class, 'update'])->name('update')
+                ->where('id', '[0-9]+');
+            Route::patch('/{id}/status', [CandidateController::class, 'updateStatus'])->name('update-status')
+                ->where('id', '[0-9]+');
+            Route::get('/{id}/schedule-interview', [CandidateController::class, 'scheduleInterview'])->name('schedule-interview')
+                ->where('id', '[0-9]+');
             
             // Preview and export routes
-            Route::get('/{id}/preview', [CandidateController::class, 'preview'])->name('preview');
-            Route::get('/{id}/preview/pdf', [CandidateController::class, 'previewPdf'])->name('preview.pdf');
-            Route::get('/{id}/preview/html', [CandidateController::class, 'previewHtml'])->name('preview.html');
-            Route::get('/{id}/export/pdf', [CandidateController::class, 'exportSingle'])->name('export.single.pdf');
-            Route::get('/{id}/export/word', [CandidateController::class, 'exportWord'])->name('export.single.word');
+            Route::get('/{id}/preview', [CandidateController::class, 'preview'])->name('preview')
+                ->where('id', '[0-9]+');
+            Route::get('/{id}/preview/pdf', [CandidateController::class, 'previewPdf'])->name('preview.pdf')
+                ->where('id', '[0-9]+');
+            Route::get('/{id}/preview/html', [CandidateController::class, 'previewHtml'])->name('preview.html')
+                ->where('id', '[0-9]+');
+            Route::get('/{id}/export/pdf', [CandidateController::class, 'exportSingle'])->name('export.single.pdf')
+                ->where('id', '[0-9]+');
+            Route::get('/{id}/export/word', [CandidateController::class, 'exportWord'])->name('export.single.word')
+                ->where('id', '[0-9]+');
             
             // Test results for HR - UPDATED FOR DISC 3D
-            Route::get('/{id}/kraeplin-result', [CandidateController::class, 'kraeplinResult'])->name('kraeplin.result');
-            Route::get('/{id}/disc3d-result', [CandidateController::class, 'disc3dResult'])->name('disc3d.result');
-            Route::get('/{id}/disc3d-export', [CandidateController::class, 'exportDisc3dResult'])->name('export.disc3d.result');
+            Route::get('/{id}/kraeplin-result', [CandidateController::class, 'kraeplinResult'])->name('kraeplin.result')
+                ->where('id', '[0-9]+');
+            Route::get('/{id}/disc3d-result', [CandidateController::class, 'disc3dResult'])->name('disc3d.result')
+                ->where('id', '[0-9]+');
+            Route::get('/{id}/disc3d-export', [CandidateController::class, 'exportDisc3dResult'])->name('export.disc3d.result')
+                ->where('id', '[0-9]+');
             
             // Keep legacy disc result route for backward compatibility
-            Route::get('/{id}/disc-result', [CandidateController::class, 'discResult'])->name('disc.result');
+            Route::get('/{id}/disc-result', [CandidateController::class, 'discResult'])->name('disc.result')
+                ->where('id', '[0-9]+');
             
             // Soft delete routes
-            Route::delete('/{id}', [CandidateController::class, 'destroy'])->name('destroy');
+            Route::delete('/{id}', [CandidateController::class, 'destroy'])->name('destroy')
+                ->where('id', '[0-9]+');
             Route::post('/bulk-delete', [CandidateController::class, 'bulkDelete'])->name('bulk-delete');
 
-            // Trashed candidates routes
-            Route::get('/trashed', [CandidateController::class, 'trashed'])->name('trashed');
-            Route::post('/{id}/restore', [CandidateController::class, 'restore'])->name('restore');
-            Route::delete('/{id}/force', [CandidateController::class, 'forceDelete'])->name('force-delete');
+            // ✅ FIXED: Trashed candidates management routes
+            Route::post('/{id}/restore', [CandidateController::class, 'restore'])->name('restore')
+                ->where('id', '[0-9]+');
+            Route::delete('/{id}/force', [CandidateController::class, 'forceDelete'])->name('force-delete')
+                ->where('id', '[0-9]+');
         });
         
         // HR DISC 3D Management
@@ -211,7 +249,7 @@ if (app()->environment(['local', 'testing', 'staging'])) {
                                 'status' => $exists ? 'OK' : 'MISSING'
                             ];
                             
-                            if (!$exists) $allExist = false;
+                            if (!exists) $allExist = false;
                             
                         } catch (\Exception $e) {
                             $tableStatus[$table] = [

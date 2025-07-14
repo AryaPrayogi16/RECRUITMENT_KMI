@@ -29,17 +29,34 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class JobApplicationController extends Controller
 {
+    /**
+     * ✅ SIMPLE FIX: Hanya ubah query untuk menampilkan posisi aktif
+     */
     public function showForm()
     {
-        $positions = Position::where('is_active', true)->get();
+        // Ubah dari: Position::where('is_active', true)->get();
+        // Menjadi: menggunakan scope active() yang sudah ada
+        $positions = Position::active()
+                            ->orderBy('department')
+                            ->orderBy('position_name')
+                            ->get();
+        
         return view('job-application.form', compact('positions'));
     }
 
+    /**
+     * ✅ SIMPLE FIX: Update API untuk konsistensi dengan filter aktif
+     */
     public function getPositions()
     {
-        $positions = Position::where('is_active', true)
+        // Ubah dari: Position::where('is_active', true)
+        // Menjadi: menggunakan scope active()
+        $positions = Position::active()
             ->select('id', 'position_name', 'department', 'salary_range_min', 'salary_range_max')
+            ->orderBy('department')
+            ->orderBy('position_name')
             ->get();
+            
         return response()->json($positions);
     }
 
@@ -64,10 +81,13 @@ class JobApplicationController extends Controller
                 'email' => $validated['email']
             ]);
             
-            // Get position_id from position_name
-            $position = Position::where('position_name', $validated['position_applied'])->first();
+            // ✅ TAMBAHAN SIMPLE: Validasi posisi masih aktif
+            $position = Position::active()
+                              ->where('position_name', $validated['position_applied'])
+                              ->first();
+                              
             if (!$position) {
-                throw new ModelNotFoundException("Position '{$validated['position_applied']}' not found");
+                throw new \Exception("Posisi '{$validated['position_applied']}' tidak tersedia atau sudah tidak aktif");
             }
             
             // 1. Create Candidate
@@ -124,8 +144,6 @@ class JobApplicationController extends Controller
                 $this->createDrivingLicenses($candidate, $validated['driving_licenses']);
                 Log::info('Driving licenses created', ['candidate_id' => $candidate->id, 'count' => count($validated['driving_licenses'])]);
             }
-            
-            
             
             // 10. Handle File Uploads
             $uploadedFiles = $this->handleDocumentUploads($candidate, $request);
