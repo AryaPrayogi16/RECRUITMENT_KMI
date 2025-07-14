@@ -755,13 +755,13 @@
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="#" class="nav-link">
+                        <a href="{{ route('positions.index') }}" class="nav-link">
                             <i class="fas fa-briefcase"></i>
                             <span>Posisi</span>
                         </a>
                     </div>
                 @endif
-                <div class="nav-item">
+                <!-- <div class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="fas fa-calendar-alt"></i>
                         <span>Interview</span>
@@ -794,7 +794,7 @@
                             <span>Audit Logs</span>
                         </a>
                     </div>
-                @endif
+                @endif -->
             </nav>
         </aside>
 

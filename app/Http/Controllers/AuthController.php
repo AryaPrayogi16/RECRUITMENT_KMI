@@ -65,7 +65,7 @@ class AuthController extends Controller
             'admin' => redirect()->route('candidates.index')->with('success', $message),
             'hr' => redirect()->route('hr.dashboard')->with('success', $message),
             'interviewer' => redirect()->route('interviewer.dashboard')->with('success', $message),
-            default => redirect()->route('dashboard')->with('success', $message),
+            default => redirect()->route('candidates.index')->with('success', $message),
         };
     }
 

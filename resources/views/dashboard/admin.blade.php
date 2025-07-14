@@ -490,7 +490,7 @@
                         <span>Posisi</span>
                     </a>
                 </div>
-                <div class="nav-item">
+                <!-- <div class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="fas fa-calendar-alt"></i>
                         <span>Interview</span>
@@ -519,7 +519,7 @@
                         <i class="fas fa-history"></i>
                         <span>Audit Logs</span>
                     </a>
-                </div>
+                </div> -->
             </nav>
         </aside>
 
