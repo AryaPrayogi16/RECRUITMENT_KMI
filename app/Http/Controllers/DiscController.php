@@ -70,7 +70,7 @@ class DiscController extends Controller
                 'kraeplin_completed' => $kraeplinCompleted
             ]);
             
-            return view('disc.instructions', [
+            return view('disc3d.instructions', [
                 'candidate' => $candidate,
                 'incompleteSession' => null,
                 'timeLimit' => null,
@@ -83,7 +83,7 @@ class DiscController extends Controller
                 'error' => $e->getMessage()
             ]);
             
-            return view('disc.instructions', [
+            return view('disc3d.instructions', [
                 'candidate' => (object) [
                     'id' => 1,
                     'candidate_code' => $candidateCode
@@ -145,7 +145,7 @@ class DiscController extends Controller
                 'total_sections' => $sections->count()
             ]);
             
-            return view('disc.test', [
+            return view('disc3d.test', [
                 'candidate' => $candidate,
                 'session' => $session,
                 'sections' => $sections,

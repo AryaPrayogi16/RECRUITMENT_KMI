@@ -23,38 +23,13 @@ class DatabaseSeeder extends Seeder
         \App\Models\User::create([
             'username' => 'admin',
             'email' => 'admin@pawindo.com',
-<<<<<<< HEAD
-            'password' => bcrypt('Adminnumber1'),
-=======
             // ❌ REMOVED: email_verified_at (not needed for internal system)
             'password' => Hash::make('admin123'),
->>>>>>> origin/arya
             'full_name' => 'Administrator',
             'role' => 'admin',
             'is_active' => true,
         ]);
 
-<<<<<<< HEAD
-        // // Create HR user
-        // \App\Models\User::create([
-        //     'username' => 'hr_manager',
-        //     'email' => 'hr@pawindo.com',
-        //     'password' => bcrypt('hr123'),
-        //     'full_name' => 'HR Manager',
-        //     'role' => 'hr',
-        //     'is_active' => true,
-        // ]);
-
-        // // Create Interviewer user
-        // \App\Models\User::create([
-        //     'username' => 'interviewer',
-        //     'email' => 'interviewer@pawindo.com',
-        //     'password' => bcrypt('int123'),
-        //     'full_name' => 'Interviewer',
-        //     'role' => 'interviewer',
-        //     'is_active' => true,
-        // ]);
-=======
         // HR Manager
         \App\Models\User::create([
             'username' => 'hr_manager',
@@ -74,7 +49,6 @@ class DatabaseSeeder extends Seeder
             'role' => 'interviewer',
             'is_active' => true,
         ]);
->>>>>>> origin/arya
 
         // ✅ Additional HR Staff (optional)
         \App\Models\User::create([
