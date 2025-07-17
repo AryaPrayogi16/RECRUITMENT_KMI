@@ -466,6 +466,12 @@
                 }
             }
         }
+
+        // PERBAIKAN: Save salary without formatting untuk localStorage
+        const salaryInput = document.getElementById('expected_salary');
+        if (salaryInput && data.expected_salary) {
+            data.expected_salary = getRawSalaryValue(salaryInput);
+        }
         
         // Handle checkboxes
         const checkboxes = form.querySelectorAll('input[type="checkbox"]');
@@ -509,8 +515,17 @@
                     }
                 });
             });
-            
-            // Handle checkbox arrays (like driving_licenses[])
+
+            // PERBAIKAN: Format salary setelah load dengan nilai raw
+            const salaryInput = document.getElementById('expected_salary');
+            if (salaryInput && salaryInput.value) {
+                // Set raw value first, then format
+                const rawValue = salaryInput.value.replace(/\./g, '');
+                salaryInput.value = rawValue;
+                formatSalary(salaryInput);
+            }
+
+            // Handle checkbox arrays
             const checkboxArrays = ['driving_licenses'];
             checkboxArrays.forEach(name => {
                 if (data[name + '[]'] && Array.isArray(data[name + '[]'])) {
@@ -932,11 +947,17 @@
             copyCheckbox.addEventListener('change', function() {
                 if (this.checked) {
                     currentAddressField.value = ktpAddressField.value;
-                    currentAddressField.disabled = true;
+                    currentAddressField.setAttribute('readonly', true);
+                    currentAddressField.style.backgroundColor = '#f3f4f6';
+                    currentAddressField.style.color = '#6b7280';
                     saveFormData();
                 } else {
-                    currentAddressField.disabled = false;
+                    currentAddressField.removeAttribute('readonly');
+                    currentAddressField.style.backgroundColor = '';
+                    currentAddressField.style.color = '';
+                    currentAddressField.value = ''; // Clear the field when unchecked
                     currentAddressField.focus();
+                    saveFormData();
                 }
             });
 
@@ -950,60 +971,39 @@
         }
     }
 
-    // Update remove button visibility
-    function updateRemoveButtons(containerId) {
-        const container = document.getElementById(containerId);
-        const removeButtons = container.querySelectorAll('.btn-remove');
-        removeButtons.forEach((btn, index) => {
-            btn.style.display = index === 0 && container.children.length === 1 ? 'none' : 'inline-block';
-        });
-    }
-
-    // Attach event listeners to newly added dynamic fields
-    function attachEventListeners() {
-        const newInputs = form.querySelectorAll('input:not([data-listener]):not([type="file"]), select:not([data-listener]), textarea:not([data-listener])');
-        newInputs.forEach(input => {
-            input.setAttribute('data-listener', 'true');
-            input.addEventListener('change', function() {
-                saveFormData();
-            });
-            input.addEventListener('input', debounce(function() {
-                saveFormData();
-            }, 1000));
-        });
-    }
-
-    // Clean empty optional dynamic fields before submit
-    function cleanEmptyOptionalFields() {
-        const optionalSections = ['non_formal_education', 'work_experiences', 'social_activities', 'achievements'];
+    // Salary formatting functions yang diperbaiki
+    function formatSalary(input) {
+        // Simpan posisi cursor
+        const cursorPosition = input.selectionStart;
+        const oldValue = input.value;
         
-        optionalSections.forEach(section => {
-            const inputs = document.querySelectorAll(`input[name^="${section}["], select[name^="${section}["], textarea[name^="${section}["]`);
-            const groups = {};
-            
-            inputs.forEach(input => {
-                const match = input.name.match(new RegExp(`${section}\\[(\\d+)\\]`));
-                if (match) {
-                    const index = match[1];
-                    if (!groups[index]) groups[index] = [];
-                    groups[index].push(input);
-                }
-            });
-            
-            Object.keys(groups).forEach(index => {
-                const groupInputs = groups[index];
-                const hasValue = groupInputs.some(input => {
-                    if (input.type === 'checkbox') return input.checked;
-                    return input.value && input.value.trim() !== '';
-                });
-                
-                if (!hasValue) {
-                    groupInputs.forEach(input => {
-                        input.removeAttribute('name');
-                    });
-                }
-            });
-        });
+        // Remove all non-digits
+        let value = input.value.replace(/\D/g, '');
+        
+        // Add thousand separators
+        if (value) {
+            value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+        
+        input.value = value;
+        
+        // Restore cursor position (adjust for added dots)
+        const newDots = (value.match(/\./g) || []).length;
+        const oldDots = (oldValue.match(/\./g) || []).length;
+        const dotDifference = newDots - oldDots;
+        
+        const newCursorPosition = cursorPosition + dotDifference;
+        input.setSelectionRange(newCursorPosition, newCursorPosition);
+    }
+
+    function unformatSalary(input) {
+        // Remove dots for form submission - hanya menghilangkan titik
+        input.value = input.value.replace(/\./g, '');
+    }
+
+    // Function untuk mendapatkan nilai raw salary (tanpa titik)
+    function getRawSalaryValue(input) {
+        return input.value.replace(/\./g, '');
     }
 
     // Initialize everything when DOM is loaded
@@ -1039,6 +1039,33 @@
             handleMultipleFileUpload(e, 'certificates');
         });
 
+        // Initialize salary formatting - PERBAIKAN UTAMA
+        const salaryInput = document.getElementById('expected_salary');
+        if (salaryInput) {
+            // Event listener untuk formatting real-time
+            salaryInput.addEventListener('input', function(e) {
+                formatSalary(e.target);
+                
+                // Debounced save dengan nilai yang sudah diformat
+                clearTimeout(this.saveTimeout);
+                this.saveTimeout = setTimeout(() => {
+                    saveFormData();
+                }, 1000);
+            });
+            
+            // Format on load if there's a value
+            if (salaryInput.value) {
+                formatSalary(salaryInput);
+            }
+            
+            // PENTING: Event listener untuk form submission
+            salaryInput.form.addEventListener('submit', function(e) {
+                // Unformat salary sebelum submit
+                const rawValue = getRawSalaryValue(salaryInput);
+                salaryInput.value = rawValue;
+            });
+        }
+
         // NIK validation
         const nikInput = document.getElementById('nik');
         if (nikInput) {
@@ -1068,13 +1095,21 @@
         // Enhanced form validation dengan async file validation
         document.getElementById('applicationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
+            // PERBAIKAN: Unformat salary sebelum validation dan submission
+            const salaryInput = document.getElementById('expected_salary');
+            if (salaryInput) {
+                const rawValue = getRawSalaryValue(salaryInput);
+                salaryInput.value = rawValue;
+                console.log('Raw salary value for submission:', rawValue);
+            }
+
             let errors = [];
             let hasError = false;
-            
+
             // Clean empty optional fields first
             cleanEmptyOptionalFields();
-            
+
             // Reset all field styles
             form.querySelectorAll('.form-input').forEach(input => {
                 input.classList.remove('error');
@@ -1200,6 +1235,11 @@
             }
             
             if (hasError) {
+                // Re-format salary jika ada error untuk user experience
+                if (salaryInput && salaryInput.value) {
+                    formatSalary(salaryInput);
+                }
+                
                 let errorMessage = 'Harap lengkapi data berikut:\n\n';
                 errors.slice(0, 10).forEach((error, index) => {
                     errorMessage += `${index + 1}. ${error}\n`;
@@ -1224,8 +1264,8 @@
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="loading-spinner mr-2"></span> Mengirim...';
                 
-                // Submit form
-                console.log('All validations passed, submitting form...');
+                // Submit form dengan nilai raw
+                console.log('All validations passed, submitting form with raw salary value...');
                 this.submit();
             }
         });

@@ -1,5 +1,4 @@
 <?php
-// File: app/Http/Requests/DiscSectionResponseRequest.php
 
 namespace App\Http\Requests;
 

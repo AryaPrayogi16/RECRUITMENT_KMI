@@ -485,9 +485,9 @@
                     </a>
                 </div>
                 <div class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-briefcase"></i>
-                        <span>Posisi</span>
+                    <a href="{{ route('positions.index') }}" class="nav-link">
+                            <i class="fas fa-briefcase"></i>
+                            <span>Posisi</span>
                     </a>
                 </div>
                 <!-- <div class="nav-item">

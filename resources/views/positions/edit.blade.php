@@ -257,6 +257,124 @@
             padding: 30px;
         }
 
+        /* Enhanced Candidate Info Alerts */
+        .candidate-info-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid #e2e8f0;
+        }
+
+        .info-card.has-candidates {
+            border-left-color: #f59e0b;
+            background: linear-gradient(135deg, #fefbf2, #ffffff);
+        }
+
+        .info-card.no-candidates {
+            border-left-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf8, #ffffff);
+        }
+
+        .info-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .info-card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .info-card.has-candidates .info-card-icon {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+        }
+
+        .info-card.no-candidates .info-card-icon {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .info-card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        .info-card-subtitle {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        .candidate-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a202c;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .warning-note {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            color: #92400e;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .success-note {
+            background: #d1fae5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         /* Form Styles */
         .form-container {
             background: white;
@@ -377,24 +495,6 @@
             cursor: pointer;
         }
 
-        /* Warning Alert for Active Candidates */
-        .warning-alert {
-            background: #fef3c7;
-            border: 1px solid #fbbf24;
-            color: #92400e;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .warning-alert i {
-            font-size: 1.2rem;
-            color: #f59e0b;
-        }
-
         /* Form Actions */
         .form-actions {
             background: #f9fafb;
@@ -507,6 +607,10 @@
 
             .content {
                 padding: 20px;
+            }
+
+            .candidate-info-section {
+                grid-template-columns: 1fr;
             }
 
             .form-grid {
@@ -629,16 +733,148 @@
                     </div>
                 @endif
 
-                <!-- Warning for active candidates -->
-                @if($hasActiveCandidates)
-                    <div class="warning-alert">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <div>
-                            <strong>Perhatian!</strong> Posisi ini memiliki kandidat aktif. 
-                            Perubahan pada informasi posisi dapat mempengaruhi proses rekrutmen yang sedang berjalan.
+                <!-- Enhanced Candidate Information -->
+                <div class="candidate-info-section">
+                    @if($hasActiveCandidates || $totalCandidates > 0)
+                        <div class="info-card has-candidates">
+                            <div class="info-card-header">
+                                <div class="info-card-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div>
+                                    <div class="info-card-title">Kandidat Terdaftar</div>
+                                    <div class="info-card-subtitle">Posisi ini memiliki kandidat yang mendaftar</div>
+                                </div>
+                            </div>
+                            <div class="candidate-stats">
+                                <div class="stat-item">
+                                    <span class="stat-number">{{ $totalCandidates }}</span>
+                                    <span class="stat-label">Total Kandidat</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number" style="color: {{ $activeCandidates > 0 ? '#f59e0b' : '#6b7280' }};">{{ $activeCandidates }}</span>
+                                    <span class="stat-label">Sedang Proses</span>
+                                </div>
+                            </div>
+                            @if($activeCandidates > 0)
+                                <div class="warning-note">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <div>
+                                        <strong>Perhatian!</strong> {{ $activeCandidates }} kandidat sedang dalam proses rekrutmen. 
+                                        Perubahan pada posisi ini dapat mempengaruhi proses yang sedang berjalan.
+                                    </div>
+                                </div>
+                            @else
+                                <div class="success-note">
+                                    <i class="fas fa-info-circle"></i>
+                                    <div>
+                                        Semua aplikasi untuk posisi ini sudah selesai diproses.
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @else
+                        <div class="info-card no-candidates">
+                            <div class="info-card-header">
+                                <div class="info-card-icon">
+                                    <i class="fas fa-user-plus"></i>
+                                </div>
+                                <div>
+                                    <div class="info-card-title">Belum Ada Kandidat</div>
+                                    <div class="info-card-subtitle">Posisi ini belum memiliki kandidat yang mendaftar</div>
+                                </div>
+                            </div>
+                            <div class="candidate-stats">
+                                <div class="stat-item">
+                                    <span class="stat-number">0</span>
+                                    <span class="stat-label">Total Kandidat</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">0</span>
+                                    <span class="stat-label">Sedang Proses</span>
+                                </div>
+                            </div>
+                            <div class="success-note">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    Anda dapat mengubah semua informasi posisi dengan aman karena belum ada kandidat yang mendaftar.
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Position Status Card -->
+                    <div class="info-card {{ $position->detailed_status === 'aktif' ? 'no-candidates' : 'has-candidates' }}">
+                        <div class="info-card-header">
+                            <div class="info-card-icon">
+                                <i class="fas {{ $position->detailed_status === 'aktif' ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
+                            </div>
+                            <div>
+                                <div class="info-card-title">Status Posisi</div>
+                                <div class="info-card-subtitle">{{ $position->detailed_status === 'aktif' ? 'Menerima Aplikasi' : 'Tidak Menerima Aplikasi' }}</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center; padding: 20px 0;">
+                            <span style="
+                                display: inline-block;
+                                padding: 10px 24px;
+                                border-radius: 25px;
+                                font-weight: 600;
+                                font-size: 1rem;
+                                background: {{ $position->detailed_status === 'aktif' ? '#d1fae5' : '#fef3c7' }};
+                                color: {{ $position->detailed_status === 'aktif' ? '#065f46' : '#92400e' }};
+                            ">
+                                {{ $position->detailed_status === 'aktif' ? '✅ AKTIF' : '⏸️ TUTUP' }}
+                            </span>
+                        </div>
+                        
+                        <!-- Status Details -->
+                        <div style="background: rgba(255,255,255,0.7); border-radius: 8px; padding: 12px; margin: 10px 0; font-size: 0.85rem;">
+                            @if($position->posted_date)
+                                <div style="color: #6b7280; margin-bottom: 4px;">
+                                    <i class="fas fa-calendar-plus"></i> Dibuat: {{ $position->posted_date->format('d M Y') }}
+                                </div>
+                            @endif
+                            
+                            @if($position->closing_date)
+                                @php
+                                    $isExpired = $position->closing_date->isPast();
+                                    $daysUntilClose = $position->closing_date->diffInDays(now(), false);
+                                @endphp
+                                <div style="color: {{ $isExpired ? '#dc2626' : '#f59e0b' }}; margin-bottom: 4px;">
+                                    <i class="fas fa-calendar-times"></i> 
+                                    Tutup: {{ $position->closing_date->format('d M Y') }}
+                                    @if($isExpired)
+                                        <span style="font-size: 0.75rem; background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 10px; margin-left: 5px;">
+                                            Sudah Lewat {{ abs($daysUntilClose) }} hari
+                                        </span>
+                                    @else
+                                        <span style="font-size: 0.75rem; background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 10px; margin-left: 5px;">
+                                            {{ $daysUntilClose }} hari lagi
+                                        </span>
+                                    @endif
+                                </div>
+                            @endif
+                            
+                            <!-- Status Logic Explanation -->
+                            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 0.8rem;">
+                                @if($position->detailed_status === 'aktif')
+                                    <i class="fas fa-info-circle"></i> 
+                                    Posisi dapat menerima aplikasi baru
+                                @else
+                                    <i class="fas fa-info-circle"></i> 
+                                    @if(!$position->is_active)
+                                        Posisi dinonaktifkan secara manual
+                                    @elseif($position->closing_date && $position->closing_date->isPast())
+                                        Posisi ditutup karena melewati tanggal penutupan
+                                    @else
+                                        Posisi tidak menerima aplikasi baru
+                                    @endif
+                                @endif
+                            </div>
                         </div>
                     </div>
-                @endif
+                </div>
 
                 <!-- Form -->
                 <div class="form-container">
@@ -825,12 +1061,12 @@
                                     </label>
                                 </div>
                                 <div class="form-help">
-                                    @if($hasActiveCandidates)
+                                    @if($activeCandidates > 0)
                                         @if($position->is_active)
-                                            <strong>Info:</strong> Posisi ini sedang aktif dengan {{ $position->active_applications_count }} kandidat dalam proses.
-                                            <br><small style="color: #dc2626;">⚠️ Menutup posisi akan menghentikan penerimaan aplikasi baru.</small>
+                                            <strong style="color: #059669;">✅ Info:</strong> Posisi sedang aktif dengan <strong>{{ $activeCandidates }} kandidat dalam proses</strong>.
+                                            <br><small style="color: #dc2626;">⚠️ Menutup posisi akan menghentikan penerimaan aplikasi baru, tapi tidak mempengaruhi kandidat yang sudah mendaftar.</small>
                                         @else
-                                            <strong>Peringatan:</strong> Posisi ini memiliki {{ $position->active_applications_count }} kandidat yang masih dalam proses.
+                                            <strong style="color: #f59e0b;">⚠️ Peringatan:</strong> Posisi ini memiliki <strong>{{ $activeCandidates }} kandidat yang masih dalam proses</strong>.
                                             <br><small style="color: #059669;">✅ Membuka kembali akan memungkinkan aplikasi baru masuk.</small>
                                         @endif
                                     @else

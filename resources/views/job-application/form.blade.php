@@ -52,8 +52,17 @@
                     
                     <div class="form-group">
                         <label class="form-label" for="expected_salary">Gaji yang Diharapkan (Rp) <span class="required-star">*</span></label>
-                        <input type="number" name="expected_salary" id="expected_salary" class="form-input" 
-                               value="{{ old('expected_salary') }}" placeholder="contoh: 5000000" required>
+                        <div class="salary-input-wrapper">
+                            <input type="text" 
+                                   name="expected_salary" 
+                                   id="expected_salary" 
+                                   class="form-input" 
+                                   value="{{ old('expected_salary') }}" 
+                                   placeholder="5.000.000" 
+                                   required
+                                   inputmode="numeric">
+                        </div>
+                        
                     </div>
                 </div>
             </div>
@@ -334,6 +343,7 @@
                                     <label class="form-label">Bahasa <span class="required-star">*</span></label>
                                     <select name="language_skills[0][language]" class="form-input" required>
                                         <option value="">Pilih Bahasa</option>
+                                        <option value="Bahasa Inggris">Bahasa Indonesia</option>
                                         <option value="Bahasa Inggris">Bahasa Inggris</option>
                                         <option value="Bahasa Mandarin">Bahasa Mandarin</option>
                                         <option value="Lainnya">Lainnya</option>

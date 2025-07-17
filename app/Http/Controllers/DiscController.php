@@ -9,6 +9,7 @@ use App\Models\{
     KraeplinTestSession
 };
 use App\Services\DiscTestService;
+use App\Http\Requests\{DiscTestStartRequest, DiscTestSubmissionRequest};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -65,14 +66,20 @@ class DiscController extends Controller
                     ->with('success', 'Anda sudah menyelesaikan Test DISC 3D sebelumnya.');
             }
             
+            // ✅ UPDATED: Check for incomplete session with simplified structure
+            $incompleteSession = Disc3DTestSession::where('candidate_id', $candidate->id)
+                ->whereIn('status', ['not_started', 'in_progress'])
+                ->first();
+            
             Log::info('✅ Showing DISC 3D instructions', [
                 'candidate_id' => $candidate->id,
-                'kraeplin_completed' => $kraeplinCompleted
+                'kraeplin_completed' => $kraeplinCompleted,
+                'incomplete_session' => $incompleteSession ? $incompleteSession->id : null
             ]);
             
             return view('disc3d.instructions', [
                 'candidate' => $candidate,
-                'incompleteSession' => null,
+                'incompleteSession' => $incompleteSession,
                 'timeLimit' => null,
                 'totalSections' => 24
             ]);
@@ -83,7 +90,7 @@ class DiscController extends Controller
                 'error' => $e->getMessage()
             ]);
             
-            return view('disc3d.instructions', [
+            return view('disc.instructions', [
                 'candidate' => (object) [
                     'id' => 1,
                     'candidate_code' => $candidateCode
@@ -96,17 +103,18 @@ class DiscController extends Controller
     }
 
     /**
-     * ✅ Start DISC 3D test - using DiscTestService
+     * ✅ UPDATED: Start DISC 3D test with simplified session structure
      */
-    public function startTest($candidateCode, Request $request)
+    public function startTest($candidateCode, DiscTestStartRequest $request)
     {
-        Log::info('=== DISC 3D START TEST (via Service) ===', [
+        Log::info('=== DISC 3D START TEST (Simplified Session) ===', [
             'candidate_code' => $candidateCode,
             'method' => $request->method(),
             'timestamp' => now()
         ]);
         
         try {
+            $validated = $request->validated();
             $candidate = Candidate::where('candidate_code', $candidateCode)->first();
             
             if (!$candidate) {
@@ -126,37 +134,50 @@ class DiscController extends Controller
                     ->with('success', 'Test DISC 3D sudah diselesaikan sebelumnya.');
             }
             
-            // ✅ Use DiscTestService to create session (fresh start mode)
-            $session = $this->discTestService->createTestSession($candidate, $request, true);
+            // ✅ UPDATED: Use simplified DiscTestService to create session
+            $testMode = $validated['test_mode'] ?? 'fresh_start';
+            $session = $this->discTestService->createTestSession(
+                $candidate, 
+                $request, 
+                $testMode === 'fresh_start'
+            );
             
-            // Get test sections
-            $sections = $this->getCompleteTestSections();
+            // Get test sections from REAL DATABASE
+            $sections = $this->getRealTestSections();
             
             if ($sections->isEmpty()) {
-                Log::error('No sections available');
+                Log::error('No sections available from database');
                 return redirect()->route('disc3d.instructions', $candidateCode)
-                    ->with('error', 'Data test tidak tersedia. Silakan hubungi administrator.');
+                    ->with('error', 'Data test tidak tersedia di database. Silakan hubungi administrator.');
             }
             
-            Log::info('✅ Test session created via DiscTestService', [
+            // ✅ UPDATED: Get existing responses (for resume functionality)
+            $completedResponses = $session->responses()->get();
+            $progressPercentage = ($completedResponses->count() / 24) * 100;
+            
+            Log::info('✅ Test session created with simplified structure', [
                 'candidate_code' => $candidateCode,
                 'session_id' => $session->id,
                 'test_code' => $session->test_code,
-                'total_sections' => $sections->count()
+                'status' => $session->status,
+                'total_sections' => $sections->count(),
+                'completed_responses' => $completedResponses->count(),
+                'progress' => $progressPercentage
             ]);
             
             return view('disc3d.test', [
                 'candidate' => $candidate,
                 'session' => $session,
                 'sections' => $sections,
-                'completedResponses' => collect(),
-                'progressPercentage' => 0
+                'completedResponses' => $completedResponses,
+                'progressPercentage' => $progressPercentage
             ]);
             
         } catch (\Exception $e) {
             Log::error('Start test error', [
                 'candidate_code' => $candidateCode,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return redirect()->route('disc3d.instructions', $candidateCode)
@@ -165,40 +186,24 @@ class DiscController extends Controller
     }
 
     /**
-     * ✅ BULK SUBMIT: Submit all responses at once - using DiscTestService
+     * ✅ UPDATED: Submit all responses at once with simplified session
      */
-    public function submitTest(Request $request)
+    public function submitTest(DiscTestSubmissionRequest $request)
     {
-        Log::info('=== DISC BULK SUBMISSION (via Service) ===', [
+        Log::info('=== DISC BULK SUBMISSION (Simplified Session) ===', [
             'session_id' => $request->session_id,
             'responses_count' => count($request->responses ?? []),
             'timestamp' => now()
         ]);
 
         try {
-            $validated = $request->validate([
-                'session_id' => 'required|integer|exists:disc_3d_test_sessions,id',
-                'responses' => 'required|array|size:24',
-                'responses.*.section_id' => 'required|integer|between:1,24',
-                'responses.*.most_choice_id' => 'required|integer',
-                'responses.*.least_choice_id' => 'required|integer',
-                'responses.*.time_spent' => 'required|integer|min:1',
-                'total_duration' => 'required|integer|min:1'
-            ]);
-
-            // Additional validation: most ≠ least for each response
-            foreach ($validated['responses'] as $index => $response) {
-                if ($response['most_choice_id'] == $response['least_choice_id']) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Section " . ($index + 1) . ": Pilihan MOST dan LEAST tidak boleh sama."
-                    ], 422);
-                }
-            }
-
+            $validated = $request->validated();
+            
+            // ✅ UPDATED: Use findOrFail with simplified session structure
             $session = Disc3DTestSession::findOrFail($validated['session_id']);
             
-            if ($session->status !== 'in_progress') {
+            // ✅ UPDATED: Check session status with simplified structure
+            if (!in_array($session->status, ['not_started', 'in_progress'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Sesi test tidak valid atau sudah selesai.'
@@ -218,11 +223,12 @@ class DiscController extends Controller
             // ✅ Complete test using DiscTestService
             $result = $this->discTestService->completeTestSession($session, $validated['total_duration']);
 
-            Log::info('✅ DISC test completed via DiscTestService', [
+            Log::info('✅ DISC test completed via simplified session', [
                 'session_id' => $session->id,
                 'result_id' => $result->id,
                 'processed_responses' => $processedCount,
-                'primary_type' => $result->primary_type
+                'primary_type' => $result->primary_type,
+                'session_status' => $session->fresh()->status
             ]);
 
             return response()->json([
@@ -242,15 +248,8 @@ class DiscController extends Controller
                 ])
             ]);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Data tidak valid',
-                'errors' => $e->errors()
-            ], 422);
-
         } catch (\Exception $e) {
-            Log::error('Bulk submission error via service', [
+            Log::error('Bulk submission error with simplified session', [
                 'session_id' => $request->session_id ?? 'unknown',
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -289,6 +288,208 @@ class DiscController extends Controller
         }
     }
 
+    /**
+     * ✅ UPDATED: Resume test functionality with simplified session
+     */
+    public function resumeTest($candidateCode)
+    {
+        Log::info('=== DISC 3D RESUME TEST ===', [
+            'candidate_code' => $candidateCode,
+            'timestamp' => now()
+        ]);
+        
+        try {
+            $candidate = Candidate::where('candidate_code', $candidateCode)->firstOrFail();
+            
+            // ✅ UPDATED: Find incomplete session with simplified structure
+            $session = Disc3DTestSession::where('candidate_id', $candidate->id)
+                ->whereIn('status', ['not_started', 'in_progress'])
+                ->first();
+            
+            if (!$session) {
+                return redirect()->route('disc3d.instructions', $candidateCode)
+                    ->with('error', 'Tidak ada sesi test yang dapat dilanjutkan.');
+            }
+            
+            // Update session status to in_progress if not_started
+            if ($session->status === 'not_started') {
+                $session->update([
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+            
+            // Get test sections and existing responses
+            $sections = $this->getRealTestSections();
+            $completedResponses = $session->responses()->get();
+            $progressPercentage = ($completedResponses->count() / 24) * 100;
+            
+            Log::info('✅ Test session resumed', [
+                'session_id' => $session->id,
+                'completed_responses' => $completedResponses->count(),
+                'progress' => $progressPercentage
+            ]);
+            
+            return view('disc3d.test', [
+                'candidate' => $candidate,
+                'session' => $session,
+                'sections' => $sections,
+                'completedResponses' => $completedResponses,
+                'progressPercentage' => $progressPercentage,
+                'isResume' => true
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Resume test error', [
+                'candidate_code' => $candidateCode,
+                'error' => $e->getMessage()
+            ]);
+            
+            return redirect()->route('disc3d.instructions', $candidateCode)
+                ->with('error', 'Terjadi kesalahan saat melanjutkan test: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * ✅ UPDATED: Get test session status (API endpoint)
+     */
+    public function getSessionStatus($sessionId)
+    {
+        try {
+            $session = Disc3DTestSession::findOrFail($sessionId);
+            $completedResponses = $session->responses()->count();
+            $progressPercentage = ($completedResponses / 24) * 100;
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'session_id' => $session->id,
+                    'status' => $session->status,
+                    'progress' => $progressPercentage,
+                    'completed_sections' => $completedResponses,
+                    'remaining_sections' => 24 - $completedResponses,
+                    'started_at' => $session->started_at?->toDateTimeString(),
+                    'duration_so_far' => $session->started_at ? 
+                        now()->diffInSeconds($session->started_at) : 0
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session tidak ditemukan'
+            ], 404);
+        }
+    }
+
+    /**
+     * ✅ UPDATED: Save single section response (for progressive mode)
+     */
+    public function saveSectionResponse(Request $request)
+    {
+        Log::info('=== DISC SINGLE SECTION RESPONSE ===', [
+            'session_id' => $request->session_id,
+            'section_id' => $request->section_id,
+            'timestamp' => now()
+        ]);
+
+        try {
+            $validated = $request->validate([
+                'session_id' => 'required|integer|exists:disc_3d_test_sessions,id',
+                'section_id' => 'required|integer|between:1,24',
+                'most_choice_id' => 'required|integer',
+                'least_choice_id' => 'required|integer|different:most_choice_id',
+                'time_spent' => 'required|integer|min:1|max:600'
+            ]);
+
+            $session = Disc3DTestSession::findOrFail($validated['session_id']);
+            
+            // Check if session is still active
+            if (!in_array($session->status, ['not_started', 'in_progress'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi test tidak aktif'
+                ], 400);
+            }
+
+            // Process single section response
+            $response = $this->discTestService->processSectionResponse($session, $validated);
+            
+            // Get updated progress
+            $completedResponses = $session->responses()->count();
+            $progressPercentage = ($completedResponses / 24) * 100;
+            
+            Log::info('✅ Single section response saved', [
+                'session_id' => $session->id,
+                'section_id' => $validated['section_id'],
+                'response_id' => $response->id,
+                'progress' => $progressPercentage
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Response berhasil disimpan',
+                'data' => [
+                    'response_id' => $response->id,
+                    'section_id' => $validated['section_id'],
+                    'progress' => $progressPercentage,
+                    'completed_sections' => $completedResponses,
+                    'remaining_sections' => 24 - $completedResponses,
+                    'is_completed' => $completedResponses >= 24
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Single section response error', [
+                'session_id' => $request->session_id ?? 'unknown',
+                'section_id' => $request->section_id ?? 'unknown',
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan response: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ✅ UPDATED: Delete incomplete session
+     */
+    public function deleteIncompleteSession($candidateCode)
+    {
+        try {
+            $candidate = Candidate::where('candidate_code', $candidateCode)->firstOrFail();
+            
+            $deletedCount = Disc3DTestSession::where('candidate_id', $candidate->id)
+                ->whereIn('status', ['not_started', 'in_progress'])
+                ->delete();
+            
+            Log::info('✅ Incomplete sessions deleted', [
+                'candidate_code' => $candidateCode,
+                'deleted_count' => $deletedCount
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Sesi test yang tidak lengkap berhasil dihapus',
+                'deleted_count' => $deletedCount
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Delete incomplete session error', [
+                'candidate_code' => $candidateCode,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus sesi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     // ===== PRIVATE HELPER METHODS =====
 
     /**
@@ -312,11 +513,13 @@ class DiscController extends Controller
     }
 
     /**
-     * Get complete test sections (should be moved to service later)
+     * ✅ Get test sections from REAL DATABASE ONLY
      */
-    private function getCompleteTestSections()
+    private function getRealTestSections()
     {
         try {
+            Log::info('🔄 Loading sections from REAL DATABASE...');
+            
             $sections = Disc3DSection::with(['choices' => function($query) {
                 $query->where('is_active', true)
                       ->orderBy('choice_dimension')
@@ -326,143 +529,53 @@ class DiscController extends Controller
             ->orderBy('order_number')
             ->get();
             
-            if ($sections->count() >= 24) {
-                $sectionsWithChoices = $sections->filter(function($section) {
+            Log::info('📊 Database sections loaded', [
+                'total_sections' => $sections->count(),
+                'sections_with_choices' => $sections->filter(function($section) {
                     return $section->choices && $section->choices->count() >= 4;
-                })->count();
+                })->count()
+            ]);
+            
+            // ✅ VALIDATION: Minimal 24 sections dengan 4 choices masing-masing
+            if ($sections->count() < 24) {
+                throw new \Exception("Database hanya memiliki {$sections->count()} sections, dibutuhkan minimal 24");
+            }
+            
+            $sectionsWithInvalidChoices = $sections->filter(function($section) {
+                return !$section->choices || $section->choices->count() < 4;
+            });
+            
+            if ($sectionsWithInvalidChoices->count() > 0) {
+                $invalidIds = $sectionsWithInvalidChoices->pluck('id')->toArray();
+                throw new \Exception("Sections dengan choices tidak lengkap: " . implode(', ', $invalidIds));
+            }
+            
+            // ✅ VALIDATION: Pastikan setiap section punya 4 dimensi (D, I, S, C)
+            foreach ($sections as $section) {
+                $dimensions = $section->choices->pluck('choice_dimension')->unique()->sort()->values()->toArray();
+                $expectedDimensions = ['C', 'D', 'I', 'S'];
                 
-                if ($sectionsWithChoices >= 20) {
-                    Log::info('✅ Loaded sections from database successfully', [
-                        'sections_count' => $sections->count(),
-                        'sections_with_choices' => $sectionsWithChoices
-                    ]);
-                    return $sections;
+                if ($dimensions !== $expectedDimensions) {
+                    throw new \Exception("Section {$section->id} tidak memiliki 4 dimensi lengkap. Ditemukan: " . implode(', ', $dimensions));
                 }
             }
-        } catch (\Exception $e) {
-            Log::error('Error loading sections from database', [
-                'error' => $e->getMessage()
+            
+            Log::info('✅ Real database sections VALIDATED successfully', [
+                'sections_count' => $sections->count(),
+                'all_sections_valid' => true,
+                'data_source' => 'real_database'
             ]);
+            
+            return $sections;
+            
+        } catch (\Exception $e) {
+            Log::error('❌ Failed to load from real database', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // ❌ TIDAK ADA FALLBACK - Force fix database
+            throw new \Exception('Database sections tidak valid: ' . $e->getMessage() . '. Silakan perbaiki data di tabel disc_3d_sections dan disc_3d_section_choices.');
         }
-        
-        return $this->createCompleteDummySections();
-    }
-
-    /**
-     * Create dummy sections if database sections are not available
-     */
-    private function createCompleteDummySections()
-    {
-        Log::info('Creating complete dummy sections with weights');
-        
-        $sections = collect();
-        
-        for ($i = 1; $i <= 24; $i++) {
-            $section = new \stdClass();
-            $section->id = $i;
-            $section->section_number = $i;
-            $section->section_code = sprintf('SEC%02d', $i);
-            $section->section_title = "Section {$i}";
-            $section->is_active = true;
-            $section->order_number = $i;
-            
-            $choices = collect();
-            $dimensions = ['D', 'I', 'S', 'C'];
-            
-            $textVariations = [
-                'D' => [
-                    'Saya suka mengambil kendali dan memimpin dengan tegas',
-                    'Saya berani menghadapi tantangan dan kompetisi',
-                    'Saya fokus pada hasil dan pencapaian target',
-                    'Saya tidak takut mengambil keputusan sulit',
-                    'Saya aktif dalam menciptakan perubahan',
-                    'Saya kompetitif dan suka tantangan'
-                ],
-                'I' => [
-                    'Saya senang berkomunikasi dan mempengaruhi orang lain',
-                    'Saya antusias dalam berinteraksi sosial',
-                    'Saya mudah menyesuaikan diri dengan lingkungan baru',
-                    'Saya optimis dan positif dalam menghadapi situasi',
-                    'Saya inspiratif dan memotivasi tim',
-                    'Saya ekspresif dan energik dalam komunikasi'
-                ],
-                'S' => [
-                    'Saya lebih suka bekerja dengan stabil dan konsisten',
-                    'Saya sabar dan dapat diandalkan dalam tim',
-                    'Saya menghargai harmoni dan kerjasama',
-                    'Saya loyal dan mendukung keputusan kelompok',
-                    'Saya konsisten dalam mengikuti prosedur',
-                    'Saya dapat diandalkan dan supportif'
-                ],
-                'C' => [
-                    'Saya teliti dalam detail dan mengikuti prosedur yang benar',
-                    'Saya mengutamakan kualitas dan akurasi dalam bekerja',
-                    'Saya sistematis dan terorganisir dalam pendekatan',
-                    'Saya berhati-hati dalam mengambil keputusan',
-                    'Saya analitis dan berpikir logis',
-                    'Saya perfeksionis dalam standar kerja'
-                ]
-            ];
-            
-            foreach ($dimensions as $dim) {
-                $choice = new \stdClass();
-                $choice->id = ($i - 1) * 4 + array_search($dim, $dimensions) + 1;
-                $choice->section_id = $i;
-                $choice->section_code = sprintf('SEC%02d', $i);
-                $choice->section_number = $i;
-                $choice->choice_dimension = $dim;
-                $choice->choice_code = sprintf('SEC%02d_%s', $i, $dim);
-                
-                $textIndex = ($i - 1) % count($textVariations[$dim]);
-                $choice->choice_text = $textVariations[$dim][$textIndex];
-                
-                $weights = $this->generateChoiceWeights($dim, $i);
-                $choice->weight_d = $weights['D'];
-                $choice->weight_i = $weights['I'];
-                $choice->weight_s = $weights['S'];
-                $choice->weight_c = $weights['C'];
-                
-                $choice->primary_dimension = $dim;
-                $choice->primary_strength = abs($weights[$dim]);
-                $choice->is_active = true;
-                
-                $choices->push($choice);
-            }
-            
-            $section->choices = $choices;
-            $sections->push($section);
-        }
-        
-        Log::info('✅ Created complete dummy sections successfully', [
-            'sections_count' => $sections->count(),
-            'choices_per_section' => 4,
-            'total_choices' => $sections->count() * 4
-        ]);
-        
-        return $sections;
-    }
-
-    /**
-     * Generate choice weights for dummy data
-     */
-    private function generateChoiceWeights($dimension, $sectionNumber): array
-    {
-        $weights = ['D' => 0, 'I' => 0, 'S' => 0, 'C' => 0];
-        
-        $weights[$dimension] = 0.8 + (rand(-100, 200) / 1000);
-        
-        $secondaryDims = array_diff(['D', 'I', 'S', 'C'], [$dimension]);
-        
-        foreach ($secondaryDims as $dim) {
-            if (($dimension == 'D' && $dim == 'I') || ($dimension == 'I' && $dim == 'D')) {
-                $weights[$dim] = (rand(-200, 400) / 1000);
-            } elseif (($dimension == 'S' && $dim == 'C') || ($dimension == 'C' && $dim == 'S')) {
-                $weights[$dim] = (rand(-200, 400) / 1000);
-            } else {
-                $weights[$dim] = (rand(-400, 300) / 1000);
-            }
-        }
-        
-        return $weights;
     }
 }

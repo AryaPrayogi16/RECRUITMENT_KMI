@@ -105,6 +105,7 @@ class LanguageSkill extends Model
     public function getLanguageDisplayNameAttribute()
     {
         $languages = [
+            'Bahasa Indonesia' => 'Indonesian',
             'Bahasa Inggris' => 'English',
             'Bahasa Mandarin' => 'Mandarin',
             'Lainnya' => 'Other Languages'
