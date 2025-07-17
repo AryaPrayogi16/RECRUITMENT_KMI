@@ -11,6 +11,7 @@ use App\Models\{
     Disc3DResult,
     Disc3DConfig
 };
+use App\Helpers\DeviceInfoHelper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ use App\Models\Disc3DProfileInterpretation;
 class DiscTestService
 {
     /**
-     * ✅ Create test session (supports both fresh start and resume)
+     * ✅ UPDATED: Create test session with simplified structure
      */
     public function createTestSession(Candidate $candidate, Request $request, bool $freshStart = true): Disc3DTestSession
     {
@@ -37,7 +38,7 @@ class DiscTestService
             }
             
             if ($freshStart) {
-                // SINGLE RUN: Delete any incomplete sessions (fresh start)
+                // Delete any incomplete sessions (fresh start)
                 Disc3DTestSession::where('candidate_id', $candidate->id)
                     ->whereIn('status', ['not_started', 'in_progress'])
                     ->delete();
@@ -48,14 +49,11 @@ class DiscTestService
                     ->first();
                     
                 if ($existingIncomplete) {
-                    // Update existing session with new request data
+                    // Update existing session
                     $existingIncomplete->update([
                         'status' => 'in_progress',
                         'started_at' => $existingIncomplete->started_at ?: now(),
-                        'last_activity_at' => now(),
-                        'user_agent' => $request->userAgent(),
-                        'ip_address' => $request->ip(),
-                        'device_info' => json_encode($this->extractDeviceInfo($request))
+                        'updated_at' => now()
                     ]);
                     
                     DB::commit();
@@ -63,37 +61,21 @@ class DiscTestService
                 }
             }
             
-            // Get test configuration
-            $testConfig = $this->getTestConfiguration();
-            
-            // Create new session
+            // ✅ Create new session with SIMPLIFIED structure
             $session = Disc3DTestSession::create([
                 'candidate_id' => $candidate->id,
                 'test_code' => $this->generateTestCode(),
-                'status' => 'in_progress',
-                'started_at' => now(),
-                'last_activity_at' => now(),
-                'sections_completed' => 0,
-                'progress' => 0,
-                'language' => 'id',
-                'time_limit_minutes' => $testConfig['time_limit_minutes'] ?? null,
-                'auto_save' => $testConfig['auto_save'] ?? false,
-                'user_agent' => $request->userAgent(),
-                'ip_address' => $request->ip(),
-                'session_token' => hash('sha256', uniqid() . time()),
-                'metadata' => json_encode([
-                    'test_version' => $freshStart ? 'single_run_v1.0' : 'progressive_v1.0',
-                    'started_from' => 'web_interface',
-                    'browser_info' => $this->extractBrowserInfo($request),
-                    'screen_resolution' => $request->input('screen_resolution'),
-                    'timezone' => $request->input('timezone', 'Asia/Jakarta')
-                ]),
-                'device_info' => json_encode($this->extractDeviceInfo($request))
+                'status' => 'not_started',
+                'started_at' => null, // Will be set when first section is answered
+                'completed_at' => null,
+                'total_duration_seconds' => null,
+                'created_at' => now(),
+                'updated_at' => now()
             ]);
             
             DB::commit();
             
-            Log::info('✅ DISC test session created via service', [
+            Log::info('✅ DISC test session created with simplified structure', [
                 'candidate_id' => $candidate->id,
                 'session_id' => $session->id,
                 'test_code' => $session->test_code,
@@ -114,21 +96,34 @@ class DiscTestService
     }
 
     /**
-     * ✅ Process single section response
+     * ✅ UPDATED: Process single section response
      */
     public function processSectionResponse(Disc3DTestSession $session, array $validated): Disc3DResponse
     {
         DB::beginTransaction();
         
         try {
-            // Get choices to validate they belong to the same section
-            $mostChoice = Disc3DSectionChoice::find($validated['most_choice_id']);
-            $leastChoice = Disc3DSectionChoice::find($validated['least_choice_id']);
+            // ✅ Update session status if first response
+            if ($session->status === 'not_started') {
+                $session->update([
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
             
-            // If choices not found in database, create dummy choices
+            // Get REAL choices from database
+            $mostChoice = Disc3DSectionChoice::with('section')
+                ->where('id', $validated['most_choice_id'])
+                ->first();
+                
+            $leastChoice = Disc3DSectionChoice::with('section')
+                ->where('id', $validated['least_choice_id'])
+                ->first();
+            
+            // Validate choices exist in database
             if (!$mostChoice || !$leastChoice) {
-                $mostChoice = $this->createDummyChoice($validated['section_id'], $validated['most_choice_id']);
-                $leastChoice = $this->createDummyChoice($validated['section_id'], $validated['least_choice_id']);
+                throw new \Exception('Invalid choice IDs. Choices not found in database.');
             }
             
             // Validate section consistency
@@ -147,9 +142,9 @@ class DiscTestService
                 ->where('section_id', $validated['section_id'])
                 ->first();
             
-            // Calculate scores
-            $mostScores = $this->calculateChoiceScores($mostChoice, 'most');
-            $leastScores = $this->calculateChoiceScores($leastChoice, 'least');
+            // Calculate scores using REAL DATABASE weights
+            $mostScores = $this->calculateRealChoiceScores($mostChoice, 'most');
+            $leastScores = $this->calculateRealChoiceScores($leastChoice, 'least');
             $netScores = $this->calculateNetScores($mostScores, $leastScores);
             
             $responseData = [
@@ -198,7 +193,7 @@ class DiscTestService
             
             DB::commit();
             
-            Log::info('✅ DISC section response processed via service', [
+            Log::info('✅ DISC section response processed', [
                 'session_id' => $session->id,
                 'section_id' => $validated['section_id'],
                 'most_choice' => $mostChoice->choice_dimension,
@@ -220,7 +215,7 @@ class DiscTestService
     }
 
     /**
-     * ✅ Process bulk responses (for single run submission)
+     * ✅ UPDATED: Process bulk responses
      */
     public function processBulkResponses(Disc3DTestSession $session, array $responses): int
     {
@@ -229,6 +224,15 @@ class DiscTestService
         DB::beginTransaction();
         
         try {
+            // ✅ Update session status if first batch
+            if ($session->status === 'not_started') {
+                $session->update([
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+            
             foreach ($responses as $index => $responseData) {
                 try {
                     // Prepare data for individual processing
@@ -240,7 +244,7 @@ class DiscTestService
                         'revision_count' => 0
                     ];
                     
-                    // Use existing processSectionResponse method
+                    // Use internal processing method
                     $this->processSectionResponseInternal($session, $sectionData, $index + 1);
                     $processedCount++;
                     
@@ -257,7 +261,7 @@ class DiscTestService
             
             DB::commit();
             
-            Log::info('✅ Bulk responses processed via service', [
+            Log::info('✅ Bulk responses processed', [
                 'session_id' => $session->id,
                 'total_responses' => count($responses),
                 'processed_count' => $processedCount
@@ -272,7 +276,7 @@ class DiscTestService
     }
 
     /**
-     * ✅ Complete the DISC test session
+     * ✅ UPDATED: Complete the DISC test session with simplified structure
      */
     public function completeTestSession(Disc3DTestSession $session, int $totalDuration): Disc3DResult
     {
@@ -285,13 +289,12 @@ class DiscTestService
                 throw new \Exception("Test not complete. Only {$completedSections} of 24 sections completed.");
             }
             
-            // Update session status
+            // ✅ Update session status with simplified structure
             $session->update([
                 'status' => 'completed',
                 'completed_at' => now(),
                 'total_duration_seconds' => $totalDuration,
-                'sections_completed' => 24,
-                'progress' => 100
+                'updated_at' => now()
             ]);
             
             // Calculate comprehensive results
@@ -302,7 +305,7 @@ class DiscTestService
             
             DB::commit();
             
-            Log::info('✅ DISC test completed via service', [
+            Log::info('✅ DISC test completed with simplified session', [
                 'session_id' => $session->id,
                 'candidate_id' => $session->candidate_id,
                 'result_id' => $result->id,
@@ -325,7 +328,106 @@ class DiscTestService
     }
 
     /**
-     * ✅ Calculate comprehensive DISC results
+     * ✅ Generate PDF result (unchanged)
+     */
+    public function generateResultPdf(Candidate $candidate, Disc3DResult $result)
+    {
+        try {
+            $data = compact('candidate', 'result');
+            
+            return PDF::loadView('disc3d.pdf.result', $data)
+                ->setPaper('A4', 'portrait');
+                
+        } catch (\Exception $e) {
+            Log::error('Error generating DISC PDF', [
+                'candidate_id' => $candidate->id,
+                'result_id' => $result->id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    // ===== PRIVATE HELPER METHODS =====
+
+    /**
+     * ✅ Internal method using REAL DATABASE
+     */
+    private function processSectionResponseInternal(Disc3DTestSession $session, array $validated, int $responseOrder): Disc3DResponse
+    {
+        // Get REAL choices from database
+        $mostChoice = Disc3DSectionChoice::findOrFail($validated['most_choice_id']);
+        $leastChoice = Disc3DSectionChoice::findOrFail($validated['least_choice_id']);
+        
+        // Calculate scores using REAL database weights
+        $mostScores = $this->calculateRealChoiceScores($mostChoice, 'most');
+        $leastScores = $this->calculateRealChoiceScores($leastChoice, 'least');
+        $netScores = $this->calculateNetScores($mostScores, $leastScores);
+        
+        $responseData = [
+            'test_session_id' => $session->id,
+            'candidate_id' => $session->candidate_id,
+            'section_id' => $validated['section_id'],
+            'section_code' => sprintf('SEC%02d', $validated['section_id']),
+            'section_number' => $validated['section_id'],
+            'most_choice_id' => $validated['most_choice_id'],
+            'least_choice_id' => $validated['least_choice_id'],
+            'most_choice' => $mostChoice->choice_dimension,
+            'least_choice' => $leastChoice->choice_dimension,
+            'most_score_d' => $mostScores['D'],
+            'most_score_i' => $mostScores['I'],
+            'most_score_s' => $mostScores['S'],
+            'most_score_c' => $mostScores['C'],
+            'least_score_d' => $leastScores['D'],
+            'least_score_i' => $leastScores['I'],
+            'least_score_s' => $leastScores['S'],
+            'least_score_c' => $leastScores['C'],
+            'net_score_d' => $netScores['D'],
+            'net_score_i' => $netScores['I'],
+            'net_score_s' => $netScores['S'],
+            'net_score_c' => $netScores['C'],
+            'time_spent_seconds' => $validated['time_spent'],
+            'response_order' => $responseOrder,
+            'answered_at' => now(),
+            'revision_count' => 0
+        ];
+        
+        // Create proper Disc3DResponse model instance
+        $response = Disc3DResponse::create($responseData);
+        
+        return $response;
+    }
+
+    /**
+     * ✅ Calculate choice scores using REAL database weights
+     */
+    private function calculateRealChoiceScores(Disc3DSectionChoice $choice, string $type): array
+    {
+        $multiplier = $type === 'most' ? 1 : -1;
+        
+        return [
+            'D' => (float) $choice->weight_d * $multiplier,
+            'I' => (float) $choice->weight_i * $multiplier,
+            'S' => (float) $choice->weight_s * $multiplier,
+            'C' => (float) $choice->weight_c * $multiplier
+        ];
+    }
+
+    /**
+     * Calculate net scores (most + least)
+     */
+    private function calculateNetScores(array $mostScores, array $leastScores): array
+    {
+        return [
+            'D' => $mostScores['D'] + $leastScores['D'],
+            'I' => $mostScores['I'] + $leastScores['I'],
+            'S' => $mostScores['S'] + $leastScores['S'],
+            'C' => $mostScores['C'] + $leastScores['C']
+        ];
+    }
+
+    /**
+     * ✅ Calculate comprehensive DISC results (core algorithm unchanged)
      */
     private function calculateDisc3DResults(Disc3DTestSession $session, int $totalDuration): Disc3DResult
     {
@@ -485,168 +587,34 @@ class DiscTestService
     }
 
     /**
-     * ✅ Generate PDF result
+     * Generate test code (unchanged)
      */
-    public function generateResultPdf(Candidate $candidate, Disc3DResult $result)
+    private function generateTestCode(): string
     {
-        try {
-            $data = compact('candidate', 'result');
+        $attempts = 0;
+        do {
+            $code = 'D3D' . date('Y') . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+            $attempts++;
             
-            return PDF::loadView('disc3d.pdf.result', $data)
-                ->setPaper('A4', 'portrait');
-                
-        } catch (\Exception $e) {
-            Log::error('Error generating DISC PDF', [
-                'candidate_id' => $candidate->id,
-                'result_id' => $result->id,
-                'error' => $e->getMessage()
-            ]);
-            throw $e;
-        }
-    }
-
-    // ===== PRIVATE HELPER METHODS =====
-
-    /**
-     * Internal method for processing section response without transaction
-     */
-    private function processSectionResponseInternal(Disc3DTestSession $session, array $validated, int $responseOrder): Disc3DResponse
-    {
-        // Get or create dummy choices
-        $mostChoice = $this->getOrCreateChoice($validated['section_id'], $validated['most_choice_id']);
-        $leastChoice = $this->getOrCreateChoice($validated['section_id'], $validated['least_choice_id']);
-        
-        // Calculate scores
-        $mostScores = $this->calculateChoiceScores($mostChoice, 'most');
-        $leastScores = $this->calculateChoiceScores($leastChoice, 'least');
-        $netScores = $this->calculateNetScores($mostScores, $leastScores);
-        
-        $responseData = [
-            'test_session_id' => $session->id,
-            'candidate_id' => $session->candidate_id,
-            'section_id' => $validated['section_id'],
-            'section_code' => sprintf('SEC%02d', $validated['section_id']),
-            'section_number' => $validated['section_id'],
-            'most_choice_id' => $validated['most_choice_id'],
-            'least_choice_id' => $validated['least_choice_id'],
-            'most_choice' => $mostChoice->choice_dimension,
-            'least_choice' => $leastChoice->choice_dimension,
-            'most_score_d' => $mostScores['D'],
-            'most_score_i' => $mostScores['I'],
-            'most_score_s' => $mostScores['S'],
-            'most_score_c' => $mostScores['C'],
-            'least_score_d' => $leastScores['D'],
-            'least_score_i' => $leastScores['I'],
-            'least_score_s' => $leastScores['S'],
-            'least_score_c' => $leastScores['C'],
-            'net_score_d' => $netScores['D'],
-            'net_score_i' => $netScores['I'],
-            'net_score_s' => $netScores['S'],
-            'net_score_c' => $netScores['C'],
-            'time_spent_seconds' => $validated['time_spent'],
-            'response_order' => $responseOrder,
-            'answered_at' => now(),
-            'revision_count' => 0
-        ];
-        
-        // ✅ Create proper Disc3DResponse model instance
-        $response = Disc3DResponse::create($responseData);
-        
-        return $response;
-    }
-
-    /**
-     * Get or create choice (from database or dummy)
-     */
-    private function getOrCreateChoice($sectionId, $choiceId)
-    {
-        $choice = Disc3DSectionChoice::find($choiceId);
-        
-        if (!$choice) {
-            $choice = $this->createDummyChoice($sectionId, $choiceId);
-        }
-        
-        return $choice;
-    }
-
-    /**
-     * Create dummy choice for testing
-     */
-    private function createDummyChoice($sectionId, $choiceId)
-    {
-        $dimensions = ['D', 'I', 'S', 'C'];
-        $dimension = $dimensions[($choiceId - 1) % 4];
-        
-        $choice = new \stdClass();
-        $choice->id = $choiceId;
-        $choice->section_id = $sectionId;
-        $choice->choice_dimension = $dimension;
-        
-        // Generate weights
-        $weights = $this->generateChoiceWeights($dimension, $sectionId);
-        $choice->weight_d = $weights['D'];
-        $choice->weight_i = $weights['I'];
-        $choice->weight_s = $weights['S'];
-        $choice->weight_c = $weights['C'];
-        
-        return $choice;
-    }
-
-    /**
-     * Generate choice weights
-     */
-    private function generateChoiceWeights($dimension, $sectionNumber): array
-    {
-        $weights = ['D' => 0, 'I' => 0, 'S' => 0, 'C' => 0];
-        
-        $weights[$dimension] = 0.8 + (rand(-100, 200) / 1000);
-        
-        $secondaryDims = array_diff(['D', 'I', 'S', 'C'], [$dimension]);
-        
-        foreach ($secondaryDims as $dim) {
-            if (($dimension == 'D' && $dim == 'I') || ($dimension == 'I' && $dim == 'D')) {
-                $weights[$dim] = (rand(-200, 400) / 1000);
-            } elseif (($dimension == 'S' && $dim == 'C') || ($dimension == 'C' && $dim == 'S')) {
-                $weights[$dim] = (rand(-200, 400) / 1000);
-            } else {
-                $weights[$dim] = (rand(-400, 300) / 1000);
+            if ($attempts > 10) {
+                $code = 'D3D' . date('YmdHis') . rand(10, 99);
+                break;
             }
-        }
+            
+            try {
+                $exists = Disc3DTestSession::where('test_code', $code)->exists();
+            } catch (\Exception $e) {
+                $exists = false;
+            }
+            
+        } while ($exists && $attempts <= 10);
         
-        return $weights;
+        return $code;
     }
 
-    /**
-     * Calculate choice scores for most/least selection
-     */
-    private function calculateChoiceScores($choice, string $type): array
-    {
-        $multiplier = $type === 'most' ? 1 : -1;
-        
-        return [
-            'D' => ($choice->weight_d ?? 0) * $multiplier,
-            'I' => ($choice->weight_i ?? 0) * $multiplier,
-            'S' => ($choice->weight_s ?? 0) * $multiplier,
-            'C' => ($choice->weight_c ?? 0) * $multiplier
-        ];
-    }
-
-    /**
-     * Calculate net scores (most + least)
-     */
-    private function calculateNetScores(array $mostScores, array $leastScores): array
-    {
-        return [
-            'D' => $mostScores['D'] + $leastScores['D'],
-            'I' => $mostScores['I'] + $leastScores['I'],
-            'S' => $mostScores['S'] + $leastScores['S'],
-            'C' => $mostScores['C'] + $leastScores['C']
-        ];
-    }
-
-    /**
-     * Calculate raw scores for a graph (MOST/LEAST)
-     */
+    // ===== ALL OTHER CALCULATION METHODS REMAIN THE SAME =====
+    // (Include all other helper methods for calculation, scoring, etc.)
+    
     private function calculateGraphRawScores($responses, string $graphType): array
     {
         $scores = ['D' => 0.0, 'I' => 0.0, 'S' => 0.0, 'C' => 0.0];
@@ -662,9 +630,6 @@ class DiscTestService
         return $scores;
     }
 
-    /**
-     * Calculate change scores (MOST - LEAST)
-     */
     private function calculateChangeScores(array $mostScores, array $leastScores): array
     {
         return [
@@ -675,9 +640,6 @@ class DiscTestService
         ];
     }
 
-    /**
-     * Convert raw scores to percentages
-     */
     private function convertToPercentages(array $rawScores): array
     {
         $total = array_sum(array_map('abs', $rawScores));
@@ -691,9 +653,6 @@ class DiscTestService
         ];
     }
 
-    /**
-     * Convert percentages to segments (1-7)
-     */
     private function convertToSegments(array $percentages): array
     {
         $segments = [];
@@ -703,9 +662,6 @@ class DiscTestService
         return $segments;
     }
 
-    /**
-     * Calculate segment based on percentage
-     */
     private function calculateSegment(float $percentage): int
     {
         return match(true) {
@@ -719,9 +675,6 @@ class DiscTestService
         };
     }
 
-    /**
-     * Convert change scores to segments (-4 to +4)
-     */
     private function convertChangeToSegments(array $changeScores): array
     {
         $segments = [];
@@ -731,9 +684,6 @@ class DiscTestService
         return $segments;
     }
 
-    /**
-     * Calculate change segment
-     */
     private function calculateChangeSegment(float $score): int
     {
         return match(true) {
@@ -749,9 +699,6 @@ class DiscTestService
         };
     }
 
-    /**
-     * Determine personality pattern
-     */
     private function determinePattern(array $percentages): array
     {
         arsort($percentages);
@@ -764,9 +711,6 @@ class DiscTestService
         ];
     }
 
-    /**
-     * Determine adaptation pattern
-     */
     private function determineAdaptationPattern(array $mostPattern, array $leastPattern): string
     {
         if ($mostPattern['code'] === $leastPattern['code']) {
@@ -776,9 +720,6 @@ class DiscTestService
         return $leastPattern['code'] . '_to_' . $mostPattern['code'];
     }
 
-    /**
-     * Generate personality profile description
-     */
     private function generatePersonalityProfile(array $pattern): string
     {
         $profiles = [
@@ -799,9 +740,6 @@ class DiscTestService
         return $profiles[$pattern['code']] ?? $pattern['code'] . ' Type';
     }
 
-    /**
-     * Generate summary
-     */
     private function generateSummary(array $pattern, array $percentages, array $changeSegments): string
     {
         $primaryType = $pattern['primary'];
@@ -819,9 +757,6 @@ class DiscTestService
         return "Tipe kepribadian {$typeDescriptions[$primaryType]} ({$primaryPercentage}%) dengan tingkat adaptasi {$stressLevel}.";
     }
 
-    /**
-     * Calculate stress level from change segments
-     */
     private function calculateStressLevel(array $changeSegments): string
     {
         $maxChange = max(array_map('abs', $changeSegments));
@@ -831,70 +766,6 @@ class DiscTestService
             $maxChange >= 2 => 'sedang',
             default => 'rendah'
         };
-    }
-
-    // ===== ANALYTICS AND VALIDATION METHODS =====
-
-    // Hapus seluruh method updateTestAnalytics dan helpernya
-
-    // ===== HELPER METHODS FOR CALCULATIONS =====
-
-    private function calculateResponseVariance($responses): float
-    {
-        if (count($responses) < 2) return 0;
-        
-        $times = collect($responses)->pluck('time_spent_seconds');
-        $mean = $times->avg();
-        $variance = $times->map(fn($time) => pow($time - $mean, 2))->avg();
-        
-        return sqrt($variance);
-    }
-
-    private function calculateEngagementScore($responses): float
-    {
-        if (count($responses) == 0) return 0;
-        
-        $avgTime = collect($responses)->avg('time_spent_seconds');
-        $revisions = collect($responses)->sum('revision_count');
-        
-        $timeScore = match(true) {
-            $avgTime < 5 => 20,
-            $avgTime > 120 => 40,
-            $avgTime >= 10 && $avgTime <= 60 => 100,
-            default => 70
-        };
-        
-        $revisionScore = match(true) {
-            $revisions == 0 => 60,
-            $revisions <= 5 => 100,
-            $revisions <= 10 => 80,
-            default => 40
-        };
-        
-        return ($timeScore + $revisionScore) / 2;
-    }
-
-    private function calculateQualityScore($responses): float
-    {
-        return $this->calculateEngagementScore($responses);
-    }
-
-    private function detectSuspiciousPatterns($responses): bool
-    {
-        $tooFastCount = collect($responses)->where('time_spent_seconds', '<', 3)->count();
-        return $tooFastCount > 5;
-    }
-
-    private function getQualityFlags($responses): array
-    {
-        $flags = [];
-        
-        $tooFastCount = collect($responses)->where('time_spent_seconds', '<', 3)->count();
-        if ($tooFastCount > 5) {
-            $flags[] = 'too_many_fast_responses';
-        }
-        
-        return $flags;
     }
 
     private function calculateConsistencyScore($responses): float
@@ -980,8 +851,9 @@ class DiscTestService
         }
     }
 
-    // ===== INTERPRETATION AND ANALYSIS METHODS =====
-
+    // ===== INCLUDE ALL OTHER HELPER METHODS =====
+    // (Add all remaining calculation, validation, and interpretation methods)
+    
     private function generateInterpretations(array $mostSegments, array $leastSegments, array $changeSegments): array
     {
         return [
@@ -1188,108 +1060,6 @@ class DiscTestService
         };
     }
 
-    // ===== CONFIGURATION AND UTILITY METHODS =====
-
-    private function getTestConfiguration(): array
-    {
-        try {
-            $config = Disc3DConfig::where('config_key', 'test_settings')->first();
-            if ($config) {
-                if (is_array($config->config_value)) {
-                    return $config->config_value;
-                }
-                if (is_string($config->config_value)) {
-                    return json_decode($config->config_value, true);
-                }
-            }
-        } catch (\Exception $e) {
-            Log::warning('Could not load test config from database', ['error' => $e->getMessage()]);
-        }
-        
-        return [
-            'time_limit_minutes' => null,
-            'sections_per_page' => 1,
-            'allow_navigation' => false,
-            'auto_save_interval' => 0,
-            'show_progress' => true,
-            'require_all_sections' => true,
-            'auto_save' => false
-        ];
-    }
-
-    private function generateTestCode(): string
-    {
-        $attempts = 0;
-        do {
-            $code = 'D3D' . date('Y') . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-            $attempts++;
-            
-            if ($attempts > 10) {
-                $code = 'D3D' . date('YmdHis') . rand(10, 99);
-                break;
-            }
-            
-            try {
-                $exists = Disc3DTestSession::where('test_code', $code)->exists();
-            } catch (\Exception $e) {
-                $exists = false;
-            }
-            
-        } while ($exists && $attempts <= 10);
-        
-        return $code;
-    }
-
-    private function extractDeviceInfo(Request $request): array
-    {
-        return [
-            'platform' => $this->detectPlatform($request->userAgent()),
-            'browser' => $this->detectBrowser($request->userAgent()),
-            'is_mobile' => $this->isMobile($request->userAgent()),
-            'screen_resolution' => $request->input('screen_resolution'),
-            'timezone' => $request->input('timezone', 'Asia/Jakarta'),
-            'language' => $request->getPreferredLanguage(['en', 'id'])
-        ];
-    }
-
-    private function extractBrowserInfo(Request $request): array
-    {
-        $userAgent = $request->userAgent();
-        return [
-            'user_agent' => $userAgent,
-            'browser' => $this->detectBrowser($userAgent),
-            'platform' => $this->detectPlatform($userAgent),
-            'is_mobile' => $this->isMobile($userAgent)
-        ];
-    }
-
-    private function detectPlatform(string $userAgent): string
-    {
-        if (preg_match('/Mobile|Android|iPhone|iPad/', $userAgent)) {
-            return 'mobile';
-        } elseif (preg_match('/Tablet/', $userAgent)) {
-            return 'tablet';
-        }
-        return 'desktop';
-    }
-
-    private function detectBrowser(string $userAgent): string
-    {
-        if (preg_match('/Chrome/', $userAgent)) return 'Chrome';
-        if (preg_match('/Firefox/', $userAgent)) return 'Firefox';
-        if (preg_match('/Safari/', $userAgent)) return 'Safari';
-        if (preg_match('/Edge/', $userAgent)) return 'Edge';
-        return 'Unknown';
-    }
-
-    private function isMobile(string $userAgent): bool
-    {
-        return preg_match('/Mobile|Android|iPhone/', $userAgent) ? true : false;
-    }
-
-    /**
-     * Get profile interpretations from database
-     */
     private function getProfileInterpretations(array $mostSegments, array $leastSegments, array $changeSegments): array
     {
         $interpretations = [
@@ -1329,9 +1099,6 @@ class DiscTestService
         return $interpretations;
     }
 
-    /**
-     * Get single interpretation from database
-     */
     private function getInterpretation(string $dimension, string $graphType, int $segmentLevel)
     {
         try {
@@ -1350,9 +1117,6 @@ class DiscTestService
         }
     }
 
-    /**
-     * Safely decode JSON field
-     */
     private function decodeJsonField($field): array
     {
         if (is_null($field)) return [];
@@ -1364,9 +1128,6 @@ class DiscTestService
         return [];
     }
 
-    /**
-     * Compile work style summary
-     */
     private function compileWorkStyleSummary(array $workStyleData): string
     {
         $summary = [];
@@ -1385,9 +1146,6 @@ class DiscTestService
         return !empty($summary) ? implode('. ', $summary) . '.' : 'Gaya kerja yang seimbang dan fleksibel.';
     }
 
-    /**
-     * Compile communication summary
-     */
     private function compileCommunicationSummary(array $communicationData): string
     {
         $summary = [];
@@ -1402,9 +1160,6 @@ class DiscTestService
         return !empty($summary) ? implode('. ', $summary) . '.' : 'Gaya komunikasi yang adaptif sesuai situasi.';
     }
 
-    /**
-     * Compile motivators summary
-     */
     private function compileMotivatorsSummary(array $motivatorsData): string
     {
         $motivators = [];
@@ -1420,9 +1175,6 @@ class DiscTestService
             : "Motivasi yang beragam dan situasional.";
     }
 
-    /**
-     * Compile stress management summary
-     */
     private function compileStressSummary(array $stressData): string
     {
         $stressPoints = [];
@@ -1443,9 +1195,6 @@ class DiscTestService
             : "Manajemen stress yang seimbang dan adaptif.";
     }
 
-    /**
-     * Extract main points from interpretation data
-     */
     private function extractMainPoints(array $data, int $limit = 3): array
     {
         $points = [];

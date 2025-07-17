@@ -392,7 +392,7 @@
             color: #9ca3af;
         }
 
-        /* Status Badges */
+        /* ✅ SIMPLIFIED: Updated Status Badges - hanya 2 status */
         .status-badge {
             padding: 4px 12px;
             border-radius: 20px;
@@ -407,14 +407,9 @@
             color: #065f46;
         }
 
-        .status-inactive {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
         .status-closed {
-            background: #f3f4f6;
-            color: #374151;
+            background: #fef3c7;
+            color: #92400e;
         }
 
         /* Employment Type Badges */
@@ -447,30 +442,51 @@
             color: #6b21a8;
         }
 
-        /* Application Stats */
+        /* Enhanced Application Stats */
         .application-stats {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
 
         .stat-item {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             font-size: 0.85rem;
+            padding: 2px 0;
         }
 
         .stat-label {
             color: #6b7280;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .stat-value {
             font-weight: 600;
             color: #1a202c;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #f8fafc;
+            min-width: 24px;
+            text-align: center;
         }
 
         .stat-value.active {
-            color: #059669;
+            color: #065f46;
+            background: #d1fae5;
+        }
+
+        .stat-value.warning {
+            color: #92400e;
+            background: #fef3c7;
+        }
+
+        .stat-value.zero {
+            color: #6b7280;
+            background: #f3f4f6;
         }
 
         /* Action Buttons */
@@ -749,13 +765,13 @@
                                 </select>
                             </div>
                             
+                            <!-- ✅ SIMPLIFIED: Filter Status - hanya 2 opsi -->
                             <div class="filter-group">
                                 <label class="filter-label">Status</label>
                                 <select name="status" class="filter-select">
                                     <option value="">Semua Status</option>
                                     <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Aktif</option>
-                                    <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Tidak Aktif</option>
-                                    <option value="open" {{ request('status') == 'open' ? 'selected' : '' }}>Terbuka</option>
+                                    <option value="closed" {{ request('status') == 'closed' ? 'selected' : '' }}>Tutup</option>
                                 </select>
                             </div>
                             
@@ -781,14 +797,12 @@
                         </div>
                     </form>
                 </div>
-
                 <!-- Table -->
                 <div class="table-container">
                     <div class="table-header">
                         <h3 class="table-title">Daftar Posisi</h3>
                         <span class="table-info">Total: {{ $positions->total() }} posisi</span>
                     </div>
-                    
                     <table class="positions-table">
                         <thead>
                             <tr>
@@ -829,24 +843,35 @@
                                 <td>
                                     <div class="application-stats">
                                         <div class="stat-item">
-                                            <span class="stat-label">Total:</span>
-                                            <span class="stat-value">{{ $position->total_applications_count }}</span>
+                                            <span class="stat-label">
+                                                <i class="fas fa-users"></i>
+                                                Total:
+                                            </span>
+                                            <span class="stat-value {{ $position->total_applications_count == 0 ? 'zero' : '' }}">
+                                                {{ $position->total_applications_count }}
+                                            </span>
                                         </div>
                                         <div class="stat-item">
-                                            <span class="stat-label">Aktif:</span>
-                                            <span class="stat-value active">{{ $position->active_applications_count }}</span>
+                                            <span class="stat-label">
+                                                <i class="fas fa-clock"></i>
+                                                Proses:
+                                            </span>
+                                            <span class="stat-value {{ $position->active_applications_count == 0 ? 'zero' : ($position->active_applications_count > 0 ? 'warning' : 'active') }}">
+                                                {{ $position->active_applications_count }}
+                                            </span>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    @if($position->is_active)
-                                        @if($position->is_open)
-                                            <span class="status-badge status-active">Terbuka</span>
-                                        @else
-                                            <span class="status-badge status-inactive">Tutup</span>
-                                        @endif
+                                    {{-- ✅ SIMPLIFIED: Hanya 2 Status --}}
+                                    @if($position->detailed_status === 'aktif')
+                                        <span class="status-badge status-active">
+                                            <i class="fas fa-check-circle"></i> Aktif
+                                        </span>
                                     @else
-                                        <span class="status-badge status-inactive">Tidak Aktif</span>
+                                        <span class="status-badge status-closed">
+                                            <i class="fas fa-times-circle"></i> Tutup
+                                        </span>
                                     @endif
                                 </td>
                                 <td>
@@ -857,8 +882,11 @@
                                             </div>
                                         @endif
                                         @if($position->closing_date)
-                                            <div style="color: #dc2626;">
+                                            <div style="color: {{ $position->closing_date->isPast() ? '#dc2626' : '#f59e0b' }};">
                                                 Tutup: {{ $position->closing_date->format('d M Y') }}
+                                                @if($position->closing_date->isPast())
+                                                    <span style="font-size: 0.7rem;">(Lewat)</span>
+                                                @endif
                                             </div>
                                         @endif
                                     </div>
@@ -869,28 +897,28 @@
                                             <i class="fas fa-ellipsis-v"></i>
                                         </button>
                                         <div class="dropdown-menu">
-                                            <!-- <a href="{{ route('positions.show', $position->id) }}" class="dropdown-item">
-                                                <i class="fas fa-eye"></i>
-                                                Lihat Detail
-                                            </a> -->
                                             <a href="{{ route('positions.edit', $position->id) }}" class="dropdown-item">
                                                 <i class="fas fa-edit"></i>
                                                 Edit
                                             </a>
                                             <div class="dropdown-divider"></div>
-                                            @if($position->is_active)
-                                                <button class="dropdown-item" onclick="closePosition({{ $position->id }}, '{{ addslashes($position->position_name) }}')">
+                                       
+                                            @if($position->detailed_status === 'aktif')
+                                                <button class="dropdown-item" 
+                                                        onclick="togglePositionStatus({{ $position->id }}, '{{ addslashes($position->position_name) }}', 'close', {{ $position->active_applications_count }}, {{ $position->total_applications_count }})">
                                                     <i class="fas fa-ban"></i>
                                                     Tutup Posisi
                                                 </button>
                                             @else
-                                                <button class="dropdown-item" onclick="activatePosition({{ $position->id }}, '{{ addslashes($position->position_name) }}')">
+                                                <button class="dropdown-item" 
+                                                        onclick="togglePositionStatus({{ $position->id }}, '{{ addslashes($position->position_name) }}', 'open', {{ $position->active_applications_count }}, {{ $position->total_applications_count }})">
                                                     <i class="fas fa-check"></i>
-                                                    Aktifkan
+                                                    Buka Posisi
                                                 </button>
                                             @endif
                                             <div class="dropdown-divider"></div>
-                                            <button class="dropdown-item" onclick="deletePosition({{ $position->id }}, '{{ addslashes($position->position_name) }}', {{ $position->total_applications_count }})">
+                                            <button class="dropdown-item" 
+                                                    onclick="deletePosition({{ $position->id }}, '{{ addslashes($position->position_name) }}', {{ $position->total_applications_count }}, {{ $position->active_applications_count }})">
                                                 <i class="fas fa-trash"></i>
                                                 Hapus
                                             </button>
@@ -911,7 +939,6 @@
                             @endforelse
                         </tbody>
                     </table>
-                    
                     <!-- Pagination -->
                     @if($positions->hasPages())
                     <div class="pagination-container">
@@ -922,12 +949,10 @@
             </div>
         </main>
     </div>
-
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         // Sidebar toggle
@@ -982,44 +1007,101 @@
             });
         });
 
-        // Delete position function
-        function deletePosition(positionId, positionName, candidateCount) {
-            if (candidateCount > 0) {
-                Swal.fire({
-                    title: 'Tidak Dapat Menghapus',
-                    html: `
-                        <div style="text-align: left; margin: 20px 0;">
-                            <p style="margin-bottom: 15px;">Posisi <strong>"${positionName}"</strong> tidak dapat dihapus karena masih memiliki <strong>${candidateCount} kandidat</strong>.</p>
-                            <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px; font-size: 0.9rem;">
-                                <strong style="color: #92400e;">Opsi yang tersedia:</strong>
-                                <ul style="margin: 8px 0 0 20px; color: #78350f;">
-                                    <li>Tutup posisi (set tidak aktif)</li>
-                                    <li>Transfer kandidat ke posisi lain</li>
-                                    <li>Hapus paksa (tidak disarankan)</li>
-                                </ul>
+        /**
+         * ✅ SIMPLIFIED: Enhanced Delete Position Function
+         */
+        function deletePosition(positionId, positionName, totalCandidates, activeCandidates) {
+            if (totalCandidates > 0) {
+                let candidateInfo = '';
+                let warningLevel = 'warning';
+                
+                if (activeCandidates > 0) {
+                    candidateInfo = `
+                        <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 15px; margin: 15px 0; text-align: left;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <i class="fas fa-exclamation-triangle" style="color: #f59e0b; font-size: 1.2rem;"></i>
+                                <strong style="color: #92400e;">Posisi ini memiliki kandidat aktif!</strong>
+                            </div>
+                            <div style="color: #78350f; font-size: 0.9rem; line-height: 1.4;">
+                                📊 <strong>${totalCandidates} total kandidat</strong> terdaftar<br>
+                                ⚠️ <strong>${activeCandidates} kandidat sedang dalam proses</strong> rekrutmen<br>
+                                <small>Menghapus posisi akan mempengaruhi proses rekrutmen yang sedang berjalan</small>
                             </div>
                         </div>
+                        <div style="background: #f0f9ff; border: 1px solid #7dd3fc; border-radius: 8px; padding: 12px; margin: 10px 0; text-align: left;">
+                            <strong style="color: #0369a1;">💡 Opsi yang tersedia:</strong>
+                            <ul style="margin: 8px 0 0 20px; color: #0c4a6e; font-size: 0.9rem;">
+                                <li><strong>Transfer & Hapus:</strong> Pindahkan semua kandidat ke posisi lain</li>
+                                <li><strong>Nonaktifkan Posisi:</strong> Hentikan aplikasi baru (kandidat tetap diproses)</li>
+                                <li><strong>Hapus Paksa:</strong> Tidak disarankan jika ada kandidat aktif</li>
+                            </ul>
+                        </div>
+                    `;
+                    warningLevel = 'error';
+                } else {
+                    candidateInfo = `
+                        <div style="background: #f0fdf8; border: 1px solid #a7f3d0; border-radius: 8px; padding: 15px; margin: 15px 0; text-align: left;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <i class="fas fa-info-circle" style="color: #10b981; font-size: 1.2rem;"></i>
+                                <strong style="color: #065f46;">Semua kandidat sudah selesai diproses</strong>
+                            </div>
+                            <div style="color: #047857; font-size: 0.9rem;">
+                                📊 <strong>${totalCandidates} kandidat</strong> pernah mendaftar di posisi ini<br>
+                                ✅ Tidak ada kandidat yang sedang dalam proses aktif
+                            </div>
+                        </div>
+                    `;
+                    warningLevel = 'warning';
+                }
+
+                Swal.fire({
+                    title: 'Tidak Dapat Menghapus Langsung',
+                    html: `
+                        <div style="text-align: left; margin: 10px 0;">
+                            <p style="margin-bottom: 15px; text-align: center;">
+                                Posisi <strong>"${positionName}"</strong> memiliki data kandidat yang terkait.
+                            </p>
+                            ${candidateInfo}
+                        </div>
                     `,
-                    icon: 'warning',
+                    icon: warningLevel,
                     showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
+                    showDenyButton: activeCandidates > 0,
+                    confirmButtonColor: activeCandidates > 0 ? '#dc2626' : '#f59e0b',
                     cancelButtonColor: '#6b7280',
-                    confirmButtonText: 'Transfer & Hapus',
+                    denyButtonColor: '#f59e0b',
+                    confirmButtonText: activeCandidates > 0 ? 'Transfer & Hapus' : 'Nonaktifkan Posisi',
+                    denyButtonText: activeCandidates > 0 ? 'Nonaktifkan Posisi' : null,
                     cancelButtonText: 'Batal',
-                    showDenyButton: true,
-                    denyButtonText: 'Tutup Posisi',
-                    denyButtonColor: '#f59e0b'
+                    customClass: {
+                        popup: 'swal-wide'
+                    }
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        showTransferDialog(positionId, positionName);
-                    } else if (result.isDenied) {
-                        closePosition(positionId, positionName);
+                        if (activeCandidates > 0) {
+                            showTransferDialog(positionId, positionName);
+                        } else {
+                            // Nonaktifkan posisi
+                            togglePositionStatus(positionId, positionName, false, activeCandidates, totalCandidates);
+                        }
+                    } else if (result.isDenied && activeCandidates > 0) {
+                        // Nonaktifkan posisi
+                        togglePositionStatus(positionId, positionName, false, activeCandidates, totalCandidates);
                     }
                 });
             } else {
+                // No candidates, safe to delete
                 Swal.fire({
                     title: 'Hapus Posisi?',
-                    text: `Apakah Anda yakin ingin menghapus posisi "${positionName}"?`,
+                    html: `
+                        <div style="text-align: center; margin: 20px 0;">
+                            <p>Apakah Anda yakin ingin menghapus posisi:</p>
+                            <strong style="color: #1a202c; font-size: 1.1rem;">"${positionName}"</strong>
+                            <div style="background: #f0fdf8; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px; margin: 15px 0; color: #065f46; font-size: 0.9rem;">
+                                ✅ Posisi ini belum memiliki kandidat yang mendaftar, aman untuk dihapus.
+                            </div>
+                        </div>
+                    `,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#dc2626',
@@ -1032,6 +1114,73 @@
                     }
                 });
             }
+        }
+
+        /**
+         * ✅ SIMPLIFIED: Toggle Position Status - hanya AKTIF/TUTUP
+         */
+        function togglePositionStatus(positionId, positionName, action, activeCandidates, totalCandidates) {
+            let title, message, confirmText, icon, confirmColor;
+            
+            if (action === 'open') {
+                title = 'Aktifkan Posisi?';
+                confirmText = 'Ya, Aktifkan';
+                icon = 'question';
+                confirmColor = '#10b981';
+                
+                message = `
+                    <div style="text-align: center; margin: 15px 0;">
+                        <p>Posisi <strong>"${positionName}"</strong> akan diaktifkan dan dapat menerima aplikasi baru.</p>
+                        <div style="background: #f0fdf8; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px; margin: 10px 0; color: #065f46; font-size: 0.9rem;">
+                            ✅ Posisi ini belum memiliki kandidat yang mendaftar
+                        </div>
+                    </div>
+                `;
+            } else {
+                title = 'Nonaktifkan Posisi?';
+                confirmText = 'Ya, Nonaktifkan';
+                icon = 'warning';
+                confirmColor = '#f59e0b';
+                
+                message = `
+                    <div style="text-align: left; margin: 15px 0;">
+                        <p style="text-align: center; margin-bottom: 15px;">
+                            Posisi <strong>"${positionName}"</strong> akan dinonaktifkan untuk aplikasi baru.
+                        </p>
+                        <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px;">
+                            <div style="color: #92400e; font-size: 0.9rem;">
+                                📊 <strong>${totalCandidates} total kandidat</strong> terdaftar<br>
+                                ⚠️ <strong>${activeCandidates} kandidat sedang dalam proses</strong><br>
+                                🔒 Menonaktifkan posisi akan menghentikan aplikasi baru<br>
+                                ✅ Kandidat yang sudah mendaftar tetap dapat diproses
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <textarea id="deactivateReason" placeholder="Alasan penonaktifan (opsional)..." 
+                                      style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; min-height: 60px;"></textarea>
+                        </div>
+                    </div>
+                `;
+            }
+
+            Swal.fire({
+                title: title,
+                html: message,
+                icon: icon,
+                showCancelButton: true,
+                confirmButtonColor: confirmColor,
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: confirmText,
+                cancelButtonText: 'Batal',
+                customClass: {
+                    popup: 'swal-wide'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const reason = document.getElementById('deactivateReason')?.value || '';
+                    performStatusToggle(positionId, action, reason);
+                }
+            });
         }
 
         // Perform actual delete
@@ -1077,124 +1226,91 @@
             });
         }
 
-        // Close position function
-        function closePosition(positionId, positionName) {
-            Swal.fire({
-                title: 'Tutup Posisi?',
-                input: 'textarea',
-                inputLabel: 'Alasan penutupan (opsional)',
-                inputPlaceholder: 'Masukkan alasan penutupan posisi...',
-                text: `Posisi "${positionName}" akan ditutup dan tidak menerima aplikasi baru.`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#f59e0b',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Ya, Tutup',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    showLoading();
-                    
-                    fetch(`/positions/${positionId}/close`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': getCSRFToken()
-                        },
-                        body: JSON.stringify({
-                            reason: result.value
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        hideLoading();
-                        if (data.success) {
-                            Swal.fire({
-                                title: 'Berhasil!',
-                                text: data.message,
-                                icon: 'success',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                window.location.reload();
-                            });
-                        } else {
-                            Swal.fire({
-                                title: 'Gagal!',
-                                text: data.message,
-                                icon: 'error'
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        hideLoading();
-                        console.error('Error:', error);
+        // ✅ SIMPLIFIED: Perform status toggle dengan endpoint yang benar
+        function performStatusToggle(positionId, action, reason = '', closingDate = '') {
+            showLoading();
+            const endpoint = `/positions/${positionId}/toggle-status`;
+            const payload = { 
+                action: action,
+                reason: reason,
+                closing_date: closingDate
+            };
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCSRFToken()
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Berhasil!',
+                        text: data.message,
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    if (data.requiresConfirmation) {
                         Swal.fire({
-                            title: 'Error!',
-                            text: 'Terjadi kesalahan saat menutup posisi',
+                            title: 'Konfirmasi Diperlukan',
+                            text: data.message,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#f59e0b',
+                            cancelButtonColor: '#6b7280',
+                            confirmButtonText: 'Ya, Lanjutkan',
+                            cancelButtonText: 'Batal'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                payload.force = true;
+                                fetch(endpoint, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': getCSRFToken()
+                                    },
+                                    body: JSON.stringify(payload)
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        Swal.fire({
+                                            title: 'Berhasil!',
+                                            text: data.message,
+                                            icon: 'success',
+                                            timer: 2000,
+                                            showConfirmButton: false
+                                        }).then(() => {
+                                            window.location.reload();
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Gagal!',
+                            text: data.message,
                             icon: 'error'
                         });
-                    });
+                    }
                 }
-            });
-        }
-
-        // Activate position function
-        function activatePosition(positionId, positionName) {
-            Swal.fire({
-                title: 'Aktifkan Posisi?',
-                text: `Posisi "${positionName}" akan diaktifkan dan dapat menerima aplikasi.`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#10b981',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Ya, Aktifkan',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    showLoading();
-                    
-                    fetch(`/positions/${positionId}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': getCSRFToken()
-                        },
-                        body: JSON.stringify({
-                            is_active: true
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        hideLoading();
-                        if (data.success) {
-                            Swal.fire({
-                                title: 'Berhasil!',
-                                text: `Posisi "${positionName}" berhasil diaktifkan`,
-                                icon: 'success',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                window.location.reload();
-                            });
-                        } else {
-                            Swal.fire({
-                                title: 'Gagal!',
-                                text: data.message,
-                                icon: 'error'
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        hideLoading();
-                        console.error('Error:', error);
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'Terjadi kesalahan saat mengaktifkan posisi',
-                            icon: 'error'
-                        });
-                    });
-                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Terjadi kesalahan saat mengubah status posisi',
+                    icon: 'error'
+                });
             });
         }
 
@@ -1207,6 +1323,19 @@
         function hideLoading() {
             document.getElementById('loadingOverlay').style.display = 'none';
         }
+
+        // Add CSS for wider SweetAlert
+        const style = document.createElement('style');
+        style.textContent = `
+            .swal-wide {
+                width: 600px !important;
+            }
+            .swal-wide .swal2-html-container {
+                max-height: 400px;
+                overflow-y: auto;
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>

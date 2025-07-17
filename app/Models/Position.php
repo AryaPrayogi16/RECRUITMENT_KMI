@@ -45,6 +45,61 @@ class Position extends Model
         return $this->hasMany(Candidate::class);
     }
 
+    // ✅ SIMPLIFIED: Status Logic - Hanya 2 Status
+    
+    /**
+     * Get the status of the position
+     * - AKTIF: is_active = true AND (no closing_date OR closing_date > today)
+     * - TUTUP: is_active = false OR closing_date <= today
+     */
+    public function getDetailedStatusAttribute()
+    {
+        // Jika is_active = false, maka status = TUTUP
+        if (!$this->is_active) {
+            return 'tutup';
+        }
+        
+        // Jika ada closing_date dan sudah lewat, maka status = TUTUP
+        if ($this->closing_date && $this->closing_date->isPast()) {
+            return 'tutup';
+        }
+        
+        // Selain itu, status = AKTIF
+        return 'aktif';
+    }
+
+    /**
+     * Get human readable status
+     */
+    public function getStatusLabelAttribute()
+    {
+        return $this->detailed_status === 'aktif' ? 'Aktif' : 'Tutup';
+    }
+
+    /**
+     * Get status badge class for UI
+     */
+    public function getStatusBadgeClassAttribute()
+    {
+        return $this->detailed_status === 'aktif' ? 'status-active' : 'status-closed';
+    }
+
+    /**
+     * Can this position accept new applications?
+     */
+    public function canAcceptApplications()
+    {
+        return $this->detailed_status === 'aktif';
+    }
+
+    /**
+     * Check if position is currently open (accepting applications)
+     */
+    public function getIsOpenAttribute()
+    {
+        return $this->canAcceptApplications();
+    }
+
     // Accessors
     public function getSalaryRangeAttribute()
     {
@@ -53,12 +108,6 @@ class Position extends Model
                    ' - Rp ' . number_format($this->salary_range_max, 0, ',', '.');
         }
         return 'Negotiable';
-    }
-
-    public function getIsOpenAttribute()
-    {
-        return $this->is_active && 
-               (!$this->closing_date || $this->closing_date->isFuture());
     }
 
     public function getApplicationCountAttribute()
@@ -88,16 +137,23 @@ class Position extends Model
     // Scopes
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
-    }
-
-    public function scopeOpen($query)
-    {
-        return $query->active()
+        return $query->where('is_active', true)
                      ->where(function($q) {
                          $q->whereNull('closing_date')
                            ->orWhere('closing_date', '>=', now());
                      });
+    }
+
+    public function scopeClosed($query)
+    {
+        return $query->where(function($q) {
+            $q->where('is_active', false)
+              ->orWhere(function($subQuery) {
+                  $subQuery->where('is_active', true)
+                           ->whereNotNull('closing_date')
+                           ->where('closing_date', '<', now());
+              });
+        });
     }
 
     public function scopeByDepartment($query, $department)
@@ -145,24 +201,14 @@ class Position extends Model
                    ->toArray();
     }
 
-    // ✅ ENHANCED: Update & Delete Safety Methods
+    // Enhanced: Update & Delete Safety Methods
     
     /**
      * Check if position can be safely deleted
      */
     public function canBeDeleted()
     {
-        // Check if there are any candidates still associated
         return $this->candidates()->count() === 0;
-    }
-
-    /**
-     * Check if position can be safely updated
-     */
-    public function canBeUpdated()
-    {
-        // Position can always be updated, but some fields might need special handling
-        return true;
     }
 
     /**
@@ -276,7 +322,7 @@ class Position extends Model
      */
     protected function trackSignificantChanges($originalData, $newData)
     {
-        $significantFields = ['position_name', 'department', 'salary_range_min', 'salary_range_max', 'is_active'];
+        $significantFields = ['position_name', 'department', 'salary_range_min', 'salary_range_max', 'is_active', 'closing_date'];
         $changes = [];
 
         foreach ($significantFields as $field) {
@@ -305,14 +351,18 @@ class Position extends Model
     }
 
     /**
-     * Close position (set inactive) instead of deleting
+     * ✅ SIMPLIFIED: Close position (multiple ways to close)
      */
-    public function closePosition($reason = null)
+    public function closePosition($reason = null, $setClosingDate = false)
     {
-        $this->update([
-            'is_active' => false,
-            'closing_date' => now()
-        ]);
+        $updateData = ['is_active' => false];
+        
+        // Optionally set closing_date to now if requested
+        if ($setClosingDate) {
+            $updateData['closing_date'] = now();
+        }
+        
+        $this->update($updateData);
 
         // Log the closure
         if (class_exists(\App\Models\ApplicationLog::class) && $this->candidates()->exists()) {
@@ -331,6 +381,51 @@ class Position extends Model
     }
 
     /**
+     * ✅ SIMPLIFIED: Open/Activate position
+     */
+    public function openPosition($reason = null, $extendClosingDate = null)
+    {
+        $updateData = ['is_active' => true];
+        
+        // Extend closing date if provided
+        if ($extendClosingDate) {
+            $updateData['closing_date'] = $extendClosingDate;
+        } elseif ($this->closing_date && $this->closing_date->isPast()) {
+            // If closing_date is in the past, clear it when reopening
+            $updateData['closing_date'] = null;
+        }
+        
+        $this->update($updateData);
+
+        // Log the opening
+        if (class_exists(\App\Models\ApplicationLog::class) && $this->candidates()->exists()) {
+            foreach ($this->candidates as $candidate) {
+                \App\Models\ApplicationLog::create([
+                    'candidate_id' => $candidate->id,
+                    'user_id' => auth()->id(),
+                    'action_type' => 'status_change',
+                    'action_description' => "Position '{$this->position_name}' has been reopened" . 
+                                          ($reason ? ": {$reason}" : "")
+                ]);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Toggle position status (open/close)
+     */
+    public function toggleStatus($reason = null)
+    {
+        if ($this->detailed_status === 'aktif') {
+            return $this->closePosition($reason);
+        } else {
+            return $this->openPosition($reason);
+        }
+    }
+
+    /**
      * Get positions that candidates can be transferred to
      */
     public static function getTransferablePositions($excludeId = null)
@@ -342,5 +437,23 @@ class Position extends Model
                    ->orderBy('department')
                    ->orderBy('position_name')
                    ->get();
+    }
+
+    /**
+     * Auto-close positions that have passed their closing date
+     * This can be run via a scheduled job
+     */
+    public static function autoCloseExpiredPositions()
+    {
+        $expiredPositions = self::where('is_active', true)
+                               ->whereNotNull('closing_date')
+                               ->where('closing_date', '<', now())
+                               ->get();
+
+        foreach ($expiredPositions as $position) {
+            $position->closePosition('Auto-closed: Closing date has passed');
+        }
+
+        return $expiredPositions->count();
     }
 }

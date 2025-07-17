@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->command->info('🌱 Starting database seeding...');
+
         // ✅ Create internal users - auto-active (no verification needed)
         
         // Super Admin
@@ -60,11 +62,25 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        // ✅ Seed master data
-        $this->call([
-            PositionsTableSeeder::class,
-            CandidateSeeder::class,
-        ]);
+        // 🔄 Seeding test data in proper order...
+        $this->command->info('🔄 Seeding test data...');
+        
+        // Seed positions first (required by candidates)
+        $this->call(PositionsTableSeeder::class);
+        $this->command->info('✅ Positions seeded');
+        
+        // // Seed candidates (required by DISC 3D test sessions)
+        // $this->call(CandidateSeeder::class);
+        // $this->command->info('✅ Candidates seeded');
+        
+        // Seed DISC 3D test data
+        $this->call(Disc3DSeeder::class);
+        $this->command->info('✅ DISC 3D test data seeded');
+
+        // Additional test seeders (optional)
+        // $this->call([
+        //     KraeplinSeeder::class,
+        // ]);
 
         $this->command->info('✅ Internal system database seeded successfully!');
         $this->command->info('📋 Users created:');

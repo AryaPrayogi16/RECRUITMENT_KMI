@@ -377,6 +377,63 @@
     height: 16px;
     accent-color: #0369a1;
 }
+    
+/* Salary input styling */
+#expected_salary {
+    text-align: right;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-weight: 500;
+    background: linear-gradient(to right, #f9fafb, #ffffff);
+    border: 2px solid #d1d5db;
+    transition: all 0.3s ease;
+}
+
+#expected_salary:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    background: #ffffff;
+}
+
+#expected_salary::placeholder {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* Prefix Rp styling untuk salary input */
+.salary-input-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.salary-input-wrapper::before {
+    content: "Rp ";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+    font-weight: 500;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.salary-input-wrapper #expected_salary {
+    padding-left: 35px;
+}
+
+/* Helper text untuk salary */
+.salary-helper {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.salary-helper .highlight {
+    color: #059669;
+    font-weight: 500;
+}
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

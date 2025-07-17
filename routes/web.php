@@ -6,12 +6,45 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
+// ============================================
+// ROOT REDIRECT
+// ============================================
+Route::get('/', function () {
+    return redirect()->route('login');
+});
+
+// ============================================
+// PUBLIC CAREER ROUTES - Active Positions
+// ============================================
+
+// Route untuk melihat semua lowongan aktif (publik)
+Route::get('/careers', [PositionController::class, 'publicActivePositions'])
+     ->name('careers.index');
+
+// Route untuk melihat detail lowongan (publik)
+Route::get('/careers/{id}', [PositionController::class, 'publicPositionDetail'])
+     ->name('careers.show')
+     ->where('id', '[0-9]+');
+
+// API endpoint untuk mendapatkan lowongan aktif (untuk AJAX/JavaScript)
+Route::get('/api/active-positions', [PositionController::class, 'publicActivePositions'])
+     ->name('api.active-positions');
+
+// ============================================
 // PUBLIC ROUTES - Job Application Form
+// ============================================
+
+// Job Application Form
 Route::get('/job-application-form', [JobApplicationController::class, 'showForm'])->name('job.application.form');
 Route::post('/job-application-form', [JobApplicationController::class, 'submitApplication'])->name('job.application.submit');
 Route::get('/job-application-success', [JobApplicationController::class, 'success'])->name('job.application.success');
 
+// Get available positions for dropdown
+Route::get('/api/positions', [JobApplicationController::class, 'getPositions'])->name('api.positions');
+
+// ============================================
 // KRAEPLIN TEST ROUTES (Public - for candidates)
+// ============================================
 Route::prefix('kraeplin')->name('kraeplin.')->group(function () {
     Route::get('/{candidateCode}/instructions', [KraeplinController::class, 'showInstructions'])->name('instructions');
     Route::post('/{candidateCode}/start', [KraeplinController::class, 'startTest'])->name('start');
@@ -19,35 +52,43 @@ Route::prefix('kraeplin')->name('kraeplin.')->group(function () {
     Route::get('/{candidateCode}/result', [KraeplinController::class, 'showResult'])->name('result');
 });
 
-// DISC 3D SPECIFIC ROUTES - NEW SECTION
+// ============================================
+// DISC 3D TEST ROUTES (Public - for candidates)
+// ============================================
 Route::prefix('disc3d')->name('disc3d.')->group(function () {
     Route::get('/{candidateCode}/instructions', [DiscController::class, 'showInstructions'])->name('instructions');
     Route::post('/{candidateCode}/start', [DiscController::class, 'startTest'])->name('start');
+    Route::post('/submit-test', [DiscController::class, 'submitTest'])->name('submit.test');
+    Route::get('/{candidateCode}/result', [DiscController::class, 'showResult'])->name('result');
+    
+    // Legacy endpoints for backward compatibility (optional)
     Route::post('/submit-section', [DiscController::class, 'submitSection'])->name('submit.section');
     Route::post('/complete-test', [DiscController::class, 'completeTest'])->name('complete');
-    Route::get('/{candidateCode}/result', [DiscController::class, 'showResult'])->name('result');
     
     // Debug endpoint (development only)
     Route::get('/debug-session', [DiscController::class, 'debugSession'])->name('debug');
 });
 
-// Get available positions for dropdown
-Route::get('/api/positions', [JobApplicationController::class, 'getPositions'])->name('api.positions');
-
-// Authentication Routes
+// ============================================
+// AUTHENTICATION ROUTES
+// ============================================
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-// Authenticated Routes
+// ============================================
+// AUTHENTICATED ROUTES
+// ============================================
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     
     // General Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
-    // Admin Routes
+    // ============================================
+    // ADMIN ROUTES
+    // ============================================
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/admin/users', function() {
@@ -68,12 +109,15 @@ Route::middleware('auth')->group(function () {
         });
     });
     
-    // HR Routes  
+    // ============================================
+    // HR ROUTES
+    // ============================================
     Route::middleware('role:admin,hr')->group(function () {
         Route::get('/hr/dashboard', [DashboardController::class, 'hr'])->name('hr.dashboard');
         
-        // ✅ FIXED: Move positions routes OUTSIDE candidates group
+        // POSITIONS MANAGEMENT
         Route::prefix('positions')->name('positions.')->group(function () {
+            // Basic CRUD routes
             Route::get('/', [PositionController::class, 'index'])->name('index');
             Route::get('/create', [PositionController::class, 'create'])->name('create');
             Route::post('/', [PositionController::class, 'store'])->name('store');
@@ -81,30 +125,40 @@ Route::middleware('auth')->group(function () {
             Route::get('/{position}', [PositionController::class, 'show'])->name('show');
             Route::get('/{position}/edit', [PositionController::class, 'edit'])->name('edit');
             Route::put('/{position}', [PositionController::class, 'update'])->name('update');
-            Route::patch('/{position}/status', [PositionController::class, 'updateStatus'])->name('update-status');
             Route::delete('/{position}', [PositionController::class, 'destroy'])->name('destroy');
+            
+            // Status management
+            Route::post('/{position}/toggle-status', [PositionController::class, 'toggleStatus'])->name('toggle-status');
             Route::post('/{position}/close', [PositionController::class, 'close'])->name('close');
+            Route::post('/{position}/open', [PositionController::class, 'open'])->name('open');
+            
+            // Transfer candidates before deletion
+            Route::post('/{position}/transfer-candidates', [PositionController::class, 'transferCandidates'])->name('transfer-candidates');
+            
+            // Restore and force delete routes
             Route::post('/{id}/restore', [PositionController::class, 'restore'])->name('restore')
                 ->where('id', '[0-9]+');
             Route::delete('/{id}/force-delete', [PositionController::class, 'forceDelete'])->name('force-delete')
                 ->where('id', '[0-9]+');
-            Route::post('/{position}/transfer', [PositionController::class, 'transferCandidates'])->name('transfer');
+            
+            // Statistics and utilities
             Route::get('/{position}/statistics', [PositionController::class, 'statistics'])->name('statistics');
+            Route::post('/auto-close-expired', [PositionController::class, 'autoCloseExpired'])->name('auto-close-expired');
         });
         
-        // Candidate Management Routes
+        // CANDIDATE MANAGEMENT
         Route::prefix('candidates')->name('candidates.')->group(function () {
             Route::get('/', [CandidateController::class, 'index'])->name('index');
             Route::get('/search', [CandidateController::class, 'search'])->name('search');
             Route::get('/export', [CandidateController::class, 'exportMultiple'])->name('export.multiple');
             Route::post('/bulk-action', [CandidateController::class, 'bulkAction'])->name('bulk-action');
             
-            // ✅ FIXED: Trashed candidates routes - moved BEFORE individual routes
+            // Trashed candidates routes - moved BEFORE individual routes
             Route::get('/trashed', [CandidateController::class, 'trashed'])->name('trashed');
             
             // Individual candidate routes
             Route::get('/{id}', [CandidateController::class, 'show'])->name('show')
-                ->where('id', '[0-9]+'); // Ensure ID is numeric
+                ->where('id', '[0-9]+');
             Route::get('/{id}/edit', [CandidateController::class, 'edit'])->name('edit')
                 ->where('id', '[0-9]+');
             Route::put('/{id}', [CandidateController::class, 'update'])->name('update')
@@ -126,7 +180,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/{id}/export/word', [CandidateController::class, 'exportWord'])->name('export.single.word')
                 ->where('id', '[0-9]+');
             
-            // Test results for HR - UPDATED FOR DISC 3D
+            // Test results for HR
             Route::get('/{id}/kraeplin-result', [CandidateController::class, 'kraeplinResult'])->name('kraeplin.result')
                 ->where('id', '[0-9]+');
             Route::get('/{id}/disc3d-result', [CandidateController::class, 'disc3dResult'])->name('disc3d.result')
@@ -143,7 +197,7 @@ Route::middleware('auth')->group(function () {
                 ->where('id', '[0-9]+');
             Route::post('/bulk-delete', [CandidateController::class, 'bulkDelete'])->name('bulk-delete');
 
-            // ✅ FIXED: Trashed candidates management routes
+            // Trashed candidates management routes
             Route::post('/{id}/restore', [CandidateController::class, 'restore'])->name('restore')
                 ->where('id', '[0-9]+');
             Route::delete('/{id}/force', [CandidateController::class, 'forceDelete'])->name('force-delete')
@@ -161,7 +215,9 @@ Route::middleware('auth')->group(function () {
         });
     });
     
-    // Interviewer Routes
+    // ============================================
+    // INTERVIEWER ROUTES
+    // ============================================
     Route::middleware('role:admin,hr,interviewer')->group(function () {
         Route::get('/interviewer/dashboard', [DashboardController::class, 'interviewer'])->name('interviewer.dashboard');
         Route::get('/interviewer/schedule', function() {
@@ -170,7 +226,9 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// API Routes with throttling
+// ============================================
+// API ROUTES
+// ============================================
 Route::prefix('api')->middleware(['throttle:10,1'])->group(function () {
     Route::get('/demo-users', [AuthController::class, 'getDemoUsers'])->name('api.demo-users');
     
@@ -215,17 +273,18 @@ if (app()->environment(['local', 'testing', 'staging'])) {
         
         // DISC 3D debug routes
         Route::prefix('disc3d')->name('disc3d.debug.')->group(function () {
-        Route::get('/test-data', function() {
-            return response()->json([
-                'sections' => \App\Models\Disc3DSection::with('choices')->get(),
-                'total_sections' => \App\Models\Disc3DSection::count(),
-                'total_choices' => \App\Models\Disc3DSectionChoice::count()
-            ]);
-        })->name('test.data');
-        // Add debug route for development
-        Route::get('/debug-session', [DiscController::class, 'debugSession'])->name('debug-session');
-        // ✅ Database status checker
-        Route::get('/database-status', function() {
+            Route::get('/test-data', function() {
+                return response()->json([
+                    'sections' => \App\Models\Disc3DSection::with('choices')->get(),
+                    'total_sections' => \App\Models\Disc3DSection::count(),
+                    'total_choices' => \App\Models\Disc3DSectionChoice::count()
+                ]);
+            })->name('test.data');
+            
+            Route::get('/debug-session', [DiscController::class, 'debugSession'])->name('debug-session');
+            
+            // Database status checker
+            Route::get('/database-status', function() {
                 try {
                     $requiredTables = [
                         'disc_3d_test_sessions',
@@ -249,7 +308,7 @@ if (app()->environment(['local', 'testing', 'staging'])) {
                                 'status' => $exists ? 'OK' : 'MISSING'
                             ];
                             
-                            if (!exists) $allExist = false;
+                            if (!$exists) $allExist = false;
                             
                         } catch (\Exception $e) {
                             $tableStatus[$table] = [
@@ -309,68 +368,288 @@ if (app()->environment(['local', 'testing', 'staging'])) {
             })->name('database.status');
         });
     });
+
+    // ====== DISC 3D DEBUGGING ROUTES (TEMPORARY) ======
+    Route::get('/debug-disc-complete/{candidateCode}', function($candidateCode) {
+        try {
+            $results = [];
+            
+            // 1. Check candidate
+            $candidate = \App\Models\Candidate::where('candidate_code', $candidateCode)->first();
+            $results['candidate'] = [
+                'exists' => !!$candidate,
+                'id' => $candidate?->id,
+                'name' => $candidate?->full_name,
+                'email' => $candidate?->email
+            ];
+            
+            if (!$candidate) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Candidate not found',
+                    'results' => $results
+                ]);
+            }
+            
+            // 2. Check Kraeplin completion
+            $kraeplinSession = \App\Models\KraeplinTestSession::where('candidate_id', $candidate->id)
+                ->where('status', 'completed')
+                ->first();
+                
+            $results['kraeplin'] = [
+                'completed' => !!$kraeplinSession,
+                'session_id' => $kraeplinSession?->id,
+                'completed_at' => $kraeplinSession?->completed_at
+            ];
+            
+            // 3. Check existing DISC sessions
+            $discSessions = \App\Models\Disc3DTestSession::where('candidate_id', $candidate->id)->get();
+            $results['disc_sessions'] = $discSessions->map(function($session) {
+                return [
+                    'id' => $session->id,
+                    'status' => $session->status,
+                    'created_at' => $session->created_at,
+                    'started_at' => $session->started_at,
+                    'completed_at' => $session->completed_at
+                ];
+            });
+            
+            // 4. Check database structure
+            $results['database'] = [
+                'sections_count' => \App\Models\Disc3DSection::count(),
+                'choices_count' => \App\Models\Disc3DSectionChoice::count(),
+                'active_sections' => \App\Models\Disc3DSection::where('is_active', true)->count(),
+                'sections_with_choices' => \App\Models\Disc3DSection::whereHas('choices', function($query) {
+                    $query->where('is_active', true);
+                })->count()
+            ];
+            
+            // 5. Test sections loading
+            try {
+                $testSections = \App\Models\Disc3DSection::with(['choices' => function($query) {
+                    $query->where('is_active', true)
+                          ->orderBy('choice_dimension')
+                          ->select('*');
+                }])
+                ->where('is_active', true)
+                ->orderBy('order_number')
+                ->get();
+                
+                $results['sections_test'] = [
+                    'loadable' => true,
+                    'count' => $testSections->count(),
+                    'sample_section' => $testSections->first() ? [
+                        'id' => $testSections->first()->id,
+                        'order_number' => $testSections->first()->order_number,
+                        'choices_count' => $testSections->first()->choices->count(),
+                        'dimensions' => $testSections->first()->choices->pluck('choice_dimension')->sort()->values()->toArray()
+                    ] : null
+                ];
+                
+            } catch (\Exception $e) {
+                $results['sections_test'] = [
+                    'loadable' => false,
+                    'error' => $e->getMessage()
+                ];
+            }
+            
+            // 6. Check DiscTestService
+            try {
+                $serviceClass = '\App\Services\DiscTestService';
+                $serviceExists = class_exists($serviceClass);
+                
+                if ($serviceExists) {
+                    $service = app($serviceClass);
+                    $serviceMethods = get_class_methods($service);
+                    
+                    $results['service'] = [
+                        'exists' => true,
+                        'class' => $serviceClass,
+                        'methods' => $serviceMethods,
+                        'has_create_session' => in_array('createTestSession', $serviceMethods),
+                        'has_process_bulk' => in_array('processBulkResponses', $serviceMethods),
+                        'has_complete_test' => in_array('completeTestSession', $serviceMethods)
+                    ];
+                } else {
+                    $results['service'] = [
+                        'exists' => false,
+                        'error' => 'DiscTestService class not found'
+                    ];
+                }
+                
+            } catch (\Exception $e) {
+                $results['service'] = [
+                    'exists' => false,
+                    'error' => $e->getMessage()
+                ];
+            }
+            
+            // 7. Check routes
+            $results['routes'] = [
+                'instructions' => route('disc3d.instructions', $candidateCode),
+                'start' => route('disc3d.start', $candidateCode),
+                'submit' => route('disc3d.submit.test'),
+                'routes_exist' => true
+            ];
+            
+            // 8. Test controller method existence
+            try {
+                $controller = new \App\Http\Controllers\DiscController(app('\App\Services\DiscTestService'));
+                $controllerMethods = get_class_methods($controller);
+                
+                $results['controller'] = [
+                    'exists' => true,
+                    'methods' => $controllerMethods,
+                    'has_show_instructions' => in_array('showInstructions', $controllerMethods),
+                    'has_start_test' => in_array('startTest', $controllerMethods),
+                    'has_submit_test' => in_array('submitTest', $controllerMethods)
+                ];
+                
+            } catch (\Exception $e) {
+                $results['controller'] = [
+                    'exists' => false,
+                    'error' => $e->getMessage()
+                ];
+            }
+            
+            // 9. Test request validation
+            try {
+                $requestClass = '\App\Http\Requests\DiscTestStartRequest';
+                $requestExists = class_exists($requestClass);
+                
+                if ($requestExists) {
+                    $request = new $requestClass();
+                    $rules = $request->rules();
+                    
+                    $results['request_validation'] = [
+                        'exists' => true,
+                        'class' => $requestClass,
+                        'rules' => $rules,
+                        'has_candidate_code_rule' => array_key_exists('candidate_code', $rules)
+                    ];
+                } else {
+                    $results['request_validation'] = [
+                        'exists' => false,
+                        'error' => 'DiscTestStartRequest class not found'
+                    ];
+                }
+                
+            } catch (\Exception $e) {
+                $results['request_validation'] = [
+                    'exists' => false,
+                    'error' => $e->getMessage()
+                ];
+            }
+            
+            // 10. Final recommendations
+            $recommendations = [];
+            
+            if (!$results['candidate']['exists']) {
+                $recommendations[] = '❌ Candidate not found - check candidate_code';
+            }
+            
+            if (!$results['kraeplin']['completed']) {
+                $recommendations[] = '⚠️ Kraeplin test not completed';
+            }
+            
+            if ($results['database']['sections_count'] < 24) {
+                $recommendations[] = '❌ Need more sections in database (current: ' . $results['database']['sections_count'] . ', need: 24)';
+            }
+            
+            if ($results['database']['choices_count'] < 96) {
+                $recommendations[] = '❌ Need more choices in database (current: ' . $results['database']['choices_count'] . ', need: 96+)';
+            }
+            
+            if (!$results['service']['exists']) {
+                $recommendations[] = '❌ DiscTestService not found - create the service class';
+            }
+            
+            if (!$results['sections_test']['loadable']) {
+                $recommendations[] = '❌ Cannot load sections from database - check relationships';
+            }
+            
+            if (isset($results['request_validation']['has_candidate_code_rule']) && $results['request_validation']['has_candidate_code_rule']) {
+                $recommendations[] = '⚠️ DiscTestStartRequest has candidate_code validation - should be removed';
+            }
+            
+            if (empty($recommendations)) {
+                $recommendations[] = '✅ All checks passed - system should be ready';
+            }
+            
+            return response()->json([
+                'status' => 'success',
+                'candidate_code' => $candidateCode,
+                'timestamp' => now(),
+                'results' => $results,
+                'recommendations' => $recommendations,
+                'next_steps' => [
+                    '1. Fix any issues mentioned in recommendations',
+                    '2. Test form submission with browser dev tools',
+                    '3. Check Laravel logs during form submission',
+                    '4. Use /debug-form-submit route to test POST data'
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+        
+    })->name('debug.disc.complete');
+
+    // Test form submission route
+    Route::post('/debug-form-submit/{candidateCode}', function(\Illuminate\Http\Request $request, $candidateCode) {
+        \Log::info('🧪 DEBUG FORM SUBMISSION', [
+            'candidate_code' => $candidateCode,
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'all_data' => $request->all(),
+            'headers' => $request->headers->all(),
+            'session_data' => session()->all(),
+            'csrf_token' => csrf_token(),
+            'has_csrf_token' => $request->hasHeader('X-CSRF-TOKEN') || $request->has('_token')
+        ]);
+        
+        // Try to validate using DiscTestStartRequest
+        try {
+            $validatedData = $request->validate([
+                'test_mode' => 'nullable|string|in:fresh_start,resume',
+                'screen_resolution' => 'nullable|string',
+                'timezone' => 'nullable|string',
+                'browser_info' => 'nullable|array',
+                'device_capabilities' => 'nullable|array'
+            ]);
+            
+            return response()->json([
+                'status' => 'validation_passed',
+                'message' => 'Form validation successful',
+                'validated_data' => $validatedData,
+                'candidate_code' => $candidateCode,
+                'recommendations' => [
+                    'Form data is valid',
+                    'Try calling actual startTest method',
+                    'Check DiscTestService availability'
+                ]
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => 'validation_failed',
+                'message' => 'Form validation failed',
+                'errors' => $e->errors(),
+                'candidate_code' => $candidateCode
+            ], 422);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+        
+    })->name('debug.form.submit');
 }
-
-// Root redirect
-Route::get('/', function () {
-    return redirect()->route('login');
-});
-
-// DISC 3D Routes (Single Run Mode)
-Route::prefix('disc3d')->group(function () {
-    // Instructions page
-    Route::get('/instructions/{candidateCode}', [DiscController::class, 'showInstructions'])
-        ->name('disc3d.instructions');
-    
-    // Start test (both GET and POST)
-    Route::match(['GET', 'POST'], '/start/{candidateCode}', [DiscController::class, 'startTest'])
-        ->name('disc3d.start');
-    
-    // SINGLE RUN: Submit all responses at once (like Kraeplin)
-    Route::post('/submit-test', [DiscController::class, 'submitTest'])
-        ->name('disc3d.submit.test');
-    
-    // Legacy endpoints for backward compatibility (optional)
-    Route::post('/submit-section', [DiscController::class, 'submitSection'])
-        ->name('disc3d.submit.section'); // Still works but not used in single run
-    
-    Route::post('/complete-test', [DiscController::class, 'completeTest'])
-        ->name('disc3d.complete'); // Still works but not used in single run
-    
-    // Debug endpoint
-    Route::get('/debug-session', [DiscController::class, 'debugSession'])
-        ->name('disc3d.debug');
-});
-
-// Kraeplin Routes (for reference/comparison)
-Route::prefix('kraeplin')->group(function () {
-    Route::get('/instructions/{candidateCode}', [KraeplinController::class, 'showInstructions'])
-        ->name('kraeplin.instructions');
-    
-    Route::match(['GET', 'POST'], '/start/{candidateCode}', [KraeplinController::class, 'startTest'])
-        ->name('kraeplin.start');
-    
-    // Kraeplin bulk submit (pattern we're following)
-    Route::post('/submit-test', [KraeplinController::class, 'submitTest'])
-        ->name('kraeplin.submit.test');
-});
-
-// Job Application Routes
-Route::prefix('job')->group(function () {
-    // Application form
-    Route::get('/application', function () {
-        return view('job.application');
-    })->name('job.application.form');
-    
-    // Success page after all tests completed
-    Route::get('/success', function () {
-        $candidateCode = request('candidate_code') ?? session('candidate_code');
-        return view('job-application.success', compact('candidateCode'));
-    })->name('job.application.success');
-});
-
-// Test flow redirects
-Route::get('/test/{candidateCode}', function ($candidateCode) {
-    // Start with Kraeplin first
-    return redirect()->route('kraeplin.instructions', $candidateCode);
-})->name('test.start');

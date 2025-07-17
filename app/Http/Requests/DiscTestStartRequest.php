@@ -11,7 +11,7 @@ class DiscTestStartRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return true; // Allow public access for candidates
     }
 
     /**
@@ -20,10 +20,11 @@ class DiscTestStartRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'candidate_code' => 'required|string|exists:candidates,candidate_code',
+            'test_mode' => 'nullable|string|in:fresh_start,resume',
+            'agreement' => 'nullable|boolean',
+            // Remove candidate_code validation - it's from URL parameter
             'screen_resolution' => 'nullable|string',
             'timezone' => 'nullable|string',
-            'test_mode' => 'nullable|string|in:fresh_start,resume',
             'browser_info' => 'nullable|array',
             'device_capabilities' => 'nullable|array'
         ];
@@ -35,40 +36,22 @@ class DiscTestStartRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'candidate_code.required' => 'Kode kandidat diperlukan.',
-            'candidate_code.exists' => 'Kode kandidat tidak valid.',
+            '_token.required' => 'Token keamanan diperlukan.',
             'test_mode.in' => 'Mode test tidak valid.',
-            'screen_resolution.string' => 'Screen resolution harus berupa string.',
-            'timezone.string' => 'Timezone harus berupa string.',
-            'browser_info.array' => 'Browser info harus berupa array.',
-            'device_capabilities.array' => 'Device capabilities harus berupa array.'
         ];
     }
 
     /**
-     * Get custom attributes for validator errors.
+     * Get validated data with defaults
      */
-    public function attributes(): array
+    public function validated($key = null, $default = null)
     {
-        return [
-            'candidate_code' => 'Kode Kandidat',
-            'screen_resolution' => 'Resolusi Layar',
-            'timezone' => 'Zona Waktu',
-            'test_mode' => 'Mode Test',
-            'browser_info' => 'Info Browser',
-            'device_capabilities' => 'Kemampuan Device'
-        ];
-    }
-
-    /**
-     * Prepare the data for validation.
-     */
-    protected function prepareForValidation()
-    {
+        $validated = parent::validated($key, $default);
+        
         // Set default values
-        $this->merge([
-            'test_mode' => $this->input('test_mode', 'fresh_start'),
-            'timezone' => $this->input('timezone', 'Asia/Jakarta'),
-        ]);
+        $validated['test_mode'] = $validated['test_mode'] ?? 'fresh_start';
+        $validated['agreement'] = $validated['agreement'] ?? false;
+        
+        return $validated;
     }
 }

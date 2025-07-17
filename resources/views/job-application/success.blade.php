@@ -127,7 +127,7 @@
                 </div>
                 <div>
                     <h3 class="font-medium text-gray-900 mb-2">Telepon</h3>
-                    <p class="text-gray-700">+62 21 1234 5678</p>
+                    <p class="text-gray-700">+62 857-4544-9692</p>
                 </div>
             </div>
             <div class="mt-4">
@@ -156,7 +156,7 @@
             </a>
             
             <div class="text-center">
-                <a href="https://kayumebel.co.id" target="_blank" 
+                <a href="https://kmifilebox.com/recruitment" target="_blank" 
                    class="text-blue-600 hover:text-blue-800 text-sm underline">
                     Kunjungi Website Perusahaan
                 </a>
