@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Kraeplin - {{ $candidate->candidate_code }}</title>
+    <title>Test 1 - {{ $candidate->candidate_code }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
@@ -180,7 +180,7 @@
         <div class="test-container mb-6">
             <div class="flex justify-between items-center mb-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Test Kraeplin</h1>
+                    <h1 class="text-2xl font-bold text-gray-900">Test 1</h1>
                     <p class="text-sm text-gray-600">Kandidat: <strong>{{ $candidate->candidate_code }}</strong></p>
                 </div>
                 <div class="text-right">

@@ -24,7 +24,7 @@
             min-height: 100vh;
         }
 
-        /* Sidebar Styles (sama dengan admin.blade.php) */
+        /* Sidebar Styles (sama dengan sebelumnya) */
         .sidebar {
             width: 230px;
             background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
@@ -293,7 +293,7 @@
 
         .filter-group {
             flex: 1;
-            min-width: 200px;
+            min-width: 180px;
         }
 
         .filter-label {
@@ -484,7 +484,7 @@
             display: inline-block;
         }
 
-        /* Dynamic Status Badges - berdasarkan konstanta model */
+        /* Dynamic Status Badges */
         .status-draft {
             background: #f3f4f6;
             color: #374151;
@@ -518,6 +518,82 @@
         .status-rejected {
             background: #fee2e2;
             color: #991b1b;
+        }
+
+        /* ✅ NEW: Test Result Badges */
+        .test-score {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .score-value {
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        .score-category {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        /* Kraeplin Categories */
+        .kraeplin-excellent {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .kraeplin-good {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .kraeplin-average {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .kraeplin-poor {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* DISC Type Badges */
+        .disc-type {
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .disc-d {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .disc-i {
+            background: #fed7aa;
+            color: #9a3412;
+        }
+
+        .disc-s {
+            background: #d1fae5;
+            color: #166534;
+        }
+
+        .disc-c {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .test-not-taken {
+            color: #9ca3af;
+            font-style: italic;
+            font-size: 0.85rem;
         }
 
         .action-btn {
@@ -581,6 +657,40 @@
             height: 1px;
             background: #e2e8f0;
             margin: 5px 0;
+        }
+
+        /* Bulk Action Toolbar */
+        .bulk-action-toolbar {
+            background: #4f46e5;
+            color: white;
+            padding: 15px 20px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .bulk-action-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
         }
 
         /* Pagination */
@@ -659,6 +769,25 @@
         }
 
         /* Responsive */
+        @media (max-width: 1200px) {
+            .candidates-table {
+                font-size: 0.85rem;
+            }
+            
+            .candidates-table th,
+            .candidates-table td {
+                padding: 10px 8px;
+            }
+
+            .filter-row {
+                flex-direction: column;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -672,14 +801,6 @@
                 margin-left: 0;
             }
 
-            .filter-row {
-                flex-direction: column;
-            }
-
-            .filter-group {
-                width: 100%;
-            }
-
             .search-box {
                 width: 100%;
             }
@@ -690,12 +811,9 @@
             }
 
             .candidates-table {
-                font-size: 0.85rem;
-            }
-
-            .candidates-table th,
-            .candidates-table td {
-                padding: 10px;
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
             }
 
             .pagination {
@@ -761,40 +879,6 @@
                         </a>
                     </div>
                 @endif
-                <!-- <div class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span>Interview</span>
-                    </a>
-                </div>
-                @if(in_array(Auth::user()->role, ['admin', 'hr']))
-                    <div class="nav-item">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-chart-line"></i>
-                            <span>Analytics</span>
-                        </a>
-                    </div>
-                    <div class="nav-item">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-envelope"></i>
-                            <span>Email Templates</span>
-                        </a>
-                    </div>
-                @endif
-                <div class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-cog"></i>
-                        <span>Settings</span>
-                    </a>
-                </div>
-                @if(Auth::user()->role == 'admin')
-                    <div class="nav-item">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-history"></i>
-                            <span>Audit Logs</span>
-                        </a>
-                    </div>
-                @endif -->
             </nav>
         </aside>
 
@@ -812,10 +896,6 @@
                         <i class="fas fa-trash"></i>
                         Kandidat Terhapus
                     </a>
-                    {{-- <button class="notification-btn">
-                        <i class="fas fa-bell"></i>
-                        <span class="notification-badge">{{ $newApplicationsCount ?? 0 }}</span>
-                    </button> --}}
                     
                     <form action="{{ route('logout') }}" method="POST" style="display: inline;">
                         @csrf
@@ -864,20 +944,65 @@
                                     @endforeach
                                 </select>
                             </div>
+
+                            <!-- ✅ NEW: Test Status Filter -->
+                            <div class="filter-group">
+                                <label class="filter-label">Status Test</label>
+                                <select class="filter-select" id="testStatusFilter">
+                                    <option value="">Semua</option>
+                                    <option value="all_tests_completed" {{ request('test_status') == 'all_tests_completed' ? 'selected' : '' }}>
+                                        Semua Test Selesai
+                                    </option>
+                                    <option value="kraeplin_completed" {{ request('test_status') == 'kraeplin_completed' ? 'selected' : '' }}>
+                                        Kraeplin Selesai
+                                    </option>
+                                    <option value="disc_completed" {{ request('test_status') == 'disc_completed' ? 'selected' : '' }}>
+                                        DISC Selesai
+                                    </option>
+                                    <option value="no_tests" {{ request('test_status') == 'no_tests' ? 'selected' : '' }}>
+                                        Belum Test
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- ✅ NEW: Kraeplin Category Filter -->
+                            <div class="filter-group">
+                                <label class="filter-label">Kategori Kraeplin</label>
+                                <select class="filter-select" id="kraeplinCategoryFilter">
+                                    <option value="">Semua Kategori</option>
+                                    @foreach($kraeplinCategories as $category)
+                                        <option value="{{ $category }}" 
+                                                {{ request('kraeplin_category') == $category ? 'selected' : '' }}>
+                                            {{ ucfirst($category) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <!-- ✅ NEW: DISC Type Filter -->
+                            <div class="filter-group">
+                                <label class="filter-label">Tipe DISC</label>
+                                <select class="filter-select" id="discTypeFilter">
+                                    <option value="">Semua Tipe</option>
+                                    @foreach($discTypes as $type)
+                                        <option value="{{ $type }}" 
+                                                {{ request('disc_type') == $type ? 'selected' : '' }}>
+                                            {{ strtoupper($type) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                             
                             <div class="action-buttons">
                                 <button type="button" class="btn-secondary" onclick="resetFilters()">
                                     <i class="fas fa-redo"></i>
                                     Reset
                                 </button>
-                                {{-- <button type="button" class="btn-primary btn-export">
-                                    <i class="fas fa-download"></i>
-                                    Export
-                                </button> --}}
                             </div>
                         </div>
                     </form>
                 </div>
+
                 <div class="bulk-action-toolbar" id="bulkActionToolbar" style="display: none;">
                     <div class="bulk-action-content">
                         <span><span id="selectedCount">0</span> kandidat terpilih</span>
@@ -903,17 +1028,20 @@
                     <table class="candidates-table">
                         <thead>
                             <tr>
-                                <th width="5%">No</th>
+                                <th width="4%">No</th>
                                 <th width="3%">
                                     <input type="checkbox" id="selectAll" style="margin: 0;">
                                 </th>
-                                <th width="10%">Kode</th>
-                                <th width="25%">Kandidat</th>
-                                <th width="15%">Posisi</th>
-                                <th width="10%">Status</th>
-                                <th width="12%">Tanggal Apply</th>
-                                <th width="13%">Gaji Harapan</th>
-                                <th width="10%">Aksi</th>
+                                <th width="8%">Kode</th>
+                                <th width="20%">Kandidat</th>
+                                <th width="12%">Posisi</th>
+                                <th width="8%">Status</th>
+                                <th width="10%">Tanggal Apply</th>
+                                <th width="10%">Gaji Harapan</th>
+                                <!-- ✅ NEW: Test Result Columns -->
+                                <th width="10%">Skor Kraeplin</th>
+                                <th width="8%">Tipe DISC</th>
+                                <th width="7%">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -957,6 +1085,38 @@
                                         <span style="color: #718096;">Tidak disebutkan</span>
                                     @endif
                                 </td>
+                                <!-- ✅ FIXED: Kraeplin Score Column using correct property name -->
+                                <td>
+                                    @if($candidate->kraeplinTestResult)
+                                        <div class="test-score">
+                                            <span class="score-value">{{ $candidate->kraeplinTestResult->overall_score ?? 0 }}</span>
+                                            @if($candidate->kraeplinTestResult->performance_category)
+                                                <span class="score-category kraeplin-{{ strtolower($candidate->kraeplinTestResult->performance_category) }}">
+                                                    {{ ucfirst($candidate->kraeplinTestResult->performance_category) }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <span class="test-not-taken">Belum test</span>
+                                    @endif
+                                </td>
+                                <!-- ✅ NEW: DISC Type Column -->
+                                <td>
+                                    @if($candidate->disc3DResult && $candidate->disc3DResult->primary_type)
+                                        <div class="test-score">
+                                            <span class="disc-type disc-{{ strtolower($candidate->disc3DResult->primary_type) }}">
+                                                {{ strtoupper($candidate->disc3DResult->primary_type) }}
+                                            </span>
+                                            @if($candidate->disc3DResult->primary_percentage)
+                                                <span style="font-size: 0.8rem; color: #6b7280;">
+                                                    {{ round($candidate->disc3DResult->primary_percentage) }}%
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <span class="test-not-taken">Belum test</span>
+                                    @endif
+                                </td>
                                 <td>
                                     <div class="action-dropdown">
                                         <button class="action-btn" onclick="toggleDropdown(this)">
@@ -971,6 +1131,19 @@
                                                 <i class="fas fa-edit"></i>
                                                 Edit
                                             </a>
+                                            <!-- ✅ NEW: Test Result Links -->
+                                            @if($candidate->kraeplinTestResult)
+                                                <a href="{{ route('candidates.show', $candidate->id) }}#kraeplin-section" class="dropdown-item">
+                                                    <i class="fas fa-chart-line"></i>
+                                                    Hasil Kraeplin
+                                                </a>
+                                            @endif
+                                            @if($candidate->disc3DResult)
+                                                <a href="{{ route('candidates.show', $candidate->id) }}#disc-section" class="dropdown-item">
+                                                    <i class="fas fa-chart-pie"></i>
+                                                    Hasil DISC
+                                                </a>
+                                            @endif
                                             <div class="dropdown-divider"></div>
                                             <a href="#" class="dropdown-item" onclick="deleteCandidate({{ $candidate->id }}, '{{ $candidate->full_name ?? 'Unknown' }}')">
                                                 <i class="fas fa-trash"></i>
@@ -982,10 +1155,10 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="9" style="text-align: center; padding: 40px; color: #718096;">
+                                <td colspan="11" style="text-align: center; padding: 40px; color: #718096;">
                                     <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 10px; display: block;"></i>
                                     Tidak ada data kandidat
-                                    @if(request()->hasAny(['search', 'status', 'position']))
+                                    @if(request()->hasAny(['search', 'status', 'position', 'test_status', 'kraeplin_category', 'disc_type']))
                                         <br><small>Coba ubah filter pencarian Anda</small>
                                     @endif
                                 </td>
@@ -1036,399 +1209,344 @@
     </div>
 
     <script>
-      /**
- * Updated JavaScript for candidates/index.blade.php
- * Replace the existing <script> section in index.blade.php with this code
- */
+        // ✅ UPDATED: JavaScript with new filter support
+        let isProcessing = false;
 
-// ============================================
-// GLOBAL VARIABLES & UTILITIES
-// ============================================
+        function getCSRFToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        }
 
-let isProcessing = false;
+        function showLoading(message = 'Processing...', subtitle = '') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: message,
+                    html: subtitle ? `<div style="text-align: center;"><p>${subtitle}</p></div>` : '',
+                    icon: 'info',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            } else {
+                document.getElementById('loadingOverlay').style.display = 'flex';
+            }
+        }
 
-function getCSRFToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-}
+        function hideLoading() {
+            if (typeof Swal !== 'undefined') {
+                Swal.close();
+            } else {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }
 
-function showLoading(message = 'Processing...', subtitle = '') {
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: message,
-            html: subtitle ? `<div style="text-align: center;"><p>${subtitle}</p></div>` : '',
-            icon: 'info',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
+        function showSuccess(title, message, timer = 3000) {
+            if (typeof Swal !== 'undefined') {
+                return Swal.fire({
+                    title: title,
+                    html: message,
+                    icon: 'success',
+                    timer: timer,
+                    showConfirmButton: timer > 5000,
+                    timerProgressBar: true
+                });
+            } else {
+                alert(title + ': ' + message);
+                return Promise.resolve();
+            }
+        }
+
+        function showError(title, message) {
+            if (typeof Swal !== 'undefined') {
+                return Swal.fire({
+                    title: title,
+                    html: message,
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            } else {
+                alert(title + ': ' + message);
+                return Promise.resolve();
+            }
+        }
+
+        async function makeRequest(url, options = {}) {
+            if (isProcessing) {
+                showError('Sedang Diproses', 'Harap tunggu operasi sebelumnya selesai');
+                return null;
+            }
+
+            isProcessing = true;
+
+            try {
+                const defaultOptions = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': getCSRFToken(),
+                        'Accept': 'application/json'
+                    }
+                };
+
+                const response = await fetch(url, { ...defaultOptions, ...options });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('Request error:', error);
+                throw error;
+            } finally {
+                isProcessing = false;
+            }
+        }
+
+        // Sidebar toggle
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+
+        if (sidebarToggle && sidebar && mainContent) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            });
+
+            // Mobile sidebar
+            if (window.innerWidth <= 768) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('show');
+                });
+            }
+        }
+
+        function toggleDropdown(button) {
+            const dropdown = button.nextElementSibling;
+            const allDropdowns = document.querySelectorAll('.dropdown-menu');
+            
+            allDropdowns.forEach(d => {
+                if (d !== dropdown) {
+                    d.classList.remove('show');
+                }
+            });
+            
+            dropdown.classList.toggle('show');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.action-dropdown')) {
+                document.querySelectorAll('.dropdown-menu').forEach(d => {
+                    d.classList.remove('show');
+                });
             }
         });
-    } else {
-        // Fallback to loading overlay
-        document.getElementById('loadingOverlay').style.display = 'flex';
-    }
-}
 
-function hideLoading() {
-    if (typeof Swal !== 'undefined') {
-        Swal.close();
-    } else {
-        document.getElementById('loadingOverlay').style.display = 'none';
-    }
-}
+        // ✅ UPDATED: Filter functionality with new test filters
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const positionFilter = document.getElementById('positionFilter');
+        const testStatusFilter = document.getElementById('testStatusFilter');
+        const kraeplinCategoryFilter = document.getElementById('kraeplinCategoryFilter');
+        const discTypeFilter = document.getElementById('discTypeFilter');
+        let searchTimeout;
 
-function showSuccess(title, message, timer = 3000) {
-    if (typeof Swal !== 'undefined') {
-        return Swal.fire({
-            title: title,
-            html: message,
-            icon: 'success',
-            timer: timer,
-            showConfirmButton: timer > 5000,
-            timerProgressBar: true
-        });
-    } else {
-        alert(title + ': ' + message);
-        return Promise.resolve();
-    }
-}
+        function applyFilters() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const params = new URLSearchParams();
+                
+                if (searchInput && searchInput.value) params.append('search', searchInput.value);
+                if (statusFilter && statusFilter.value) params.append('status', statusFilter.value);
+                if (positionFilter && positionFilter.value) params.append('position', positionFilter.value);
+                if (testStatusFilter && testStatusFilter.value) params.append('test_status', testStatusFilter.value);
+                if (kraeplinCategoryFilter && kraeplinCategoryFilter.value) params.append('kraeplin_category', kraeplinCategoryFilter.value);
+                if (discTypeFilter && discTypeFilter.value) params.append('disc_type', discTypeFilter.value);
+                
+                const baseUrl = window.location.pathname;
+                window.location.href = `${baseUrl}?${params.toString()}`;
+            }, 500);
+        }
 
-function showError(title, message) {
-    if (typeof Swal !== 'undefined') {
-        return Swal.fire({
-            title: title,
-            html: message,
-            icon: 'error',
-            confirmButtonText: 'OK'
-        });
-    } else {
-        alert(title + ': ' + message);
-        return Promise.resolve();
-    }
-}
+        if (searchInput) searchInput.addEventListener('input', applyFilters);
+        if (statusFilter) statusFilter.addEventListener('change', applyFilters);
+        if (positionFilter) positionFilter.addEventListener('change', applyFilters);
+        if (testStatusFilter) testStatusFilter.addEventListener('change', applyFilters);
+        if (kraeplinCategoryFilter) kraeplinCategoryFilter.addEventListener('change', applyFilters);
+        if (discTypeFilter) discTypeFilter.addEventListener('change', applyFilters);
 
-async function makeRequest(url, options = {}) {
-    if (isProcessing) {
-        showError('Sedang Diproses', 'Harap tunggu operasi sebelumnya selesai');
-        return null;
-    }
+        function resetFilters() {
+            if (searchInput) searchInput.value = '';
+            if (statusFilter) statusFilter.value = '';
+            if (positionFilter) positionFilter.value = '';
+            if (testStatusFilter) testStatusFilter.value = '';
+            if (kraeplinCategoryFilter) kraeplinCategoryFilter.value = '';
+            if (discTypeFilter) discTypeFilter.value = '';
+            window.location.href = window.location.pathname;
+        }
 
-    isProcessing = true;
+        // Checkbox & bulk action functionality
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const candidateCheckboxes = document.querySelectorAll('.candidate-checkbox');
+        const bulkActionToolbar = document.getElementById('bulkActionToolbar');
+        const selectedCountElement = document.getElementById('selectedCount');
 
-    try {
-        const defaultOptions = {
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCSRFToken(),
-                'Accept': 'application/json'
+        function updateSelectedCount() {
+            const selectedCount = document.querySelectorAll('.candidate-checkbox:checked').length;
+            
+            if (selectedCountElement) {
+                selectedCountElement.innerText = selectedCount;
             }
-        };
 
-        const response = await fetch(url, { ...defaultOptions, ...options });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+            if (bulkActionToolbar) {
+                if (selectedCount > 0) {
+                    bulkActionToolbar.style.display = 'flex';
+                } else {
+                    bulkActionToolbar.style.display = 'none';
+                }
+            }
+
+            // Update select all state
+            if (selectAllCheckbox && candidateCheckboxes.length > 0) {
+                const totalBoxes = candidateCheckboxes.length;
+                
+                if (selectedCount === totalBoxes && totalBoxes > 0) {
+                    selectAllCheckbox.checked = true;
+                    selectAllCheckbox.indeterminate = false;
+                } else if (selectedCount > 0) {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = true;
+                } else {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = false;
+                }
+            }
         }
 
-        return await response.json();
-    } catch (error) {
-        console.error('Request error:', error);
-        throw error;
-    } finally {
-        isProcessing = false;
-    }
-}
-
-// ============================================
-// SIDEBAR & UI FUNCTIONALITY
-// ============================================
-
-// Sidebar toggle
-const sidebarToggle = document.getElementById('sidebarToggle');
-const sidebar = document.getElementById('sidebar');
-const mainContent = document.getElementById('mainContent');
-
-if (sidebarToggle && sidebar && mainContent) {
-    sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-        mainContent.classList.toggle('expanded');
-    });
-
-    // Mobile sidebar
-    if (window.innerWidth <= 768) {
-        sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('show');
-        });
-    }
-}
-
-// ============================================
-// DROPDOWN FUNCTIONALITY
-// ============================================
-
-function toggleDropdown(button) {
-    const dropdown = button.nextElementSibling;
-    const allDropdowns = document.querySelectorAll('.dropdown-menu');
-    
-    allDropdowns.forEach(d => {
-        if (d !== dropdown) {
-            d.classList.remove('show');
+        // Select all functionality
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+                candidateCheckboxes.forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                });
+                updateSelectedCount();
+            });
         }
-    });
-    
-    dropdown.classList.toggle('show');
-}
 
-// Close dropdown when clicking outside
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.action-dropdown')) {
-        document.querySelectorAll('.dropdown-menu').forEach(d => {
-            d.classList.remove('show');
-        });
-    }
-});
-
-// ============================================
-// SEARCH & FILTER FUNCTIONALITY
-// ============================================
-
-const searchInput = document.getElementById('searchInput');
-const statusFilter = document.getElementById('statusFilter');
-const positionFilter = document.getElementById('positionFilter');
-let searchTimeout;
-
-function applyFilters() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        const params = new URLSearchParams();
-        
-        if (searchInput && searchInput.value) params.append('search', searchInput.value);
-        if (statusFilter && statusFilter.value) params.append('status', statusFilter.value);
-        if (positionFilter && positionFilter.value) params.append('position', positionFilter.value);
-        
-        const baseUrl = window.location.pathname;
-        window.location.href = `${baseUrl}?${params.toString()}`;
-    }, 500);
-}
-
-if (searchInput) {
-    searchInput.addEventListener('input', applyFilters);
-}
-if (statusFilter) {
-    statusFilter.addEventListener('change', applyFilters);
-}
-if (positionFilter) {
-    positionFilter.addEventListener('change', applyFilters);
-}
-
-function resetFilters() {
-    if (searchInput) searchInput.value = '';
-    if (statusFilter) statusFilter.value = '';
-    if (positionFilter) positionFilter.value = '';
-    window.location.href = window.location.pathname;
-}
-
-// ============================================
-// CHECKBOX & BULK ACTION FUNCTIONALITY
-// ============================================
-
-const selectAllCheckbox = document.getElementById('selectAll');
-const candidateCheckboxes = document.querySelectorAll('.candidate-checkbox');
-const bulkActionToolbar = document.getElementById('bulkActionToolbar');
-const selectedCountElement = document.getElementById('selectedCount');
-
-function updateSelectedCount() {
-    const selectedCount = document.querySelectorAll('.candidate-checkbox:checked').length;
-    
-    if (selectedCountElement) {
-        selectedCountElement.innerText = selectedCount;
-    }
-
-    if (bulkActionToolbar) {
-        if (selectedCount > 0) {
-            bulkActionToolbar.style.display = 'flex';
-        } else {
-            bulkActionToolbar.style.display = 'none';
-        }
-    }
-
-    // Update select all state
-    if (selectAllCheckbox && candidateCheckboxes.length > 0) {
-        const totalBoxes = candidateCheckboxes.length;
-        
-        if (selectedCount === totalBoxes && totalBoxes > 0) {
-            selectAllCheckbox.checked = true;
-            selectAllCheckbox.indeterminate = false;
-        } else if (selectedCount > 0) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = true;
-        } else {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        }
-    }
-}
-
-// Select all functionality
-if (selectAllCheckbox) {
-    selectAllCheckbox.addEventListener('change', function() {
-        const isChecked = this.checked;
+        // Individual checkbox functionality
         candidateCheckboxes.forEach(checkbox => {
-            checkbox.checked = isChecked;
-        });
-        updateSelectedCount();
-    });
-}
-
-// Individual checkbox functionality
-candidateCheckboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', updateSelectedCount);
-});
-
-// ============================================
-// CANDIDATE OPERATIONS
-// ============================================
-
-/**
- * Delete individual candidate (soft delete)
- */
-async function deleteCandidate(candidateId, candidateName) {
-    const confirmResult = typeof Swal !== 'undefined' 
-        ? await Swal.fire({
-            title: 'Hapus Kandidat?',
-            text: `Apakah Anda yakin ingin menghapus kandidat "${candidateName}" ke trash?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#e53e3e',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal',
-            reverseButtons: true
-        })
-        : { isConfirmed: confirm(`Apakah Anda yakin ingin menghapus kandidat "${candidateName}"?`) };
-
-    if (!confirmResult.isConfirmed) return;
-
-    try {
-        showLoading('Menghapus...', 'Memindahkan kandidat ke trash');
-
-        const data = await makeRequest(`/candidates/${candidateId}`, {
-            method: 'DELETE'
+            checkbox.addEventListener('change', updateSelectedCount);
         });
 
-        await showSuccess('Berhasil!', data.message);
-        window.location.reload();
+        async function deleteCandidate(candidateId, candidateName) {
+            const confirmResult = typeof Swal !== 'undefined' 
+                ? await Swal.fire({
+                    title: 'Hapus Kandidat?',
+                    text: `Apakah Anda yakin ingin menghapus kandidat "${candidateName}" ke trash?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#e53e3e',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true
+                })
+                : { isConfirmed: confirm(`Apakah Anda yakin ingin menghapus kandidat "${candidateName}"?`) };
 
-    } catch (error) {
-        hideLoading();
-        showError('Gagal Menghapus', `Terjadi kesalahan: ${error.message}`);
-    }
-}
+            if (!confirmResult.isConfirmed) return;
 
-/**
- * Bulk delete candidates (soft delete)
- */
-async function bulkDelete() {
-    const selectedIds = [];
-    const selectedNames = [];
-    
-    document.querySelectorAll('.candidate-checkbox:checked').forEach(checkbox => {
-        selectedIds.push(checkbox.value);
-        const row = checkbox.closest('tr');
-        const nameElement = row.querySelector('.candidate-name');
-        selectedNames.push(nameElement ? nameElement.textContent.trim() : 'Unknown');
-    });
+            try {
+                showLoading('Menghapus...', 'Memindahkan kandidat ke trash');
 
-    if (selectedIds.length === 0) {
-        showError('Tidak Ada Yang Dipilih', 'Pilih minimal satu kandidat untuk dihapus');
-        return;
-    }
+                const data = await makeRequest(`/candidates/${candidateId}`, {
+                    method: 'DELETE'
+                });
 
-    const confirmResult = typeof Swal !== 'undefined' 
-        ? await Swal.fire({
-            title: 'Hapus ke Trash?',
-            html: `
-                <div style="text-align: left; margin: 20px 0;">
-                    <p style="margin-bottom: 15px;">Anda akan menghapus <strong>${selectedIds.length} kandidat</strong> ke trash:</p>
-                    <div style="max-height: 150px; overflow-y: auto; background: #f7fafc; padding: 10px; border-radius: 6px; margin: 10px 0;">
-                        ${selectedNames.slice(0, 5).map(name => `<div style="margin: 2px 0;">• ${name}</div>`).join('')}
-                        ${selectedNames.length > 5 ? `<div style="margin: 2px 0; color: #6b7280;">• dan ${selectedNames.length - 5} kandidat lainnya...</div>` : ''}
-                    </div>
-                    <p style="color: #718096; font-size: 0.9rem; margin-top: 10px;">
-                        <i class="fas fa-info-circle"></i> Kandidat akan dipindahkan ke trash dan dapat dipulihkan nanti
-                    </p>
-                </div>
-            `,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#e53e3e',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: `Ya, Hapus ${selectedIds.length} Kandidat`,
-            cancelButtonText: 'Batal',
-            reverseButtons: true,
-            width: '500px'
-        })
-        : { isConfirmed: confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} kandidat terpilih?`) };
+                await showSuccess('Berhasil!', data.message);
+                window.location.reload();
 
-    if (!confirmResult.isConfirmed) return;
+            } catch (error) {
+                hideLoading();
+                showError('Gagal Menghapus', `Terjadi kesalahan: ${error.message}`);
+            }
+        }
 
-    try {
-        showLoading('Menghapus...', `Memproses ${selectedIds.length} kandidat`);
+        async function bulkDelete() {
+            const selectedIds = [];
+            const selectedNames = [];
+            
+            document.querySelectorAll('.candidate-checkbox:checked').forEach(checkbox => {
+                selectedIds.push(checkbox.value);
+                const row = checkbox.closest('tr');
+                const nameElement = row.querySelector('.candidate-name');
+                selectedNames.push(nameElement ? nameElement.textContent.trim() : 'Unknown');
+            });
 
-        const data = await makeRequest('/candidates/bulk-delete', {
-            method: 'POST',
-            body: JSON.stringify({ ids: selectedIds })
+            if (selectedIds.length === 0) {
+                showError('Tidak Ada Yang Dipilih', 'Pilih minimal satu kandidat untuk dihapus');
+                return;
+            }
+
+            const confirmResult = typeof Swal !== 'undefined' 
+                ? await Swal.fire({
+                    title: 'Hapus ke Trash?',
+                    html: `
+                        <div style="text-align: left; margin: 20px 0;">
+                            <p style="margin-bottom: 15px;">Anda akan menghapus <strong>${selectedIds.length} kandidat</strong> ke trash:</p>
+                            <div style="max-height: 150px; overflow-y: auto; background: #f7fafc; padding: 10px; border-radius: 6px; margin: 10px 0;">
+                                ${selectedNames.slice(0, 5).map(name => `<div style="margin: 2px 0;">• ${name}</div>`).join('')}
+                                ${selectedNames.length > 5 ? `<div style="margin: 2px 0; color: #6b7280;">• dan ${selectedNames.length - 5} kandidat lainnya...</div>` : ''}
+                            </div>
+                            <p style="color: #718096; font-size: 0.9rem; margin-top: 10px;">
+                                <i class="fas fa-info-circle"></i> Kandidat akan dipindahkan ke trash dan dapat dipulihkan nanti
+                            </p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#e53e3e',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: `Ya, Hapus ${selectedIds.length} Kandidat`,
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                    width: '500px'
+                })
+                : { isConfirmed: confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} kandidat terpilih?`) };
+
+            if (!confirmResult.isConfirmed) return;
+
+            try {
+                showLoading('Menghapus...', `Memproses ${selectedIds.length} kandidat`);
+
+                const data = await makeRequest('/candidates/bulk-delete', {
+                    method: 'POST',
+                    body: JSON.stringify({ ids: selectedIds })
+                });
+
+                await showSuccess('Berhasil Dihapus!', data.message);
+                window.location.reload();
+
+            } catch (error) {
+                hideLoading();
+                showError('Gagal Menghapus', `Terjadi kesalahan: ${error.message}`);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateSelectedCount();
+            console.log('✅ Candidates Index page with test results initialized');
         });
 
-        await showSuccess('Berhasil Dihapus!', data.message);
-        window.location.reload();
-
-    } catch (error) {
-        hideLoading();
-        showError('Gagal Menghapus', `Terjadi kesalahan: ${error.message}`);
-    }
-}
-
-/**
- * Update candidate status
- */
-async function updateCandidateStatus(candidateId, newStatus, candidateName) {
-    try {
-        showLoading('Memperbarui Status...', `Mengubah status kandidat ${candidateName}`);
-
-        const data = await makeRequest(`/candidates/${candidateId}/status`, {
-            method: 'PATCH',
-            body: JSON.stringify({ status: newStatus })
-        });
-
-        await showSuccess('Status Diperbarui!', data.message, 2000);
-        window.location.reload();
-
-    } catch (error) {
-        hideLoading();
-        showError('Gagal Memperbarui Status', `Terjadi kesalahan: ${error.message}`);
-    }
-}
-
-// ============================================
-// INITIALIZATION
-// ============================================
-
-document.addEventListener('DOMContentLoaded', function() {
-    updateSelectedCount();
-    
-    // Initialize any page-specific functionality
-    console.log('✅ Candidates Index page initialized');
-});
-
-// Expose functions to global scope for inline onclick handlers
-window.toggleDropdown = toggleDropdown;
-window.resetFilters = resetFilters;
-window.deleteCandidate = deleteCandidate;
-window.bulkDelete = bulkDelete;
-window.updateCandidateStatus = updateCandidateStatus;
+        // Expose functions to global scope for inline onclick handlers
+        window.toggleDropdown = toggleDropdown;
+        window.resetFilters = resetFilters;
+        window.deleteCandidate = deleteCandidate;
+        window.bulkDelete = bulkDelete;
     </script>
 </body>
 </html>
