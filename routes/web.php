@@ -59,6 +59,14 @@ Route::post('/check-email', [JobApplicationController::class, 'checkEmailExists'
 Route::post('/check-nik', [JobApplicationController::class, 'checkNikExists'])->name('check.nik');
 
 // ============================================
+// RESUME TEST PAGE - Untuk kandidat yang terputus
+// ============================================
+Route::get('/continue-test', function () {
+    return view('resume-test');
+})->name('resume.test');
+
+
+// ============================================
 // KRAEPLIN TEST ROUTES (Public - for candidates)
 // ============================================
 Route::prefix('kraeplin')->name('kraeplin.')->group(function () {

@@ -582,87 +582,78 @@
                 });
             }
             
-            if (confirm('Apakah Anda yakin ingin menyelesaikan test? Test tidak dapat dilanjutkan setelah diselesaikan.')) {
-                clearInterval(timer);
-                document.getElementById('loadingOverlay').style.display = 'flex';
+            // LANGSUNG SUBMIT TANPA KONFIRMASI
+            clearInterval(timer);
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            
+            // Calculate total duration
+            const totalDuration = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+            
+            // Prepare bulk data dengan data yang sudah divalidasi
+            const testData = {
+                session_id: SESSION_ID,
+                answers: validAnswers, // Gunakan validAnswers
+                total_duration: totalDuration
+            };
+            
+            console.log('Submitting test data:', {
+                session_id: SESSION_ID,
+                answers_count: validAnswers.length,
+                total_duration: totalDuration,
+                sample_answers: validAnswers.slice(0, 3)
+            });
+            
+            // Submit test
+            fetch('/kraeplin/submit-test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF_TOKEN,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(testData)
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
                 
-                // Calculate total duration
-                const totalDuration = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Error response:', text);
+                        let errorMessage = `HTTP ${response.status}`;
+                        try {
+                            const errorData = JSON.parse(text);
+                            errorMessage = errorData.message || errorMessage;
+                        } catch (e) {
+                            errorMessage = text || errorMessage;
+                        }
+                        throw new Error(errorMessage);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Success response:', data);
+                if (data.success) {
+                    // Clear localStorage after successful submit
+                    localStorage.removeItem('kraeplin_answers_' + SESSION_ID);
+                    alert('Test berhasil diselesaikan!');
+                    window.location.href = data.redirect_url;
+                } else {
+                    throw new Error(data.message || 'Unknown error');
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting test:', error);
+                document.getElementById('loadingOverlay').style.display = 'none';
                 
-                // Prepare bulk data dengan data yang sudah divalidasi
-                const testData = {
-                    session_id: SESSION_ID,
-                    answers: validAnswers, // Gunakan validAnswers
-                    total_duration: totalDuration
-                };
+                // Show detailed error to user
+                alert('Terjadi kesalahan: ' + error.message + '\n\nSilakan coba lagi atau hubungi administrator jika masalah berlanjut.');
                 
-                console.log('Submitting test data:', {
-                    session_id: SESSION_ID,
-                    answers_count: validAnswers.length,
-                    total_duration: totalDuration,
-                    sample_answers: validAnswers.slice(0, 3)
-                });
-                
-                // Submit test
-                fetch('/kraeplin/submit-test', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': CSRF_TOKEN,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(testData)
-                })
-                .then(response => {
-                    console.log('Response status:', response.status);
-                    
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            console.error('Error response:', text);
-                            let errorMessage = `HTTP ${response.status}`;
-                            try {
-                                const errorData = JSON.parse(text);
-                                errorMessage = errorData.message || errorMessage;
-                            } catch (e) {
-                                errorMessage = text || errorMessage;
-                            }
-                            throw new Error(errorMessage);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Success response:', data);
-                    if (data.success) {
-                        // Clear localStorage after successful submit
-                        localStorage.removeItem('kraeplin_answers_' + SESSION_ID);
-                        alert('Test berhasil diselesaikan!');
-                        window.location.href = data.redirect_url;
-                    } else {
-                        throw new Error(data.message || 'Unknown error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error submitting test:', error);
-                    document.getElementById('loadingOverlay').style.display = 'none';
-                    
-                    // Show detailed error to user
-                    alert('Terjadi kesalahan: ' + error.message + '\n\nSilakan coba lagi atau hubungi administrator jika masalah berlanjut.');
-                    
-                    // Show retry button
-                    document.getElementById('finishBtn').innerHTML = '🔄 Coba Kirim Lagi';
-                    document.getElementById('finishBtn').style.display = 'block';
-                });
-            }
+                // Show retry button
+                document.getElementById('finishBtn').innerHTML = '🔄 Coba Kirim Lagi';
+                document.getElementById('finishBtn').style.display = 'block';
+            });
         }
-        
-        // Prevent data loss
-        window.addEventListener('beforeunload', function(e) {
-            if (allAnswers.length > 0) {
-                e.preventDefault();
-                e.returnValue = 'Test sedang berlangsung. Data Anda akan hilang jika meninggalkan halaman.';
-            }
-        });
         
         // Recovery from localStorage (if page refresh)
         window.addEventListener('load', function() {
