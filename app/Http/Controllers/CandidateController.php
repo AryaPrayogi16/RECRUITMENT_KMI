@@ -7,8 +7,8 @@ use App\Models\{
     Position, 
     ApplicationLog,
     FamilyMember,
-    FormalEducation,        // ✅ UPDATED: Use separate formal education model
-    NonFormalEducation,     // ✅ UPDATED: Use separate non-formal education model
+    FormalEducation,
+    NonFormalEducation,
     WorkExperience,
     LanguageSkill,
     CandidateAdditionalInfo,
@@ -34,15 +34,22 @@ use Illuminate\Support\Facades\Log;
 class CandidateController extends Controller
 {
     /**
-     * ✅ FIXED: Ensure index method exists and is properly defined
-     * Display a listing of candidates
+     * ✅ FIXED: Display a listing of candidates with test results using correct column names
      */
     public function index(Request $request)
     {
         Gate::authorize('hr-access');
         
-        $query = Candidate::with(['position'])
-            ->latest();
+        $query = Candidate::with([
+            'position',
+            // ✅ FIXED: Include test results relationships with correct column selections
+            'kraeplinTestResult' => function($query) {
+                $query->select('candidate_id', 'overall_score', 'performance_category'); // ← FIXED: overall_score instead of total_score
+            },
+            'disc3DResult' => function($query) {
+                $query->select('candidate_id', 'primary_type', 'primary_percentage');
+            }
+        ])->latest();
         
         // Search functionality - sesuai dengan struktur baru (data di candidates table)
         if ($request->filled('search')) {
@@ -64,6 +71,40 @@ class CandidateController extends Controller
             $query->where('position_applied', $request->position);
         }
         
+        // ✅ NEW: Filter by test completion status
+        if ($request->filled('test_status')) {
+            switch ($request->test_status) {
+                case 'kraeplin_completed':
+                    $query->whereHas('kraeplinTestResult');
+                    break;
+                case 'disc_completed':
+                    $query->whereHas('disc3DResult');
+                    break;
+                case 'all_tests_completed':
+                    $query->whereHas('kraeplinTestResult')
+                          ->whereHas('disc3DResult');
+                    break;
+                case 'no_tests':
+                    $query->whereDoesntHave('kraeplinTestResult')
+                          ->whereDoesntHave('disc3DResult');
+                    break;
+            }
+        }
+        
+        // ✅ NEW: Filter by Kraeplin performance category
+        if ($request->filled('kraeplin_category')) {
+            $query->whereHas('kraeplinTestResult', function($q) use ($request) {
+                $q->where('performance_category', $request->kraeplin_category);
+            });
+        }
+        
+        // ✅ NEW: Filter by DISC primary type
+        if ($request->filled('disc_type')) {
+            $query->whereHas('disc3DResult', function($q) use ($request) {
+                $q->where('primary_type', $request->disc_type);
+            });
+        }
+        
         $candidates = $query->paginate(15)->withQueryString();
         
         // Get all active positions for filter dropdown
@@ -71,12 +112,33 @@ class CandidateController extends Controller
             ->orderBy('position_name')
             ->get();
         
+        // ✅ NEW: Get available test data for filters
+        $kraeplinCategories = KraeplinTestResult::select('performance_category')
+            ->distinct()
+            ->whereNotNull('performance_category')
+            ->pluck('performance_category')
+            ->sort()
+            ->values();
+            
+        $discTypes = Disc3DResult::select('primary_type')
+            ->distinct()
+            ->whereNotNull('primary_type')
+            ->pluck('primary_type')
+            ->sort()
+            ->values();
+        
         // Count new applications for notification badge
         $newApplicationsCount = Candidate::where('application_status', 'submitted')
             ->whereDate('created_at', today())
             ->count();
         
-        return view('candidates.index', compact('candidates', 'positions', 'newApplicationsCount'));
+        return view('candidates.index', compact(
+            'candidates', 
+            'positions', 
+            'newApplicationsCount',
+            'kraeplinCategories',
+            'discTypes'
+        ));
     }
 
     /**
@@ -307,6 +369,8 @@ class CandidateController extends Controller
         
         return view('candidates.show', compact('candidate'));
     }
+
+    // ... rest of the methods remain the same as they don't involve the problematic column ...
 
     /**
      * ✅ UPDATED: Edit form with correct education relationships
