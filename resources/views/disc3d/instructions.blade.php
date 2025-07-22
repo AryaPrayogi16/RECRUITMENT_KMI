@@ -126,10 +126,7 @@
                 <!-- Timer Info -->
                 <div>
                     <h3 class="text-lg font-medium text-gray-700 mb-3">Waktu Tes</h3>
-                    <div class="timer-demo">
-                        <div class="timer-display">⏰ Unlimited</div>
-                        <p class="text-sm text-amber-700 mt-2">Tidak ada batasan waktu, kerjakan dengan tenang</p>
-                    </div>
+                    
                     <ul class="list-disc list-inside space-y-1 text-gray-600 mt-3">
                         <li>Anda dapat mengerjakan sesuai kecepatan Anda sendiri</li>
                         <li>Pikirkan dengan baik sebelum memilih jawaban</li>

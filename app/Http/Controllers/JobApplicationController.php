@@ -19,6 +19,7 @@ use App\Models\{
     Disc3DTestSession,
     Disc3DResult
 };
+use App\Services\CodeGenerationService; // ✅ NEW: Import CodeGenerationService
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -92,7 +93,7 @@ class JobApplicationController extends Controller
                 throw new \Exception("Posisi '{$validated['position_applied']}' tidak tersedia atau sudah tidak aktif");
             }
             
-            // 1. Create Candidate
+            // 1. Create Candidate dengan CodeGenerationService
             $candidate = $this->createCandidate($validated, $position->id);
             Log::info('Candidate created', ['candidate_id' => $candidate->id, 'candidate_code' => $candidate->candidate_code]);
             
@@ -147,7 +148,7 @@ class JobApplicationController extends Controller
                 Log::info('Driving licenses created', ['candidate_id' => $candidate->id, 'count' => count($validated['driving_licenses'])]);
             }
             
-            // 10. Handle File Uploads (including KTP) - 🔧 UPDATED dengan perbaikan
+            // 10. ✅ FIXED: Handle File Uploads dengan storage yang benar
             $uploadedFiles = $this->handleDocumentUploads($candidate, $request);
             Log::info('Document uploads processed', ['candidate_id' => $candidate->id, 'files_count' => count($uploadedFiles)]);
             
@@ -236,20 +237,14 @@ class JobApplicationController extends Controller
                 ], 409);
             }
 
-            // 🔧 IMPROVED: Better temp file naming and storage
+            // ✅ IMPROVED: Temporary storage menggunakan Storage facade yang benar
             $sessionId = session()->getId();
             $timestamp = time();
             $extension = $file->getClientOriginalExtension();
-            $tempFilename = "ktp_{$sessionId}_{$timestamp}.{$extension}";
+            $tempFilename = "ktp_ocr_{$sessionId}_{$timestamp}.{$extension}";
             
-            // Ensure temp directory exists
-            $tempDir = 'temp/ktp';
-            if (!Storage::disk('public')->exists($tempDir)) {
-                Storage::disk('public')->makeDirectory($tempDir);
-            }
-            
-            // Store file in temp location
-            $tempPath = $file->storeAs($tempDir, $tempFilename, 'public');
+            // ✅ FIXED: Store di temp folder menggunakan Storage disk public
+            $tempPath = $file->storeAs('temp/ktp_ocr', $tempFilename, 'public');
             
             // Verify file was stored
             if (!Storage::disk('public')->exists($tempPath)) {
@@ -262,10 +257,11 @@ class JobApplicationController extends Controller
                 'temp_path' => $tempPath,
                 'original_size' => $file->getSize(),
                 'stored_size' => $storedFileSize,
-                'temp_file_exists' => Storage::disk('public')->exists($tempPath)
+                'temp_file_exists' => Storage::disk('public')->exists($tempPath),
+                'storage_path' => Storage::disk('public')->path($tempPath)
             ]);
 
-            // 🔧 IMPROVED: Enhanced session storage with verification
+            // ✅ IMPROVED: Enhanced session storage with verification
             session([
                 'ocr_validated' => true,
                 'ocr_nik' => $extractedNik,
@@ -358,61 +354,92 @@ class JobApplicationController extends Controller
         }
     }
 
-    // 🔧 FIXED: Enhanced document uploads handler with proper KTP storage
+    // ✅ COMPLETELY REWRITTEN: Enhanced document uploads dengan storage yang benar
     private function handleDocumentUploads($candidate, $request)
     {
         $uploadedFiles = [];
         
         try {
+            // Pastikan folder kandidat ada di storage yang benar
+            $candidateFolder = "documents/candidates/{$candidate->candidate_code}";
+            
+            // Buat folder jika belum ada
+            if (!Storage::disk('public')->exists($candidateFolder)) {
+                Storage::disk('public')->makeDirectory($candidateFolder);
+                Log::info('Created candidate folder', [
+                    'candidate_id' => $candidate->id,
+                    'folder' => $candidateFolder,
+                    'full_path' => Storage::disk('public')->path($candidateFolder)
+                ]);
+            }
+
             // Handle CV
             if ($request->hasFile('cv')) {
                 $file = $request->file('cv');
-                $filename = 'cv_' . time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
-                $uploadedFiles[] = $path;
+                $filename = $this->generateSecureFilename('cv', $file->getClientOriginalExtension(), $candidate);
+                $filePath = $candidateFolder . '/' . $filename;
+                
+                // ✅ STORE MENGGUNAKAN STORAGE DISK YANG BENAR
+                $stored = Storage::disk('public')->putFileAs($candidateFolder, $file, $filename);
+                
+                if ($stored) {
+                    $uploadedFiles[] = $filePath;
+                    
+                    DocumentUpload::create([
+                        'candidate_id' => $candidate->id,
+                        'document_type' => 'cv',
+                        'document_name' => 'CV',
+                        'original_filename' => $file->getClientOriginalName(),
+                        'file_path' => $filePath,
+                        'file_size' => $file->getSize(),
+                        'mime_type' => $file->getMimeType(),
+                    ]);
 
-                DocumentUpload::create([
-                    'candidate_id' => $candidate->id,
-                    'document_type' => 'cv',
-                    'document_name' => 'CV',
-                    'original_filename' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                ]);
-
-                Log::info('CV uploaded', ['candidate_id' => $candidate->id, 'path' => $path]);
+                    Log::info('CV uploaded successfully', [
+                        'candidate_id' => $candidate->id, 
+                        'file_path' => $filePath,
+                        'original_name' => $file->getClientOriginalName(),
+                        'size' => $file->getSize()
+                    ]);
+                }
             }
 
             // Handle Photo  
             if ($request->hasFile('photo')) {
                 $file = $request->file('photo');
-                $filename = 'photo_' . time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
-                $uploadedFiles[] = $path;
+                $filename = $this->generateSecureFilename('photo', $file->getClientOriginalExtension(), $candidate);
+                $filePath = $candidateFolder . '/' . $filename;
+                
+                $stored = Storage::disk('public')->putFileAs($candidateFolder, $file, $filename);
+                
+                if ($stored) {
+                    $uploadedFiles[] = $filePath;
+                    
+                    DocumentUpload::create([
+                        'candidate_id' => $candidate->id,
+                        'document_type' => 'photo',
+                        'document_name' => 'Photo',
+                        'original_filename' => $file->getClientOriginalName(),
+                        'file_path' => $filePath,
+                        'file_size' => $file->getSize(),
+                        'mime_type' => $file->getMimeType(),
+                    ]);
 
-                DocumentUpload::create([
-                    'candidate_id' => $candidate->id,
-                    'document_type' => 'photo',
-                    'document_name' => 'Photo',
-                    'original_filename' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                ]);
-
-                Log::info('Photo uploaded', ['candidate_id' => $candidate->id, 'path' => $path]);
+                    Log::info('Photo uploaded successfully', [
+                        'candidate_id' => $candidate->id, 
+                        'file_path' => $filePath
+                    ]);
+                }
             }
 
-            // 🔧 FIXED: Enhanced KTP handling from OCR session
-            $ktpProcessed = $this->handleKTPFromOCRSession($candidate, $uploadedFiles);
+            // ✅ FIXED: Enhanced KTP handling dari OCR session
+            $ktpProcessed = $this->handleKTPFromOCRSession($candidate, $uploadedFiles, $candidateFolder);
             if (!$ktpProcessed) {
                 Log::warning('No KTP file processed from OCR session', [
                     'candidate_id' => $candidate->id,
                     'session_data' => [
                         'ocr_validated' => session('ocr_validated'),
                         'ocr_ktp_path' => session('ocr_ktp_path'),
-                        'ocr_ktp_original' => session('ocr_ktp_original'),
                     ]
                 ]);
             }
@@ -420,44 +447,74 @@ class JobApplicationController extends Controller
             // Handle Transcript
             if ($request->hasFile('transcript')) {
                 $file = $request->file('transcript');
-                $filename = 'transcript_' . time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
-                $uploadedFiles[] = $path;
+                $filename = $this->generateSecureFilename('transcript', $file->getClientOriginalExtension(), $candidate);
+                $filePath = $candidateFolder . '/' . $filename;
+                
+                $stored = Storage::disk('public')->putFileAs($candidateFolder, $file, $filename);
+                
+                if ($stored) {
+                    $uploadedFiles[] = $filePath;
+                    
+                    DocumentUpload::create([
+                        'candidate_id' => $candidate->id,
+                        'document_type' => 'transcript',
+                        'document_name' => 'Transcript',
+                        'original_filename' => $file->getClientOriginalName(),
+                        'file_path' => $filePath,
+                        'file_size' => $file->getSize(),
+                        'mime_type' => $file->getMimeType(),
+                    ]);
 
-                DocumentUpload::create([
-                    'candidate_id' => $candidate->id,
-                    'document_type' => 'transcript',
-                    'document_name' => 'Transcript',
-                    'original_filename' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                ]);
-
-                Log::info('Transcript uploaded', ['candidate_id' => $candidate->id, 'path' => $path]);
+                    Log::info('Transcript uploaded successfully', [
+                        'candidate_id' => $candidate->id, 
+                        'file_path' => $filePath
+                    ]);
+                }
             }
 
             // Handle Certificates (multiple)
             if ($request->hasFile('certificates')) {
                 $certificates = $request->file('certificates');
+                
+                // Buat subfolder untuk certificates
+                $certificatesFolder = $candidateFolder . '/certificates';
+                if (!Storage::disk('public')->exists($certificatesFolder)) {
+                    Storage::disk('public')->makeDirectory($certificatesFolder);
+                }
+                
                 foreach ($certificates as $index => $certificate) {
-                    $filename = 'certificate_' . time() . '_' . ($index + 1) . '_' . Str::slug(pathinfo($certificate->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $certificate->getClientOriginalExtension();
-                    $path = $certificate->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
-                    $uploadedFiles[] = $path;
+                    $filename = $this->generateSecureFilename('certificate_' . ($index + 1), $certificate->getClientOriginalExtension(), $candidate);
+                    $filePath = $certificatesFolder . '/' . $filename;
+                    
+                    $stored = Storage::disk('public')->putFileAs($certificatesFolder, $certificate, $filename);
+                    
+                    if ($stored) {
+                        $uploadedFiles[] = $filePath;
+                        
+                        DocumentUpload::create([
+                            'candidate_id' => $candidate->id,
+                            'document_type' => 'certificates',
+                            'document_name' => 'Certificate ' . ($index + 1),
+                            'original_filename' => $certificate->getClientOriginalName(),
+                            'file_path' => $filePath,
+                            'file_size' => $certificate->getSize(),
+                            'mime_type' => $certificate->getMimeType(),
+                        ]);
 
-                    DocumentUpload::create([
-                        'candidate_id' => $candidate->id,
-                        'document_type' => 'certificates',
-                        'document_name' => 'Certificate ' . ($index + 1),
-                        'original_filename' => $certificate->getClientOriginalName(),
-                        'file_path' => $path,
-                        'file_size' => $certificate->getSize(),
-                        'mime_type' => $certificate->getMimeType(),
-                    ]);
-
-                    Log::info('Certificate uploaded', ['candidate_id' => $candidate->id, 'index' => $index + 1, 'path' => $path]);
+                        Log::info('Certificate uploaded successfully', [
+                            'candidate_id' => $candidate->id, 
+                            'index' => $index + 1, 
+                            'file_path' => $filePath
+                        ]);
+                    }
                 }
             }
+
+            Log::info('All document uploads completed', [
+                'candidate_id' => $candidate->id,
+                'total_files' => count($uploadedFiles),
+                'uploaded_files' => $uploadedFiles
+            ]);
 
             return $uploadedFiles;
 
@@ -473,9 +530,9 @@ class JobApplicationController extends Controller
     }
 
     /**
-     * 🆕 NEW: Dedicated method to handle KTP from OCR session
+     * ✅ COMPLETELY REWRITTEN: Enhanced KTP handling dari OCR session
      */
-    private function handleKTPFromOCRSession($candidate, &$uploadedFiles)
+    private function handleKTPFromOCRSession($candidate, &$uploadedFiles, $candidateFolder)
     {
         // Check if we have OCR session data
         if (!session('ocr_validated') || !session('ocr_ktp_path')) {
@@ -511,32 +568,28 @@ class JobApplicationController extends Controller
                 return false;
             }
 
-            // Ensure destination directory exists
-            $destinationDir = 'documents/' . $candidate->candidate_code;
-            if (!Storage::disk('public')->exists($destinationDir)) {
-                Storage::disk('public')->makeDirectory($destinationDir);
-                Log::info('Created destination directory', [
-                    'candidate_id' => $candidate->id,
-                    'directory' => $destinationDir
-                ]);
-            }
-
-            // Generate permanent filename
-            $extension = pathinfo($ktpOriginalName, PATHINFO_EXTENSION);
-            $ktpFilename = 'ktp_' . time() . '_' . Str::random(8) . '.' . $extension;
-            $ktpPermanentPath = $destinationDir . '/' . $ktpFilename;
+            // Generate filename untuk KTP permanent
+            $extension = pathinfo($ktpOriginalName, PATHINFO_EXTENSION) ?: 'jpg';
+            $ktpFilename = $this->generateSecureFilename('ktp', $extension, $candidate);
+            $ktpPermanentPath = $candidateFolder . '/' . $ktpFilename;
             
-            Log::info('Moving KTP file', [
+            Log::info('Moving KTP file to permanent location', [
                 'candidate_id' => $candidate->id,
                 'from' => $ktpTempPath,
                 'to' => $ktpPermanentPath
             ]);
 
-            // 🔧 FIXED: Use Storage::move() instead of copy() for better reliability
-            if (Storage::disk('public')->move($ktpTempPath, $ktpPermanentPath)) {
+            // ✅ IMPROVED: Move file menggunakan Storage facade yang lebih reliable
+            $fileContent = Storage::disk('public')->get($ktpTempPath);
+            $moved = Storage::disk('public')->put($ktpPermanentPath, $fileContent);
+            
+            if ($moved) {
+                // Delete temp file setelah berhasil copy
+                Storage::disk('public')->delete($ktpTempPath);
+                
                 $uploadedFiles[] = $ktpPermanentPath;
                 
-                // 🔧 FIXED: Get actual file size from moved file
+                // ✅ FIXED: Get actual file size dari file yang sudah dipindah
                 $actualFileSize = Storage::disk('public')->size($ktpPermanentPath);
                 
                 // Save to database
@@ -555,7 +608,7 @@ class JobApplicationController extends Controller
                     'permanent_path' => $ktpPermanentPath,
                     'original_name' => $ktpOriginalName,
                     'file_size' => $actualFileSize,
-                    'database_record_created' => true
+                    'temp_file_deleted' => !Storage::disk('public')->exists($ktpTempPath)
                 ]);
                 
                 return true;
@@ -565,8 +618,7 @@ class JobApplicationController extends Controller
                     'candidate_id' => $candidate->id,
                     'temp_path' => $ktpTempPath,
                     'permanent_path' => $ktpPermanentPath,
-                    'temp_exists' => Storage::disk('public')->exists($ktpTempPath),
-                    'dest_dir_exists' => Storage::disk('public')->exists($destinationDir)
+                    'temp_exists' => Storage::disk('public')->exists($ktpTempPath)
                 ]);
                 return false;
             }
@@ -580,6 +632,18 @@ class JobApplicationController extends Controller
             ]);
             return false;
         }
+    }
+
+    /**
+     * ✅ NEW: Generate secure filename untuk mencegah conflict
+     */
+    private function generateSecureFilename($type, $extension, $candidate)
+    {
+        $timestamp = time();
+        $random = mt_rand(1000, 9999);
+        $candidateHash = substr(md5($candidate->candidate_code), 0, 8);
+        
+        return $type . '_' . $candidateHash . '_' . $timestamp . '_' . $random . '.' . $extension;
     }
 
     // ✅ NEW: Create formal education records
@@ -671,7 +735,7 @@ class JobApplicationController extends Controller
                 'file_exists' => Storage::disk('public')->exists($tempPath),
                 'file_size' => Storage::disk('public')->exists($tempPath) ? Storage::disk('public')->size($tempPath) : null,
                 'full_path' => Storage::disk('public')->path($tempPath),
-                'temp_directory_contents' => Storage::disk('public')->files('temp/ktp')
+                'temp_directory_contents' => Storage::disk('public')->files('temp/ktp_ocr')
             ];
         }
         
@@ -705,7 +769,7 @@ class JobApplicationController extends Controller
     public function cleanTempKtpFiles(Request $request)
     {
         try {
-            $tempDir = 'temp/ktp';
+            $tempDir = 'temp/ktp_ocr';
             $cleaned = 0;
             
             if (Storage::disk('public')->exists($tempDir)) {
@@ -844,7 +908,8 @@ class JobApplicationController extends Controller
             ]);
             
             $uploadedFiles = [];
-            $processed = $this->handleKTPFromOCRSession($candidate, $uploadedFiles);
+            $candidateFolder = "documents/candidates/{$candidate->candidate_code}";
+            $processed = $this->handleKTPFromOCRSession($candidate, $uploadedFiles, $candidateFolder);
             
             return response()->json([
                 'success' => $processed,
@@ -1157,6 +1222,7 @@ class JobApplicationController extends Controller
         }
     }
 
+    // ✅ UPDATED: Create candidate dengan CodeGenerationService
     private function createCandidate($validated, $positionId)
     {
         try {
@@ -1167,8 +1233,11 @@ class JobApplicationController extends Controller
                 throw new \Exception('NIK tidak valid atau tidak ditemukan dari OCR session');
             }
 
+            // ✅ NEW: Generate candidate code menggunakan CodeGenerationService
+            $candidateCode = CodeGenerationService::generateCandidateCode();
+
             $candidateData = [
-                'candidate_code' => $this->generateCandidateCode(),
+                'candidate_code' => $candidateCode, // ✅ FIXED: Gunakan CodeGenerationService
                 'position_id' => $positionId,
                 'position_applied' => $validated['position_applied'],
                 'expected_salary' => $validated['expected_salary'] ?? null,
@@ -1195,7 +1264,8 @@ class JobApplicationController extends Controller
                 'vaccination_status' => $validated['vaccination_status'] ?? null,
             ];
 
-            Log::info('Creating candidate with OCR NIK', [
+            Log::info('Creating candidate with generated code', [
+                'candidate_code' => $candidateCode,
                 'nik' => $nik,
                 'ocr_validated' => session('ocr_validated', false)
             ]);
@@ -1318,22 +1388,6 @@ class JobApplicationController extends Controller
             ]);
             throw $e;
         }
-    }
-
-    private function generateCandidateCode()
-    {
-        $prefix = 'CND';
-        $year = date('Y');
-        $month = date('m');
-        
-        $lastCandidate = Candidate::whereYear('created_at', $year)
-                            ->whereMonth('created_at', $month)
-                            ->orderBy('id', 'desc')
-                            ->first();
-        
-        $sequence = $lastCandidate ? (int)substr($lastCandidate->candidate_code, -4) + 1 : 1;
-        
-        return $prefix . $year . $month . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 
     private function createLanguageSkills($candidate, $skills)
