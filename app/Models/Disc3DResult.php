@@ -1,13 +1,10 @@
 <?php
 
-// ==== 1. DISC 3D SECTION MODEL ====
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-
-// ==== 5. DISC 3D RESULT MODEL ====
 class Disc3DResult extends Model
 {
     use HasFactory;
@@ -58,7 +55,15 @@ class Disc3DResult extends Model
         'consistency_score', 'is_valid', 'validity_flags',
         
         // Performance
-        'response_consistency', 'average_response_time', 'timing_analysis'
+        'response_consistency', 'average_response_time', 'timing_analysis',
+        
+        // ✅ ADDED: Profile interpretation fields
+        'work_style_most', 'work_style_least', 'work_style_adaptation',
+        'communication_style_most', 'communication_style_least',
+        'stress_behavior_most', 'stress_behavior_least', 'stress_behavior_change',
+        'motivators_most', 'motivators_least',
+        'fears_most', 'fears_least',
+        'work_style_summary', 'communication_summary', 'motivators_summary', 'stress_management_summary'
     ];
 
     protected $casts = [
@@ -84,7 +89,14 @@ class Disc3DResult extends Model
         'graph_most_data' => 'array', 'graph_least_data' => 'array', 'graph_change_data' => 'array',
         'most_score_breakdown' => 'array', 'least_score_breakdown' => 'array',
         'section_responses' => 'array', 'stress_indicators' => 'array', 'behavioral_insights' => 'array',
-        'consistency_analysis' => 'array', 'validity_flags' => 'array', 'timing_analysis' => 'array'
+        'consistency_analysis' => 'array', 'validity_flags' => 'array', 'timing_analysis' => 'array',
+        
+        // ✅ ADDED: Profile interpretation casts
+        'work_style_most' => 'array', 'work_style_least' => 'array', 'work_style_adaptation' => 'array',
+        'communication_style_most' => 'array', 'communication_style_least' => 'array',
+        'stress_behavior_most' => 'array', 'stress_behavior_least' => 'array', 'stress_behavior_change' => 'array',
+        'motivators_most' => 'array', 'motivators_least' => 'array',
+        'fears_most' => 'array', 'fears_least' => 'array'
     ];
 
     // Relationships
@@ -146,6 +158,53 @@ class Disc3DResult extends Model
                 'D' => $this->change_d_segment, 'I' => $this->change_i_segment,
                 'S' => $this->change_s_segment, 'C' => $this->change_c_segment
             ]
+        ];
+    }
+
+    // ✅ ADDED: New accessors for profile interpretations
+    public function getWorkStyleInterpretationsAttribute()
+    {
+        return [
+            'most' => $this->work_style_most ?? [],
+            'least' => $this->work_style_least ?? [],
+            'adaptation' => $this->work_style_adaptation ?? [],
+            'summary' => $this->work_style_summary ?? 'Gaya kerja yang seimbang dan fleksibel.'
+        ];
+    }
+
+    public function getCommunicationInterpretationsAttribute()
+    {
+        return [
+            'most' => $this->communication_style_most ?? [],
+            'least' => $this->communication_style_least ?? [],
+            'summary' => $this->communication_summary ?? 'Gaya komunikasi yang adaptif sesuai situasi.'
+        ];
+    }
+
+    public function getStressBehaviorInterpretationsAttribute()
+    {
+        return [
+            'most' => $this->stress_behavior_most ?? [],
+            'least' => $this->stress_behavior_least ?? [],
+            'change' => $this->stress_behavior_change ?? [],
+            'summary' => $this->stress_management_summary ?? 'Manajemen stress yang seimbang dan adaptif.'
+        ];
+    }
+
+    public function getMotivatorsInterpretationsAttribute()
+    {
+        return [
+            'most' => $this->motivators_most ?? [],
+            'least' => $this->motivators_least ?? [],
+            'summary' => $this->motivators_summary ?? 'Motivasi yang beragam dan situasional.'
+        ];
+    }
+
+    public function getFearsInterpretationsAttribute()
+    {
+        return [
+            'most' => $this->fears_most ?? [],
+            'least' => $this->fears_least ?? []
         ];
     }
 
@@ -293,5 +352,26 @@ class Disc3DResult extends Model
         ]);
 
         return max($changeValues) >= 3;
+    }
+
+    // ✅ ADDED: Method to check if profile interpretations are complete
+    public function hasCompleteInterpretations(): bool
+    {
+        return !is_null($this->work_style_most) &&
+               !is_null($this->communication_style_most) &&
+               !is_null($this->stress_behavior_most) &&
+               !is_null($this->motivators_most);
+    }
+
+    // ✅ ADDED: Method to get interpretation summary
+    public function getInterpretationSummary(): array
+    {
+        return [
+            'work_style' => $this->work_style_summary ?? 'No work style summary available',
+            'communication' => $this->communication_summary ?? 'No communication summary available',
+            'motivators' => $this->motivators_summary ?? 'No motivators summary available',
+            'stress_management' => $this->stress_management_summary ?? 'No stress management summary available',
+            'has_complete_data' => $this->hasCompleteInterpretations()
+        ];
     }
 }

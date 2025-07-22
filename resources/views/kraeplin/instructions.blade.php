@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Kraeplin - Instruksi</title>
+    <title>Tes 1 - Instruksi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .instruction-card {
@@ -83,26 +83,16 @@
     <div class="max-w-4xl mx-auto py-8 px-4">
         <!-- Header -->
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">Test Kraeplin</h1>
-            <p class="text-lg text-gray-600">PT Kayu Mebel Indonesia</p>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Tes 1</h1>
+            <p class="text-lg text-gray-600">PT Kayu Mebel Indonesia Group</p>
             <p class="text-sm text-gray-500 mt-2">Kandidat: <strong>{{ $candidate->candidate_code }}</strong></p>
         </div>
 
         <!-- Instructions -->
         <div class="instruction-card">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Petunjuk Test Kraeplin</h2>
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Petunjuk Pengerjaan</h2>
             
             <div class="space-y-6">
-                <!-- What is Kraeplin Test -->
-                <div>
-                    <h3 class="text-lg font-medium text-gray-700 mb-3">Apa itu Test Kraeplin?</h3>
-                    <p class="text-gray-600 leading-relaxed">
-                        Test Kraeplin adalah tes psikologi yang mengukur kemampuan konsentrasi, kecepatan kerja, 
-                        ketelitian, dan konsistensi dalam mengerjakan tugas yang berulang. Test ini terdiri dari 
-                        32 kolom angka yang harus Anda kerjakan secara berurutan.
-                    </p>
-                </div>
-
                 <!-- How to do the test -->
                 <div>
                     <h3 class="text-lg font-medium text-gray-700 mb-3">Cara Mengerjakan</h3>
@@ -166,7 +156,7 @@
 
                 <!-- Timer Info -->
                 <div>
-                    <h3 class="text-lg font-medium text-gray-700 mb-3">Waktu Test</h3>
+                    <h3 class="text-lg font-medium text-gray-700 mb-3">Waktu Tes</h3>
                     <div class="timer-demo">
                         <div class="timer-display">00:15</div>
                         <p class="text-sm text-amber-700 mt-2">Setiap kolom memiliki waktu 15 detik</p>
@@ -223,21 +213,21 @@
 
         <!-- Ready to Start -->
         <div class="instruction-card text-center">
-            <h3 class="text-xl font-semibold text-gray-800 mb-4">Apakah Anda Siap Memulai Test?</h3>
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Apakah Anda Siap Memulai Tes?</h3>
             <p class="text-gray-600 mb-6">
-                Pastikan Anda sudah memahami instruksi di atas. Test akan dimulai segera setelah Anda menekan tombol mulai.
-                <br><strong>Test tidak dapat dihentikan atau diulang setelah dimulai.</strong>
+                Pastikan Anda sudah memahami instruksi di atas. Tes akan dimulai segera setelah Anda menekan tombol mulai.
+                <br><strong>Tes tidak dapat dihentikan atau diulang setelah dimulai.</strong>
             </p>
             
             <form action="{{ route('kraeplin.start', $candidate->candidate_code) }}" method="POST">
                 @csrf
                 <button type="submit" class="btn-primary">
-                    🚀 Mulai Test Kraeplin
+                    🚀 Mulai Tes 1
                 </button>
             </form>
             
             <p class="text-xs text-gray-500 mt-4">
-                Dengan memulai test, Anda menyetujui bahwa test akan berjalan sesuai ketentuan yang diberikan.
+                Dengan memulai tes, Anda menyetujui bahwa tes akan berjalan sesuai ketentuan yang diberikan.
             </p>
         </div>
     </div>

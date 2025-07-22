@@ -1,4 +1,4 @@
-// Form Application Script
+// Form Application Script - Updated with Fixed NIK Handling
 (function() {
     'use strict';
 
@@ -448,12 +448,12 @@
         'information_source', 'cv', 'photo', 'transcript'
     ];
     
-    // Save form data to localStorage
+    // 🆕 UPDATED: Save form data dengan OCR status preservation
     function saveFormData() {
         const formData = new FormData(form);
         const data = {};
         
-        // Handle regular inputs
+        // Handle regular inputs (existing code tetap sama)
         for (let [key, value] of formData.entries()) {
             if (!key.includes('cv') && !key.includes('photo') && !key.includes('transcript') && !key.includes('certificates')) {
                 if (data[key]) {
@@ -467,13 +467,21 @@
             }
         }
 
-        // PERBAIKAN: Save salary without formatting untuk localStorage
+        // Handle salary formatting (existing code tetap sama)
         const salaryInput = document.getElementById('expected_salary');
         if (salaryInput && data.expected_salary) {
             data.expected_salary = getRawSalaryValue(salaryInput);
         }
         
-        // Handle checkboxes
+        // 🆕 PRESERVE OCR status di localStorage
+        const nikField = document.getElementById('nik');
+        if (nikField && nikField.readOnly && nikField.classList.contains('ocr-filled')) {
+            data.ocr_nik_locked = 'true';
+            data.ocr_nik_value = nikField.value;
+            console.log('Preserving OCR NIK status in localStorage');
+        }
+
+        // Handle checkboxes (existing code tetap sama)
         const checkboxes = form.querySelectorAll('input[type="checkbox"]');
         checkboxes.forEach(checkbox => {
             if (!checkbox.name.includes('[]')) {
@@ -485,7 +493,7 @@
         showSaveIndicator();
     }
     
-    // Load form data from localStorage
+    // 🆕 UPDATED: Load form data dengan OCR state restoration
     function loadFormData() {
         const savedData = localStorage.getItem(STORAGE_KEY);
         if (!savedData) return;
@@ -493,7 +501,7 @@
         try {
             const data = JSON.parse(savedData);
             
-            // Restore regular inputs
+            // Restore regular inputs (existing code tetap sama)
             Object.keys(data).forEach(key => {
                 const elements = form.querySelectorAll(`[name="${key}"]`);
                 
@@ -516,16 +524,39 @@
                 });
             });
 
-            // PERBAIKAN: Format salary setelah load dengan nilai raw
+            // Handle salary formatting (existing code tetap sama)
             const salaryInput = document.getElementById('expected_salary');
             if (salaryInput && salaryInput.value) {
-                // Set raw value first, then format
                 const rawValue = salaryInput.value.replace(/\./g, '');
                 salaryInput.value = rawValue;
                 formatSalary(salaryInput);
             }
 
-            // Handle checkbox arrays
+            // 🆕 RESTORE OCR NIK state jika ada
+            if (data.ocr_nik_locked === 'true' && data.ocr_nik_value) {
+                const nikField = document.getElementById('nik');
+                if (nikField) {
+                    nikField.value = data.ocr_nik_value;
+                    nikField.readOnly = true;
+                    nikField.style.backgroundColor = '#ecfdf5';
+                    nikField.style.borderColor = '#10b981';
+                    nikField.style.color = '#065f46';
+                    nikField.classList.add('ocr-filled');
+                    
+                    console.log('Restored OCR NIK from localStorage:', data.ocr_nik_value);
+                    
+                    // Remove instruction if exists
+                    const existingInstruction = nikField.parentNode.querySelector('.nik-instruction');
+                    if (existingInstruction) {
+                        existingInstruction.remove();
+                    }
+
+                    // Add OCR indicator
+                    addOcrIndicator(nikField);
+                }
+            }
+
+            // Handle checkbox arrays (existing code tetap sama)
             const checkboxArrays = ['driving_licenses'];
             checkboxArrays.forEach(name => {
                 if (data[name + '[]'] && Array.isArray(data[name + '[]'])) {
@@ -539,6 +570,28 @@
         } catch (e) {
             console.error('Error loading form data:', e);
         }
+    }
+
+    // 🆕 NEW: Add OCR indicator to NIK field
+    function addOcrIndicator(nikField) {
+        // Remove existing indicator
+        const existing = nikField.parentNode.querySelector('.ocr-indicator');
+        if (existing) {
+            existing.remove();
+        }
+        
+        const indicator = document.createElement('div');
+        indicator.className = 'ocr-indicator';
+        indicator.innerHTML = `
+            <div style="margin-top: 4px; padding: 4px 8px; background: #ecfdf5; border: 1px solid #10b981; 
+                        border-radius: 4px; font-size: 12px; color: #065f46; display: flex; align-items: center; gap: 6px;">
+                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>NIK terisi otomatis dari scan KTP</span>
+            </div>
+        `;
+        nikField.parentNode.appendChild(indicator);
     }
     
     // Show save indicator
@@ -1006,10 +1059,275 @@
         return input.value.replace(/\./g, '');
     }
 
-    // Initialize everything when DOM is loaded
+    // Enhanced duplicate checking system
+    const duplicateChecker = {
+        email: {
+            timeout: null,
+            isChecking: false,
+            lastChecked: null
+        },
+        nik: {
+            timeout: null,
+            isChecking: false,
+            lastChecked: null
+        }
+    };
+
+    // Debounced duplicate check function
+    function checkDuplicate(fieldType, value, callback) {
+        const checker = duplicateChecker[fieldType];
+        if (checker.timeout) clearTimeout(checker.timeout);
+        if (checker.lastChecked === value) return;
+        checker.timeout = setTimeout(async () => {
+            if (checker.isChecking) return;
+            checker.isChecking = true;
+            checker.lastChecked = value;
+            try {
+                const response = await fetch(`/check-${fieldType}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ [fieldType]: value })
+                });
+                const result = await response.json();
+                callback(result);
+            } catch (error) {
+                console.error(`Error checking ${fieldType}:`, error);
+                callback({ exists: false, message: 'Gagal memeriksa duplikasi' });
+            } finally {
+                checker.isChecking = false;
+            }
+        }, 1000);
+    }
+
+    function showDuplicateStatus(fieldId, result, isValid = true) {
+        const input = document.getElementById(fieldId);
+        const existingStatus = input.parentNode.querySelector('.duplicate-status');
+        if (existingStatus) existingStatus.remove();
+        const statusElement = document.createElement('div');
+        statusElement.className = 'duplicate-status text-xs mt-1 flex items-center';
+        if (result.exists) {
+            statusElement.className += ' text-red-600';
+            statusElement.innerHTML = `
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+                ${result.message}
+            `;
+            input.classList.add('error');
+        } else if (isValid && result.message !== 'Email tidak valid' && result.message !== 'NIK harus 16 digit angka') {
+            statusElement.className += ' text-green-600';
+            statusElement.innerHTML = `
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                ${result.message}
+            `;
+            input.classList.remove('error');
+        } else {
+            statusElement.className += ' text-gray-500';
+            statusElement.innerHTML = result.message;
+            input.classList.remove('error');
+        }
+        input.parentNode.appendChild(statusElement);
+    }
+
+    function enhanceEmailValidation() {
+        const emailInput = document.getElementById('email');
+        if (!emailInput) return;
+        emailInput.addEventListener('input', function(e) {
+            const email = e.target.value.trim();
+            e.target.classList.remove('error');
+            if (email.length === 0) {
+                const status = e.target.parentNode.querySelector('.duplicate-status');
+                if (status) status.remove();
+                return;
+            }
+            if (!isValidEmail(email)) {
+                showDuplicateStatus('email', { exists: false, message: 'Format email tidak valid' }, false);
+                return;
+            }
+            checkDuplicate('email', email, (result) => {
+                showDuplicateStatus('email', result, true);
+            });
+        });
+    }
+
+    // 🆕 UPDATED: Enhanced NIK validation - less restrictive but still secure
+    function enhanceNikValidation() {
+        const nikInput = document.getElementById('nik');
+        if (!nikInput) return;
+
+        nikInput.addEventListener('input', function(e) {
+            const nik = e.target.value.trim();
+            e.target.classList.remove('error');
+            const existingError = e.target.parentNode.querySelector('.nik-error');
+            if (existingError) existingError.remove();
+
+            if (nik.length === 0) {
+                const status = e.target.parentNode.querySelector('.duplicate-status');
+                if (status) status.remove();
+                return;
+            }
+
+            if (nik.length !== 16 || !/^[0-9]{16}$/.test(nik)) {
+                showDuplicateStatus('nik', { exists: false, message: 'NIK harus 16 digit angka' }, false);
+                return;
+            }
+
+            // 🆕 UPDATED: Only check duplicates, don't require OCR validation
+            checkDuplicate('nik', nik, (result) => {
+                showDuplicateStatus('nik', result, true);
+            });
+        });
+    }
+
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    function enhanceFormSubmissionValidation() {
+        const form = document.getElementById('applicationForm');
+        if (!form) return;
+        const originalHandler = form.onsubmit;
+        form.addEventListener('submit', async function(e) {
+            const emailDuplicateStatus = document.querySelector('#email').parentNode.querySelector('.duplicate-status');
+            const nikDuplicateStatus = document.querySelector('#nik').parentNode.querySelector('.duplicate-status');
+            let hasDuplicates = false;
+            let duplicateErrors = [];
+            if (emailDuplicateStatus && emailDuplicateStatus.classList.contains('text-red-600')) {
+                hasDuplicates = true;
+                duplicateErrors.push('Email sudah terdaftar dalam sistem');
+            }
+            if (nikDuplicateStatus && nikDuplicateStatus.classList.contains('text-red-600')) {
+                hasDuplicates = true;
+                duplicateErrors.push('NIK sudah terdaftar dalam sistem');
+            }
+            if (hasDuplicates) {
+                e.preventDefault();
+                showAlert(
+                    'Tidak dapat mengirim lamaran:<br>' + duplicateErrors.join('<br>'),
+                    'error'
+                );
+                const firstError = document.querySelector('.duplicate-status.text-red-600');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return false;
+            }
+            if (originalHandler) {
+                return originalHandler.call(this, e);
+            }
+        });
+    }
+
+    // ✅ KEEP: Existing attachEventListeners function
+    function attachEventListeners() {
+        // Attach save event listeners for dynamically added elements
+        const newInputs = form.querySelectorAll('input:not([type="file"]):not(.listener-attached), select:not(.listener-attached), textarea:not(.listener-attached)');
+        
+        newInputs.forEach(input => {
+            if (!input.classList.contains('listener-attached')) {
+                input.addEventListener('change', function() {
+                    saveFormData();
+                });
+                input.addEventListener('input', debounce(function() {
+                    saveFormData();
+                }, 1000));
+                input.classList.add('listener-attached');
+            }
+        });
+    }
+
+    // ✅ KEEP: Existing updateRemoveButtons function  
+    function updateRemoveButtons(containerId) {
+        const container = document.getElementById(containerId);
+        const removeButtons = container.querySelectorAll('.btn-remove');
+        
+        removeButtons.forEach((button, index) => {
+            if (index === 0 && container.children.length > 1) {
+                button.style.display = 'none';
+            } else if (index > 0) {
+                button.style.display = 'inline-block';
+            }
+        });
+    }
+
+    // ✅ KEEP: Existing cleanEmptyOptionalFields function
+    function cleanEmptyOptionalFields() {
+        // Remove empty optional dynamic sections
+        const optionalContainers = [
+            'nonFormalEducation', 
+            'workExperiences', 
+            'socialActivities', 
+            'achievements'
+        ];
+        
+        optionalContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                const groups = container.querySelectorAll('.dynamic-group');
+                groups.forEach(group => {
+                    const inputs = group.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+                    const isEmpty = Array.from(inputs).every(input => !input.value || input.value.trim() === '');
+                    
+                    if (isEmpty) {
+                        group.remove();
+                    }
+                });
+            }
+        });
+    }
+
+    // 🆕 UPDATED: NIK field initialization - no longer locked by default
+    function initializeNikField() {
+        const nikField = document.getElementById('nik');
+        if (!nikField) return;
+
+        // Check if OCR data exists from session
+        const ocrValidated = sessionStorage.getItem('nik_locked') === 'true';
+        const savedNikValue = sessionStorage.getItem('extracted_nik');
+        
+        if (ocrValidated && savedNikValue) {
+            // Restore OCR state
+            nikField.value = savedNikValue;
+            nikField.readOnly = true;
+            nikField.style.backgroundColor = '#ecfdf5';
+            nikField.style.borderColor = '#10b981';
+            nikField.style.color = '#065f46';
+            nikField.classList.add('ocr-filled');
+            addOcrIndicator(nikField);
+            console.log('NIK field restored from OCR session:', savedNikValue);
+        } else {
+            // 🆕 UPDATED: NIK field is now editable by default with helpful placeholder
+            nikField.readOnly = false;
+            nikField.style.backgroundColor = '';
+            nikField.style.color = '';
+            nikField.placeholder = 'Masukkan NIK 16 digit atau gunakan scan KTP';
+            
+            // Add helpful instruction
+            const instructionDiv = document.createElement('div');
+            instructionDiv.className = 'nik-instruction';
+            instructionDiv.innerHTML = `
+                <div style="margin-top: 4px; padding: 6px 8px; background: #eff6ff; border: 1px solid #3b82f6; 
+                            border-radius: 4px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>💡 <strong>Tips:</strong> Gunakan fitur scan KTP untuk pengisian NIK otomatis yang lebih mudah dan akurat</span>
+                </div>
+            `;
+            nikField.parentNode.appendChild(instructionDiv);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         loadFormData();
         initializeAddressCopy();
+        initializeNikField(); // 🆕 NEW: Initialize NIK field properly
         
         // Add event listeners for auto-save
         const inputs = form.querySelectorAll('input:not([type="file"]), select, textarea');
@@ -1066,26 +1384,14 @@
             });
         }
 
-        // NIK validation
-        const nikInput = document.getElementById('nik');
-        if (nikInput) {
-            nikInput.addEventListener('input', function(e) {
-                const nikValue = e.target.value;
-                const nikError = document.createElement('div');
-                // Remove existing error
-                const existingError = e.target.parentNode.querySelector('.nik-error');
-                if (existingError) existingError.remove();
-                // Validate NIK format
-                if (nikValue.length > 0 && (nikValue.length !== 16 || !/^[0-9]{16}$/.test(nikValue))) {
-                    nikError.className = 'nik-error text-red-500 text-xs mt-1';
-                    nikError.textContent = 'NIK harus 16 digit angka';
-                    e.target.parentNode.appendChild(nikError);
-                    e.target.classList.add('error');
-                } else {
-                    e.target.classList.remove('error');
-                }
-            });
-        }
+        // Enhanced NIK validation
+        enhanceNikValidation();
+
+        // Enhanced email validation
+        enhanceEmailValidation();
+
+        // Enhanced form submission validation
+        enhanceFormSubmissionValidation();
 
         // Initialize remove button states
         updateRemoveButtons('familyMembers');

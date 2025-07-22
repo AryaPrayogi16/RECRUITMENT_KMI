@@ -42,6 +42,22 @@ Route::get('/job-application-success', [JobApplicationController::class, 'succes
 // Get available positions for dropdown
 Route::get('/api/positions', [JobApplicationController::class, 'getPositions'])->name('api.positions');
 
+// ✅ NEW: KTP OCR Routes (Public - for job applicants)
+Route::prefix('ktp-ocr')->name('ktp.ocr.')->group(function () {
+    Route::post('/upload', [JobApplicationController::class, 'uploadKtpOcr'])->name('upload');
+    Route::post('/clear-temp', [JobApplicationController::class, 'clearKtpTemp'])->name('clear.temp');
+    
+    // Debug routes for KTP processing
+    Route::get('/debug-status', [JobApplicationController::class, 'debugKtpStatus'])->name('debug.status');
+    Route::post('/clean-temp-files', [JobApplicationController::class, 'cleanTempKtpFiles'])->name('clean.temp.files');
+    Route::get('/verify-integrity/{candidateCode?}', [JobApplicationController::class, 'verifyKtpIntegrity'])->name('verify.integrity');
+    Route::post('/force-process', [JobApplicationController::class, 'forceProcessKtpFromSession'])->name('force.process');
+});
+
+// Additional routes for job application form validation
+Route::post('/check-email', [JobApplicationController::class, 'checkEmailExists'])->name('check.email');
+Route::post('/check-nik', [JobApplicationController::class, 'checkNikExists'])->name('check.nik');
+
 // ============================================
 // KRAEPLIN TEST ROUTES (Public - for candidates)
 // ============================================
@@ -146,15 +162,27 @@ Route::middleware('auth')->group(function () {
             Route::post('/auto-close-expired', [PositionController::class, 'autoCloseExpired'])->name('auto-close-expired');
         });
         
-        // CANDIDATE MANAGEMENT
+        // ============================================
+        // CANDIDATE MANAGEMENT (CONSOLIDATED & FIXED)
+        // ============================================
         Route::prefix('candidates')->name('candidates.')->group(function () {
+            // Basic listing routes
             Route::get('/', [CandidateController::class, 'index'])->name('index');
             Route::get('/search', [CandidateController::class, 'search'])->name('search');
             Route::get('/export', [CandidateController::class, 'exportMultiple'])->name('export.multiple');
             Route::post('/bulk-action', [CandidateController::class, 'bulkAction'])->name('bulk-action');
             
-            // Trashed candidates routes - moved BEFORE individual routes
+            // ✅ TRASHED CANDIDATES ROUTES - Must be BEFORE individual routes
             Route::get('/trashed', [CandidateController::class, 'trashed'])->name('trashed');
+            Route::post('/{id}/restore', [CandidateController::class, 'restore'])->name('restore')
+                ->where('id', '[0-9]+');
+            Route::delete('/{id}/force', [CandidateController::class, 'forceDelete'])->name('force-delete')
+                ->where('id', '[0-9]+');
+            Route::post('/bulk-force-delete', [CandidateController::class, 'bulkForceDelete'])->name('bulk-force-delete');
+            
+            // Storage management routes
+            Route::get('/storage/stats', [CandidateController::class, 'getStorageStats'])->name('storage-stats');
+            Route::post('/storage/cleanup-orphaned', [CandidateController::class, 'cleanupOrphanedFolders'])->name('cleanup-orphaned');
             
             // Individual candidate routes
             Route::get('/{id}', [CandidateController::class, 'show'])->name('show')
@@ -166,6 +194,8 @@ Route::middleware('auth')->group(function () {
             Route::patch('/{id}/status', [CandidateController::class, 'updateStatus'])->name('update-status')
                 ->where('id', '[0-9]+');
             Route::get('/{id}/schedule-interview', [CandidateController::class, 'scheduleInterview'])->name('schedule-interview')
+                ->where('id', '[0-9]+');
+            Route::post('/{id}/store-interview', [CandidateController::class, 'storeInterview'])->name('store-interview')
                 ->where('id', '[0-9]+');
             
             // Preview and export routes
@@ -179,6 +209,7 @@ Route::middleware('auth')->group(function () {
                 ->where('id', '[0-9]+');
             Route::get('/{id}/export/word', [CandidateController::class, 'exportWord'])->name('export.single.word')
                 ->where('id', '[0-9]+');
+            Route::post('/export-multiple', [CandidateController::class, 'exportMultiple'])->name('export-multiple');
             
             // Test results for HR
             Route::get('/{id}/kraeplin-result', [CandidateController::class, 'kraeplinResult'])->name('kraeplin.result')
@@ -196,12 +227,6 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{id}', [CandidateController::class, 'destroy'])->name('destroy')
                 ->where('id', '[0-9]+');
             Route::post('/bulk-delete', [CandidateController::class, 'bulkDelete'])->name('bulk-delete');
-
-            // Trashed candidates management routes
-            Route::post('/{id}/restore', [CandidateController::class, 'restore'])->name('restore')
-                ->where('id', '[0-9]+');
-            Route::delete('/{id}/force', [CandidateController::class, 'forceDelete'])->name('force-delete')
-                ->where('id', '[0-9]+');
         });
         
         // HR DISC 3D Management
@@ -232,6 +257,10 @@ Route::middleware('auth')->group(function () {
 Route::prefix('api')->middleware(['throttle:10,1'])->group(function () {
     Route::get('/demo-users', [AuthController::class, 'getDemoUsers'])->name('api.demo-users');
     
+    // ✅ NEW: Job Application Test Status API
+    Route::get('/test-status/{candidateCode}', [JobApplicationController::class, 'getTestStatus'])->name('api.test-status');
+    Route::get('/candidate-summary/{candidateCode}', [JobApplicationController::class, 'getCandidateSummary'])->name('api.candidate-summary');
+    
     // DISC 3D API endpoints
     Route::prefix('disc3d')->name('api.disc3d.')->group(function () {
         Route::get('/sections', function() {
@@ -247,6 +276,15 @@ Route::prefix('api')->middleware(['throttle:10,1'])->group(function () {
             ]);
         })->name('stats');
     });
+});
+
+// API routes untuk AJAX calls (authenticated)
+Route::prefix('api')->middleware(['auth'])->group(function () {
+    // Storage stats untuk dashboard
+    Route::get('/storage-stats', [CandidateController::class, 'getStorageStats'])->name('api.storage-stats');
+    
+    // Cleanup orphaned folders
+    Route::post('/cleanup-orphaned-folders', [CandidateController::class, 'cleanupOrphanedFolders'])->name('api.cleanup-orphaned-folders');
 });
 
 // ============================================
@@ -363,7 +401,7 @@ if (app()->environment(['local', 'testing', 'staging'])) {
                         'system_status' => 'ERROR',
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString()
-                    ], 500);
+                    ]);
                 }
             })->name('database.status');
         });
@@ -610,17 +648,17 @@ if (app()->environment(['local', 'testing', 'staging'])) {
             'headers' => $request->headers->all(),
             'session_data' => session()->all(),
             'csrf_token' => csrf_token(),
-            'has_csrf_token' => $request->hasHeader('X-CSRF-TOKEN') || $request->has('_token')
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->header('User-Agent'),
+            'route_name' => \Route::currentRouteName(),
+            'timestamp' => now()
         ]);
         
-        // Try to validate using DiscTestStartRequest
         try {
+            // Validate incoming request data
             $validatedData = $request->validate([
-                'test_mode' => 'nullable|string|in:fresh_start,resume',
-                'screen_resolution' => 'nullable|string',
-                'timezone' => 'nullable|string',
-                'browser_info' => 'nullable|array',
-                'device_capabilities' => 'nullable|array'
+                'candidate_code' => 'required|string',
+                'has_csrf_token' => $request->hasHeader('X-CSRF-TOKEN') || $request->has('_token')
             ]);
             
             return response()->json([

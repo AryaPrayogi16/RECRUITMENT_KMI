@@ -1036,171 +1036,399 @@
     </div>
 
     <script>
-        // Sidebar toggle
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
+      /**
+ * Updated JavaScript for candidates/index.blade.php
+ * Replace the existing <script> section in index.blade.php with this code
+ */
 
+// ============================================
+// GLOBAL VARIABLES & UTILITIES
+// ============================================
+
+let isProcessing = false;
+
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+}
+
+function showLoading(message = 'Processing...', subtitle = '') {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: message,
+            html: subtitle ? `<div style="text-align: center;"><p>${subtitle}</p></div>` : '',
+            icon: 'info',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+    } else {
+        // Fallback to loading overlay
+        document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+}
+
+function hideLoading() {
+    if (typeof Swal !== 'undefined') {
+        Swal.close();
+    } else {
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
+}
+
+function showSuccess(title, message, timer = 3000) {
+    if (typeof Swal !== 'undefined') {
+        return Swal.fire({
+            title: title,
+            html: message,
+            icon: 'success',
+            timer: timer,
+            showConfirmButton: timer > 5000,
+            timerProgressBar: true
+        });
+    } else {
+        alert(title + ': ' + message);
+        return Promise.resolve();
+    }
+}
+
+function showError(title, message) {
+    if (typeof Swal !== 'undefined') {
+        return Swal.fire({
+            title: title,
+            html: message,
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+    } else {
+        alert(title + ': ' + message);
+        return Promise.resolve();
+    }
+}
+
+async function makeRequest(url, options = {}) {
+    if (isProcessing) {
+        showError('Sedang Diproses', 'Harap tunggu operasi sebelumnya selesai');
+        return null;
+    }
+
+    isProcessing = true;
+
+    try {
+        const defaultOptions = {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCSRFToken(),
+                'Accept': 'application/json'
+            }
+        };
+
+        const response = await fetch(url, { ...defaultOptions, ...options });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Request error:', error);
+        throw error;
+    } finally {
+        isProcessing = false;
+    }
+}
+
+// ============================================
+// SIDEBAR & UI FUNCTIONALITY
+// ============================================
+
+// Sidebar toggle
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebar = document.getElementById('sidebar');
+const mainContent = document.getElementById('mainContent');
+
+if (sidebarToggle && sidebar && mainContent) {
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        mainContent.classList.toggle('expanded');
+    });
+
+    // Mobile sidebar
+    if (window.innerWidth <= 768) {
         sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
-            mainContent.classList.toggle('expanded');
+            sidebar.classList.toggle('show');
+        });
+    }
+}
+
+// ============================================
+// DROPDOWN FUNCTIONALITY
+// ============================================
+
+function toggleDropdown(button) {
+    const dropdown = button.nextElementSibling;
+    const allDropdowns = document.querySelectorAll('.dropdown-menu');
+    
+    allDropdowns.forEach(d => {
+        if (d !== dropdown) {
+            d.classList.remove('show');
+        }
+    });
+    
+    dropdown.classList.toggle('show');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.action-dropdown')) {
+        document.querySelectorAll('.dropdown-menu').forEach(d => {
+            d.classList.remove('show');
+        });
+    }
+});
+
+// ============================================
+// SEARCH & FILTER FUNCTIONALITY
+// ============================================
+
+const searchInput = document.getElementById('searchInput');
+const statusFilter = document.getElementById('statusFilter');
+const positionFilter = document.getElementById('positionFilter');
+let searchTimeout;
+
+function applyFilters() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        const params = new URLSearchParams();
+        
+        if (searchInput && searchInput.value) params.append('search', searchInput.value);
+        if (statusFilter && statusFilter.value) params.append('status', statusFilter.value);
+        if (positionFilter && positionFilter.value) params.append('position', positionFilter.value);
+        
+        const baseUrl = window.location.pathname;
+        window.location.href = `${baseUrl}?${params.toString()}`;
+    }, 500);
+}
+
+if (searchInput) {
+    searchInput.addEventListener('input', applyFilters);
+}
+if (statusFilter) {
+    statusFilter.addEventListener('change', applyFilters);
+}
+if (positionFilter) {
+    positionFilter.addEventListener('change', applyFilters);
+}
+
+function resetFilters() {
+    if (searchInput) searchInput.value = '';
+    if (statusFilter) statusFilter.value = '';
+    if (positionFilter) positionFilter.value = '';
+    window.location.href = window.location.pathname;
+}
+
+// ============================================
+// CHECKBOX & BULK ACTION FUNCTIONALITY
+// ============================================
+
+const selectAllCheckbox = document.getElementById('selectAll');
+const candidateCheckboxes = document.querySelectorAll('.candidate-checkbox');
+const bulkActionToolbar = document.getElementById('bulkActionToolbar');
+const selectedCountElement = document.getElementById('selectedCount');
+
+function updateSelectedCount() {
+    const selectedCount = document.querySelectorAll('.candidate-checkbox:checked').length;
+    
+    if (selectedCountElement) {
+        selectedCountElement.innerText = selectedCount;
+    }
+
+    if (bulkActionToolbar) {
+        if (selectedCount > 0) {
+            bulkActionToolbar.style.display = 'flex';
+        } else {
+            bulkActionToolbar.style.display = 'none';
+        }
+    }
+
+    // Update select all state
+    if (selectAllCheckbox && candidateCheckboxes.length > 0) {
+        const totalBoxes = candidateCheckboxes.length;
+        
+        if (selectedCount === totalBoxes && totalBoxes > 0) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (selectedCount > 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
+}
+
+// Select all functionality
+if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        candidateCheckboxes.forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+        updateSelectedCount();
+    });
+}
+
+// Individual checkbox functionality
+candidateCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', updateSelectedCount);
+});
+
+// ============================================
+// CANDIDATE OPERATIONS
+// ============================================
+
+/**
+ * Delete individual candidate (soft delete)
+ */
+async function deleteCandidate(candidateId, candidateName) {
+    const confirmResult = typeof Swal !== 'undefined' 
+        ? await Swal.fire({
+            title: 'Hapus Kandidat?',
+            text: `Apakah Anda yakin ingin menghapus kandidat "${candidateName}" ke trash?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e53e3e',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal',
+            reverseButtons: true
+        })
+        : { isConfirmed: confirm(`Apakah Anda yakin ingin menghapus kandidat "${candidateName}"?`) };
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+        showLoading('Menghapus...', 'Memindahkan kandidat ke trash');
+
+        const data = await makeRequest(`/candidates/${candidateId}`, {
+            method: 'DELETE'
         });
 
-        // Mobile sidebar
-        if (window.innerWidth <= 768) {
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('show');
-            });
-        }
+        await showSuccess('Berhasil!', data.message);
+        window.location.reload();
 
-        // Dropdown menu
-        function toggleDropdown(button) {
-            const dropdown = button.nextElementSibling;
-            const allDropdowns = document.querySelectorAll('.dropdown-menu');
-            
-            allDropdowns.forEach(d => {
-                if (d !== dropdown) {
-                    d.classList.remove('show');
-                }
-            });
-            
-            dropdown.classList.toggle('show');
-        }
+    } catch (error) {
+        hideLoading();
+        showError('Gagal Menghapus', `Terjadi kesalahan: ${error.message}`);
+    }
+}
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.action-dropdown')) {
-                document.querySelectorAll('.dropdown-menu').forEach(d => {
-                    d.classList.remove('show');
-                });
-            }
+/**
+ * Bulk delete candidates (soft delete)
+ */
+async function bulkDelete() {
+    const selectedIds = [];
+    const selectedNames = [];
+    
+    document.querySelectorAll('.candidate-checkbox:checked').forEach(checkbox => {
+        selectedIds.push(checkbox.value);
+        const row = checkbox.closest('tr');
+        const nameElement = row.querySelector('.candidate-name');
+        selectedNames.push(nameElement ? nameElement.textContent.trim() : 'Unknown');
+    });
+
+    if (selectedIds.length === 0) {
+        showError('Tidak Ada Yang Dipilih', 'Pilih minimal satu kandidat untuk dihapus');
+        return;
+    }
+
+    const confirmResult = typeof Swal !== 'undefined' 
+        ? await Swal.fire({
+            title: 'Hapus ke Trash?',
+            html: `
+                <div style="text-align: left; margin: 20px 0;">
+                    <p style="margin-bottom: 15px;">Anda akan menghapus <strong>${selectedIds.length} kandidat</strong> ke trash:</p>
+                    <div style="max-height: 150px; overflow-y: auto; background: #f7fafc; padding: 10px; border-radius: 6px; margin: 10px 0;">
+                        ${selectedNames.slice(0, 5).map(name => `<div style="margin: 2px 0;">• ${name}</div>`).join('')}
+                        ${selectedNames.length > 5 ? `<div style="margin: 2px 0; color: #6b7280;">• dan ${selectedNames.length - 5} kandidat lainnya...</div>` : ''}
+                    </div>
+                    <p style="color: #718096; font-size: 0.9rem; margin-top: 10px;">
+                        <i class="fas fa-info-circle"></i> Kandidat akan dipindahkan ke trash dan dapat dipulihkan nanti
+                    </p>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e53e3e',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: `Ya, Hapus ${selectedIds.length} Kandidat`,
+            cancelButtonText: 'Batal',
+            reverseButtons: true,
+            width: '500px'
+        })
+        : { isConfirmed: confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} kandidat terpilih?`) };
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+        showLoading('Menghapus...', `Memproses ${selectedIds.length} kandidat`);
+
+        const data = await makeRequest('/candidates/bulk-delete', {
+            method: 'POST',
+            body: JSON.stringify({ ids: selectedIds })
         });
 
-        // Search functionality
-        const searchInput = document.getElementById('searchInput');
-        const statusFilter = document.getElementById('statusFilter');
-        const positionFilter = document.getElementById('positionFilter');
-        let searchTimeout;
+        await showSuccess('Berhasil Dihapus!', data.message);
+        window.location.reload();
 
-        function applyFilters() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                const params = new URLSearchParams();
-                
-                if (searchInput.value) params.append('search', searchInput.value);
-                if (statusFilter.value) params.append('status', statusFilter.value);
-                if (positionFilter.value) params.append('position', positionFilter.value);
-                
-                window.location.href = `{{ route('candidates.index') }}?${params.toString()}`;
-            }, 500);
-        }
+    } catch (error) {
+        hideLoading();
+        showError('Gagal Menghapus', `Terjadi kesalahan: ${error.message}`);
+    }
+}
 
-        searchInput.addEventListener('input', applyFilters);
-        statusFilter.addEventListener('change', applyFilters);
-        positionFilter.addEventListener('change', applyFilters);
+/**
+ * Update candidate status
+ */
+async function updateCandidateStatus(candidateId, newStatus, candidateName) {
+    try {
+        showLoading('Memperbarui Status...', `Mengubah status kandidat ${candidateName}`);
 
-        // Reset filters
-        function resetFilters() {
-            searchInput.value = '';
-            statusFilter.value = '';
-            positionFilter.value = '';
-            window.location.href = '{{ route('candidates.index') }}';
-        }
-
-        // Update selected count and toggle bulk action toolbar
-        function updateSelectedCount() {
-            const selectedCount = document.querySelectorAll('.candidate-checkbox:checked').length;
-            document.getElementById('selectedCount').innerText = selectedCount;
-
-            const bulkActionToolbar = document.getElementById('bulkActionToolbar');
-            if (selectedCount > 0) {
-                bulkActionToolbar.style.display = 'flex';
-            } else {
-                bulkActionToolbar.style.display = 'none';
-            }
-        }
-
-        document.getElementById('selectAll').addEventListener('change', function() {
-            const isChecked = this.checked;
-            document.querySelectorAll('.candidate-checkbox').forEach(checkbox => {
-                checkbox.checked = isChecked;
-            });
-            updateSelectedCount();
+        const data = await makeRequest(`/candidates/${candidateId}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: newStatus })
         });
 
-        document.querySelectorAll('.candidate-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', updateSelectedCount);
-        });
+        await showSuccess('Status Diperbarui!', data.message, 2000);
+        window.location.reload();
 
-        // Bulk delete candidates
-        function bulkDelete() {
-            const selectedIds = [];
-            document.querySelectorAll('.candidate-checkbox:checked').forEach(checkbox => {
-                selectedIds.push(checkbox.value);
-            });
+    } catch (error) {
+        hideLoading();
+        showError('Gagal Memperbarui Status', `Terjadi kesalahan: ${error.message}`);
+    }
+}
 
-            if (selectedIds.length === 0) {
-                alert('Tidak ada kandidat yang dipilih');
-                return;
-            }
+// ============================================
+// INITIALIZATION
+// ============================================
 
-            if (confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} kandidat terpilih?`)) {
-                document.getElementById('loadingOverlay').style.display = 'flex';
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelectedCount();
+    
+    // Initialize any page-specific functionality
+    console.log('✅ Candidates Index page initialized');
+});
 
-                fetch('{{ route('candidates.bulk-delete') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({ ids: selectedIds })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        window.location.reload();
-                    } else {
-                        alert('Gagal menghapus kandidat: ' + (data.message || 'Unknown error'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Terjadi kesalahan saat menghapus kandidat');
-                })
-                .finally(() => {
-                    document.getElementById('loadingOverlay').style.display = 'none';
-                });
-            }
-        }
-
-        // Delete candidate
-        function deleteCandidate(candidateId, candidateName) {
-            if (confirm(`Apakah Anda yakin ingin menghapus kandidat "${candidateName}"?`)) {
-                document.getElementById('loadingOverlay').style.display = 'flex';
-
-                fetch(`/candidates/${candidateId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        window.location.reload();
-                    } else {
-                        alert('Gagal menghapus kandidat: ' + (data.message || 'Unknown error'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Terjadi kesalahan saat menghapus kandidat');
-                })
-                .finally(() => {
-                    document.getElementById('loadingOverlay').style.display = 'none';
-                });
-            }
-        }
+// Expose functions to global scope for inline onclick handlers
+window.toggleDropdown = toggleDropdown;
+window.resetFilters = resetFilters;
+window.deleteCandidate = deleteCandidate;
+window.bulkDelete = bulkDelete;
+window.updateCandidateStatus = updateCandidateStatus;
     </script>
 </body>
 </html>

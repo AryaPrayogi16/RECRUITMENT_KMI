@@ -54,8 +54,8 @@
 }
 
 .form-input.error {
-    border-color: #ef4444;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
 }
 
 .btn-primary {
@@ -448,4 +448,18 @@
         margin-top: 4px;
         width: fit-content;
     }
+}
+
+.duplicate-status {
+    transition: all 0.3s ease;
+}
+.duplicate-status svg {
+    flex-shrink: 0;
+}
+.checking-duplicate {
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1) !important;
+}
+.checking-duplicate + .duplicate-status {
+    color: #f59e0b;
 }

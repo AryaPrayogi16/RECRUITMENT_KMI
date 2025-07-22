@@ -245,7 +245,7 @@ public function getAverageTimePerQuestionAttribute()
      */
     public function getFormattedAverageTimeAttribute()
     {
-        return number_format($this->average_time_per_question, 2) . ' detik/soal';
+        return number_format($this->average_time_per_question, 2) . ' detik/kolom';
     }
 
     /**

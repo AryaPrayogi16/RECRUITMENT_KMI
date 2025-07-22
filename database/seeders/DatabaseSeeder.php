@@ -26,7 +26,7 @@ class DatabaseSeeder extends Seeder
             'username' => 'admin',
             'email' => 'admin@pawindo.com',
             // ❌ REMOVED: email_verified_at (not needed for internal system)
-            'password' => Hash::make('admin123'),
+            'password' => Hash::make('Adminnumber1'),
             'full_name' => 'Administrator',
             'role' => 'admin',
             'is_active' => true,

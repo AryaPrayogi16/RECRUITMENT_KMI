@@ -792,7 +792,7 @@
     .disc-header-summary {
         background: #4f46e5 !important;
         -webkit-print-color-adjust: exact;
-        color-adjust: exact;
+
     }
     
     .disc-comprehensive-graphs {
@@ -819,7 +819,6 @@
         background: white !important;
         border: 1px solid #6b7280 !important;
         -webkit-print-color-adjust: exact;
-        color-adjust: exact;
     }
     
     .disc-score-mini .score-value {

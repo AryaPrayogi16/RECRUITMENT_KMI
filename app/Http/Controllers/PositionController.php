@@ -219,12 +219,16 @@ class PositionController extends Controller
                             'force' => 'Hapus paksa (tidak disarankan)'
                         ]
                     ],
+                    // Enhanced transfer options
                     'transferable_positions' => Position::getTransferablePositions($position->id)
                         ->map(function($pos) {
                             return [
                                 'id' => $pos->id,
                                 'name' => $pos->position_name,
-                                'department' => $pos->department
+                                'department' => $pos->department,
+                                'location' => $pos->location,
+                                'employment_type' => $pos->employment_type_label,
+                                'total_candidates' => $pos->getTotalApplicationsCount()
                             ];
                         })
                 ], 400);

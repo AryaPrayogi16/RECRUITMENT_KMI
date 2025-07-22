@@ -129,36 +129,44 @@ return new class extends Migration
         });
 
         // =====================================================================
-        // 5. EDUCATION
+        // 5. FORMAL EDUCATION
         // =====================================================================
-        Schema::create('education', function (Blueprint $table) {
+        Schema::create('formal_education', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')
                   ->constrained('candidates')->onDelete('cascade');
-            $table->enum('education_type', ['formal', 'non_formal']);
-            
-            // For formal education
-            $table->enum('education_level', ['SMA/SMK', 'Diploma', 'S1', 'S2', 'S3'])->nullable();
-            $table->string('institution_name')->nullable();
-            $table->string('major')->nullable();
-            $table->year('start_year')->nullable();
-            $table->year('end_year')->nullable();
-            $table->decimal('gpa', 3, 2)->nullable();
-            
-            // For non-formal education
-            $table->string('course_name')->nullable();
-            $table->string('organizer')->nullable();
-            $table->date('date')->nullable();
-            $table->text('description')->nullable();
-            
+            $table->enum('education_level', ['SMA/SMK', 'Diploma', 'S1', 'S2', 'S3']);
+            $table->string('institution_name');
+            $table->string('major');
+            $table->year('start_year');
+            $table->year('end_year');
+            $table->decimal('gpa', 5, 2)->nullable();
             $table->timestamps();
             $table->softDeletes();
             
-            $table->index(['candidate_id', 'education_type']);
+            $table->index(['candidate_id', 'education_level']);
+            $table->index('education_level');
         });
 
         // =====================================================================
-        // 6. LANGUAGE SKILLS
+        // 6. NON FORMAL EDUCATION
+        // =====================================================================
+        Schema::create('non_formal_education', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('candidate_id')
+                  ->constrained('candidates')->onDelete('cascade');
+            $table->string('course_name');
+            $table->string('organizer');
+            $table->date('date')->nullable();
+            $table->text('description')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+            
+            $table->index('candidate_id');
+        });
+
+        // =====================================================================
+        // 7. LANGUAGE SKILLS
         // =====================================================================
         Schema::create('language_skills', function (Blueprint $table) {
             $table->id();
@@ -174,7 +182,7 @@ return new class extends Migration
         });
 
         // =====================================================================
-        // 7. CANDIDATE ADDITIONAL INFO
+        // 8. CANDIDATE ADDITIONAL INFO
         // =====================================================================
         Schema::create('candidate_additional_info', function (Blueprint $table) {
             $table->id();
@@ -214,7 +222,7 @@ return new class extends Migration
         });
 
         // =====================================================================
-        // 8. DRIVING LICENSES
+        // 9. DRIVING LICENSES
         // =====================================================================
         Schema::create('driving_licenses', function (Blueprint $table) {
             $table->id();
@@ -229,7 +237,7 @@ return new class extends Migration
         });
 
         // =====================================================================
-        // 9. WORK EXPERIENCES
+        // 10. WORK EXPERIENCES
         // =====================================================================
         Schema::create('work_experiences', function (Blueprint $table) {
             $table->id();
@@ -251,7 +259,7 @@ return new class extends Migration
         });
 
         // =====================================================================
-        // 10. ACTIVITIES
+        // 11. ACTIVITIES
         // =====================================================================
         Schema::create('activities', function (Blueprint $table) {
             $table->id();
@@ -269,7 +277,7 @@ return new class extends Migration
         });
 
         // =====================================================================
-        // 11. DOCUMENT UPLOADS
+        // 12. DOCUMENT UPLOADS
         // =====================================================================
         Schema::create('document_uploads', function (Blueprint $table) {
             $table->id();
@@ -288,7 +296,7 @@ return new class extends Migration
         });
 
         // =====================================================================
-        // 12. APPLICATION LOGS
+        // 13. APPLICATION LOGS
         // =====================================================================
         Schema::create('application_logs', function (Blueprint $table) {
             $table->id();
@@ -305,7 +313,7 @@ return new class extends Migration
         });
 
         // =====================================================================
-        // 13. INTERVIEWS
+        // 14. INTERVIEWS
         // =====================================================================
         Schema::create('interviews', function (Blueprint $table) {
             $table->id();
@@ -325,7 +333,7 @@ return new class extends Migration
         });
 
         // =====================================================================
-        // 14. EMAIL TEMPLATES
+        // 15. EMAIL TEMPLATES
         // =====================================================================
         Schema::create('email_templates', function (Blueprint $table) {
             $table->id();
@@ -341,7 +349,7 @@ return new class extends Migration
         });
 
         // =====================================================================
-        // 15. MINIMAL LARAVEL TABLES - INTERNAL SYSTEM ONLY
+        // 16. MINIMAL LARAVEL TABLES - INTERNAL SYSTEM ONLY
         // =====================================================================
         
         // Sessions table - simplified for internal use
@@ -383,7 +391,8 @@ return new class extends Migration
         Schema::dropIfExists('driving_licenses');
         Schema::dropIfExists('candidate_additional_info');
         Schema::dropIfExists('language_skills');
-        Schema::dropIfExists('education');
+        Schema::dropIfExists('non_formal_education');
+        Schema::dropIfExists('formal_education');
         Schema::dropIfExists('family_members');
         Schema::dropIfExists('candidates');
         Schema::dropIfExists('users');

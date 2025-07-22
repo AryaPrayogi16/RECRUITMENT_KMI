@@ -8,6 +8,32 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="{{ asset('css/candidate.css') }}" rel="stylesheet">
     <style>
+        .bulk-action-bar {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bulk-action-bar.show {
+            display: flex;
+        }
+
+        .bulk-action-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .bulk-action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
         /* Base Styles */
         * {
             margin: 0;
@@ -229,13 +255,13 @@
             padding: 30px;
         }
 
-        /* Filters Section */
+        /* Search Form */
         .filters-section {
             background: white;
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .search-form {
@@ -247,14 +273,15 @@
         .search-input-container {
             position: relative;
             flex: 1;
+            max-width: 400px;
         }
 
         .search-input {
             width: 100%;
-            padding: 10px 12px 10px 40px;
-            border: 1px solid #e2e8f0;
+            padding: 12px 50px 12px 20px;
+            border: 2px solid #e2e8f0;
             border-radius: 8px;
-            font-size: 0.95rem;
+            font-size: 1rem;
             transition: all 0.3s ease;
         }
 
@@ -266,16 +293,23 @@
 
         .search-button {
             position: absolute;
-            left: 12px;
+            right: 12px;
             top: 50%;
             transform: translateY(-50%);
             background: none;
             border: none;
-            color: #718096;
+            color: #9ca3af;
             cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: color 0.3s ease;
         }
 
-        /* Table Container */
+        .search-button:hover {
+            color: #4f46e5;
+        }
+
+        /* Table Styles */
         .table-container {
             background: white;
             border-radius: 12px;
@@ -285,6 +319,7 @@
 
         .table-header {
             padding: 20px;
+            background: #f8fafc;
             border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
@@ -292,13 +327,13 @@
         }
 
         .table-title {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: 600;
             color: #1a202c;
         }
 
         .table-info {
-            color: #718096;
+            color: #6b7280;
             font-size: 0.9rem;
         }
 
@@ -308,28 +343,23 @@
         }
 
         .candidates-table th {
-            background: #f7fafc;
+            background: #f8fafc;
             padding: 15px;
             text-align: left;
             font-weight: 600;
-            color: #4a5568;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
             font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 2px solid #e2e8f0;
         }
 
         .candidates-table td {
             padding: 15px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .candidates-table tbody tr {
-            transition: all 0.3s ease;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
         }
 
         .candidates-table tbody tr:hover {
-            background: #f7fafc;
+            background: #f9fafb;
         }
 
         .candidate-info {
@@ -343,17 +373,16 @@
             height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
             font-weight: 600;
-            text-transform: uppercase;
+            font-size: 0.9rem;
         }
 
         .candidate-details {
-            display: flex;
-            flex-direction: column;
+            flex: 1;
         }
 
         .candidate-name {
@@ -364,73 +393,115 @@
 
         .candidate-email {
             font-size: 0.85rem;
-            color: #718096;
+            color: #6b7280;
         }
 
-        /* Buttons */
+        /* File Size Badge */
+        .file-size-badge {
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .file-size-badge.large {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        /* Checkbox Styles */
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .custom-checkbox {
+            position: relative;
+            width: 20px;
+            height: 20px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: #4f46e5;
+        }
+
+        /* Button Styles */
         .btn-small {
             padding: 6px 12px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-weight: 500;
             font-size: 0.85rem;
+            font-weight: 500;
             transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            margin-right: 8px;
+            gap: 5px;
+            margin-right: 5px;
+            text-decoration: none;
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #10b981, #059669);
+            background: #10b981;
             color: white;
         }
 
         .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            background: #059669;
+            transform: translateY(-1px);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #e53e3e, #c53030);
+            background: #ef4444;
             color: white;
         }
 
         .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
+            background: #dc2626;
+            transform: translateY(-1px);
         }
 
         /* Empty State */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #718096;
+            color: #9ca3af;
         }
 
         .empty-state i {
             font-size: 3rem;
             margin-bottom: 15px;
-            display: block;
-            color: #e2e8f0;
+            color: #d1d5db;
         }
 
         .empty-state p {
             font-size: 1.1rem;
-            margin: 0;
+            margin-bottom: 8px;
+            color: #6b7280;
+        }
+
+        .empty-state small {
+            font-size: 0.9rem;
+            color: #9ca3af;
         }
 
         /* Pagination */
         .pagination-container {
             padding: 20px;
-            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: center;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
             }
 
             .main-content {
@@ -471,8 +542,19 @@
                 font-size: 0.8rem;
                 padding: 5px 10px;
             }
+
+            .bulk-action-bar {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            
+            .bulk-action-buttons {
+                justify-content: center;
+            }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -557,6 +639,20 @@
             </header>
 
             <div class="content">
+                <!-- Bulk Action Bar -->
+                <div class="bulk-action-bar" id="bulkActionBar">
+                    <div class="bulk-action-info">
+                        <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                        <span id="selectedCount">0 kandidat dipilih</span>
+                    </div>
+                    <div class="bulk-action-buttons">
+                        <button class="btn-small btn-danger" onclick="bulkForceDelete()">
+                            <i class="fas fa-trash"></i> 
+                            Hapus Permanen Terpilih
+                        </button>
+                    </div>
+                </div>
+                
                 <!-- Search Filter -->
                 <div class="filters-section">
                     <form class="search-form" method="GET">
@@ -581,17 +677,30 @@
                     <table class="candidates-table">
                         <thead>
                             <tr>
+                                <th width="5%">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox" class="custom-checkbox" id="selectAll">
+                                    </div>
+                                </th>
                                 <th width="8%">No</th>
                                 <th width="12%">Kode</th>
-                                <th width="30%">Kandidat</th>
-                                <th width="20%">Posisi</th>
-                                <th width="15%">Dihapus Pada</th>
+                                <th width="25%">Kandidat</th>
+                                <th width="15%">Posisi</th>
+                                <th width="12%">Dihapus Pada</th>
+                                <th width="8%">File Size</th>
                                 <th width="15%">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($candidates as $index => $candidate)
                             <tr>
+                                <td>
+                                    <div class="checkbox-container">
+                                        <input type="checkbox" class="custom-checkbox candidate-checkbox" 
+                                               value="{{ $candidate->id }}"
+                                               data-candidate-name="{{ $candidate->full_name ?? 'Unknown' }}">
+                                    </div>
+                                </td>
                                 <td>{{ $candidates->firstItem() + $index }}</td>
                                 <td>
                                     <span style="font-weight: 600; color: #4f46e5;">
@@ -601,16 +710,13 @@
                                 <td>
                                     <div class="candidate-info">
                                         <div class="candidate-avatar">
-                                            {{-- ✅ FIXED: Gunakan field dari candidates table langsung --}}
                                             {{ substr($candidate->full_name ?? 'N/A', 0, 2) }}
                                         </div>
                                         <div class="candidate-details">
                                             <div class="candidate-name">
-                                                {{-- ✅ FIXED: Akses langsung dari candidates table --}}
                                                 {{ $candidate->full_name ?? 'N/A' }}
                                             </div>
                                             <div class="candidate-email">
-                                                {{-- ✅ FIXED: Akses langsung dari candidates table --}}
                                                 {{ $candidate->email ?? 'N/A' }}
                                             </div>
                                         </div>
@@ -629,6 +735,35 @@
                                     @endif
                                 </td>
                                 <td>
+                                    @php
+                                        // Calculate file size from DocumentUpload relationship if loaded
+                                        $totalFileSize = 0;
+                                        if(isset($candidate->documentUploads)) {
+                                            foreach($candidate->documentUploads as $doc) {
+                                                if($doc->file_path && Storage::disk('public')->exists($doc->file_path)) {
+                                                    $totalFileSize += Storage::disk('public')->size($doc->file_path);
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Format bytes
+                                        $units = ['B', 'KB', 'MB', 'GB'];
+                                        $fileSize = $totalFileSize;
+                                        $unitIndex = 0;
+                                        
+                                        while ($fileSize >= 1024 && $unitIndex < count($units) - 1) {
+                                            $fileSize /= 1024;
+                                            $unitIndex++;
+                                        }
+                                        
+                                        $formattedSize = $fileSize > 0 ? round($fileSize, 1) . ' ' . $units[$unitIndex] : '0 B';
+                                        $isLarge = $totalFileSize > 10485760; // 10MB
+                                    @endphp
+                                    <span class="file-size-badge {{ $isLarge ? 'large' : '' }}">
+                                        {{ $formattedSize }}
+                                    </span>
+                                </td>
+                                <td>
                                     <button class="btn-small btn-success" 
                                             onclick="restoreCandidate({{ $candidate->id }}, '{{ addslashes($candidate->full_name ?? 'Unknown') }}')"
                                             title="Pulihkan kandidat">
@@ -636,14 +771,14 @@
                                     </button>
                                     <button class="btn-small btn-danger" 
                                             onclick="forceDeleteCandidate({{ $candidate->id }}, '{{ addslashes($candidate->full_name ?? 'Unknown') }}')"
-                                            title="Hapus permanen (tidak dapat dikembalikan)">
+                                            title="Hapus permanen (termasuk semua file)">
                                         <i class="fas fa-trash"></i> Hapus Permanen
                                     </button>
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="6" class="empty-state">
+                                <td colspan="8" class="empty-state">
                                     <i class="fas fa-inbox"></i>
                                     <p>Tidak ada kandidat terhapus</p>
                                     @if(request('search'))
@@ -666,54 +801,42 @@
         </main>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // Sidebar toggle
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-
-        sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
-            mainContent.classList.toggle('expanded');
-        });
-
-        // Get CSRF token
+        // Function to get CSRF token
         function getCSRFToken() {
             return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         }
 
         // Restore candidate function
-        function restoreCandidate(candidateId, candidateName) {
+        function restoreCandidate(id, name) {
             Swal.fire({
                 title: 'Pulihkan Kandidat?',
-                text: `Apakah Anda yakin ingin memulihkan kandidat "${candidateName}"?`,
+                text: `Apakah Anda yakin ingin memulihkan kandidat "${name}"?`,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#10b981',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Ya, Pulihkan',
-                cancelButtonText: 'Batal',
-                reverseButtons: true
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Ya, Pulihkan!',
+                cancelButtonText: 'Batal'
             }).then((result) => {
                 if (result.isConfirmed) {
                     // Show loading
                     Swal.fire({
-                        title: 'Memulihkan...',
+                        title: 'Memproses...',
                         text: 'Sedang memulihkan kandidat',
-                        icon: 'info',
                         allowOutsideClick: false,
-                        didOpen: () => {
+                        showConfirmButton: false,
+                        willOpen: () => {
                             Swal.showLoading();
                         }
                     });
 
-                    // Send restore request
-                    fetch(`{{ url('/candidates') }}/${candidateId}/restore`, {
+                    fetch(`/candidates/${id}/restore`, {
                         method: 'POST',
                         headers: {
+                            'X-CSRF-TOKEN': getCSRFToken(),
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': getCSRFToken()
+                            'Accept': 'application/json'
                         }
                     })
                     .then(response => response.json())
@@ -723,16 +846,16 @@
                                 title: 'Berhasil!',
                                 text: data.message,
                                 icon: 'success',
-                                timer: 2000,
-                                showConfirmButton: false
+                                confirmButtonColor: '#28a745'
                             }).then(() => {
-                                window.location.reload();
+                                location.reload();
                             });
                         } else {
                             Swal.fire({
-                                title: 'Gagal!',
-                                text: data.message || 'Gagal memulihkan kandidat',
-                                icon: 'error'
+                                title: 'Error!',
+                                text: data.message,
+                                icon: 'error',
+                                confirmButtonColor: '#dc3545'
                             });
                         }
                     })
@@ -740,8 +863,9 @@
                         console.error('Error:', error);
                         Swal.fire({
                             title: 'Error!',
-                            text: 'Terjadi kesalahan saat memulihkan kandidat',
-                            icon: 'error'
+                            text: 'Terjadi kesalahan sistem. Silakan coba lagi.',
+                            icon: 'error',
+                            confirmButtonColor: '#dc3545'
                         });
                     });
                 }
@@ -749,89 +873,297 @@
         }
 
         // Force delete candidate function
-        function forceDeleteCandidate(candidateId, candidateName) {
+        function forceDeleteCandidate(id, name) {
             Swal.fire({
                 title: 'Hapus Permanen?',
-                html: `
-                    <div style="text-align: left; margin: 20px 0;">
-                        <p style="margin-bottom: 15px;">Anda akan menghapus permanen kandidat:</p>
-                        <p style="font-weight: 600; color: #e53e3e; margin-bottom: 15px;">"${candidateName}"</p>
-                        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; font-size: 0.9rem;">
-                            <strong style="color: #dc2626;">⚠️ Peringatan:</strong>
-                            <ul style="margin: 8px 0 0 20px; color: #7f1d1d;">
-                                <li>Data akan dihapus secara permanen</li>
-                                <li>Tidak dapat dikembalikan lagi</li>
-                                <li>Semua riwayat akan hilang</li>
-                            </ul>
-                        </div>
+                html: `<div style="text-align: left;">
+                    <p><strong>PERINGATAN:</strong> Kandidat <strong>"${name}"</strong> akan dihapus <strong>PERMANEN</strong>!</p>
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin: 15px 0;">
+                        <p style="color: #dc2626; margin: 0 0 8px 0;"><strong>Yang akan dihapus:</strong></p>
+                        <ul style="color: #7f1d1d; margin: 0; padding-left: 20px;">
+                            <li>Semua data kandidat</li>
+                            <li>File dokumen (CV, foto, dll)</li>
+                            <li>Riwayat interview</li>
+                            <li>Log aktivitas</li>
+                        </ul>
                     </div>
-                `,
-                icon: 'warning',
+                    <p style="color: #dc2626;"><strong>Tindakan ini TIDAK DAPAT dibatalkan!</strong></p>
+                </div>`,
+                icon: 'error',
                 showCancelButton: true,
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Ya, Hapus Permanen',
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Ya, Hapus Permanen!',
                 cancelButtonText: 'Batal',
-                reverseButtons: true,
-                focusCancel: true
+                width: '500px'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Show loading
+                    // Double confirmation
                     Swal.fire({
-                        title: 'Menghapus...',
-                        text: 'Sedang menghapus kandidat secara permanen',
-                        icon: 'info',
-                        allowOutsideClick: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        }
-                    });
+                        title: 'Konfirmasi Terakhir',
+                        text: 'Ketik "HAPUS" untuk melanjutkan (huruf kapital)',
+                        input: 'text',
+                        inputPlaceholder: 'Ketik: HAPUS',
+                        inputValidator: (value) => {
+                            if (value !== 'HAPUS') {
+                                return 'Ketik "HAPUS" dengan huruf kapital untuk melanjutkan';
+                            }
+                        },
+                        showCancelButton: true,
+                        confirmButtonColor: '#dc3545',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Hapus Permanen',
+                        cancelButtonText: 'Batal'
+                    }).then((confirmResult) => {
+                        if (confirmResult.isConfirmed) {
+                            // Show loading
+                            Swal.fire({
+                                title: 'Menghapus...',
+                                text: 'Sedang menghapus kandidat dan semua file',
+                                allowOutsideClick: false,
+                                showConfirmButton: false,
+                                willOpen: () => {
+                                    Swal.showLoading();
+                                }
+                            });
 
-                    // Send force delete request
-                    fetch(`{{ url('/candidates') }}/${candidateId}/force`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': getCSRFToken()
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            Swal.fire({
-                                title: 'Terhapus!',
-                                text: data.message,
-                                icon: 'success',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                window.location.reload();
+                            fetch(`/candidates/${id}/force`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': getCSRFToken(),
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json'
+                                }
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire({
+                                        title: 'Terhapus!',
+                                        text: data.message,
+                                        icon: 'success',
+                                        confirmButtonColor: '#28a745'
+                                    }).then(() => {
+                                        location.reload();
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        title: 'Error!',
+                                        text: data.message,
+                                        icon: 'error',
+                                        confirmButtonColor: '#dc3545'
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                Swal.fire({
+                                    title: 'Error!',
+                                    text: 'Terjadi kesalahan sistem. Silakan coba lagi.',
+                                    icon: 'error',
+                                    confirmButtonColor: '#dc3545'
+                                });
                             });
-                        } else {
-                            Swal.fire({
-                                title: 'Gagal!',
-                                text: data.message || 'Gagal menghapus kandidat',
-                                icon: 'error'
-                            });
                         }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'Terjadi kesalahan saat menghapus kandidat',
-                            icon: 'error'
-                        });
                     });
                 }
             });
         }
 
-        // Auto-submit search form on enter
-        document.querySelector('.search-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                this.closest('form').submit();
+        // Bulk force delete function
+        function bulkForceDelete() {
+            const selectedCheckboxes = document.querySelectorAll('.candidate-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                Swal.fire({
+                    title: 'Peringatan',
+                    text: 'Pilih minimal satu kandidat untuk dihapus',
+                    icon: 'warning',
+                    confirmButtonColor: '#fbbf24'
+                });
+                return;
             }
+
+            const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+            const selectedNames = Array.from(selectedCheckboxes).map(cb => cb.getAttribute('data-candidate-name'));
+
+            Swal.fire({
+                title: 'Hapus Permanen Multiple?',
+                html: `<div style="text-align: left;">
+                    <p><strong>PERINGATAN:</strong> ${selectedIds.length} kandidat akan dihapus <strong>PERMANEN</strong>!</p>
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin: 15px 0;">
+                        <p style="color: #dc2626; margin: 0 0 8px 0;"><strong>Kandidat yang akan dihapus:</strong></p>
+                        <ul style="color: #7f1d1d; margin: 0; padding-left: 20px; max-height: 150px; overflow-y: auto;">
+                            ${selectedNames.map(name => `<li>${name}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <p style="color: #dc2626;"><strong>Semua data dan file akan dihapus PERMANEN!</strong></p>
+                </div>`,
+                icon: 'error',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Ya, Hapus Semua!',
+                cancelButtonText: 'Batal',
+                width: '500px'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Double confirmation
+                    Swal.fire({
+                        title: 'Konfirmasi Terakhir',
+                        text: 'Ketik "HAPUS SEMUA" untuk melanjutkan (huruf kapital)',
+                        input: 'text',
+                        inputPlaceholder: 'Ketik: HAPUS SEMUA',
+                        inputValidator: (value) => {
+                            if (value !== 'HAPUS SEMUA') {
+                                return 'Ketik "HAPUS SEMUA" dengan huruf kapital untuk melanjutkan';
+                            }
+                        },
+                        showCancelButton: true,
+                        confirmButtonColor: '#dc3545',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Hapus Semua Permanen',
+                        cancelButtonText: 'Batal'
+                    }).then((confirmResult) => {
+                        if (confirmResult.isConfirmed) {
+                            // Show loading
+                            Swal.fire({
+                                title: 'Menghapus...',
+                                text: `Sedang menghapus ${selectedIds.length} kandidat dan semua file`,
+                                allowOutsideClick: false,
+                                showConfirmButton: false,
+                                willOpen: () => {
+                                    Swal.showLoading();
+                                }
+                            });
+
+                            fetch('/candidates/bulk-force-delete', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': getCSRFToken(),
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({ ids: selectedIds })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire({
+                                        title: 'Terhapus!',
+                                        text: data.message,
+                                        icon: 'success',
+                                        confirmButtonColor: '#28a745'
+                                    }).then(() => {
+                                        location.reload();
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        title: 'Error!',
+                                        text: data.message,
+                                        icon: 'error',
+                                        confirmButtonColor: '#dc3545'
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                Swal.fire({
+                                    title: 'Error!',
+                                    text: 'Terjadi kesalahan sistem. Silakan coba lagi.',
+                                    icon: 'error',
+                                    confirmButtonColor: '#dc3545'
+                                });
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // Select all checkbox functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    const checkboxes = document.querySelectorAll('.candidate-checkbox');
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = this.checked;
+                    });
+                    updateBulkActionBar();
+                });
+            }
+
+            // Individual checkbox change
+            document.querySelectorAll('.candidate-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    updateBulkActionBar();
+                    
+                    // Update select all checkbox
+                    const allCheckboxes = document.querySelectorAll('.candidate-checkbox');
+                    const checkedCheckboxes = document.querySelectorAll('.candidate-checkbox:checked');
+                    const selectAllCheckbox = document.getElementById('selectAll');
+                    
+                    if (checkedCheckboxes.length === 0) {
+                        selectAllCheckbox.indeterminate = false;
+                        selectAllCheckbox.checked = false;
+                    } else if (checkedCheckboxes.length === allCheckboxes.length) {
+                        selectAllCheckbox.indeterminate = false;
+                        selectAllCheckbox.checked = true;
+                    } else {
+                        selectAllCheckbox.indeterminate = true;
+                        selectAllCheckbox.checked = false;
+                    }
+                });
+            });
+
+            // Update bulk action bar
+            function updateBulkActionBar() {
+                const checkedCheckboxes = document.querySelectorAll('.candidate-checkbox:checked');
+                const bulkActionBar = document.getElementById('bulkActionBar');
+                const selectedCount = document.getElementById('selectedCount');
+                
+                if (checkedCheckboxes.length > 0) {
+                    bulkActionBar.classList.add('show');
+                    selectedCount.textContent = `${checkedCheckboxes.length} kandidat dipilih`;
+                } else {
+                    bulkActionBar.classList.remove('show');
+                }
+            }
+
+            // Sidebar toggle functionality
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function() {
+                    const sidebar = document.getElementById('sidebar');
+                    const mainContent = document.getElementById('mainContent');
+                    
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.toggle('show');
+                    } else {
+                        sidebar.classList.toggle('collapsed');
+                        if (sidebar.classList.contains('collapsed')) {
+                            mainContent.style.marginLeft = '70px';
+                        } else {
+                            mainContent.style.marginLeft = '230px';
+                        }
+                    }
+                });
+            }
+
+            // Close sidebar on mobile when clicking outside
+            document.addEventListener('click', function(event) {
+                if (window.innerWidth <= 768) {
+                    const sidebar = document.getElementById('sidebar');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    
+                    if (sidebar && sidebarToggle && !sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                        sidebar.classList.remove('show');
+                    }
+                }
+            });
+
+            // Make updateBulkActionBar available globally
+            window.updateBulkActionBar = updateBulkActionBar;
         });
     </script>
 </body>

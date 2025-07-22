@@ -354,11 +354,10 @@ class CandidateSeeder extends Seeder
                     ));
                 }
 
-                // Insert formal education
+                // ✅ UPDATED: Insert formal education using new table
                 foreach ($candidateData['formal_education'] as $education) {
-                    DB::table('education')->insert([
+                    DB::table('formal_education')->insert([
                         'candidate_id' => $candidateId,
-                        'education_type' => 'formal',
                         'education_level' => $education['education_level'],
                         'institution_name' => $education['institution_name'],
                         'major' => $education['major'],
@@ -370,11 +369,10 @@ class CandidateSeeder extends Seeder
                     ]);
                 }
 
-                // Insert non formal education
+                // ✅ UPDATED: Insert non formal education using new table
                 foreach ($candidateData['non_formal_education'] as $nonFormal) {
-                    DB::table('education')->insert([
+                    DB::table('non_formal_education')->insert([
                         'candidate_id' => $candidateId,
-                        'education_type' => 'non_formal',
                         'course_name' => $nonFormal['course_name'],
                         'organizer' => $nonFormal['organizer'],
                         'date' => $nonFormal['date'],
@@ -447,15 +445,15 @@ class CandidateSeeder extends Seeder
                     ]);
                 }
 
-                // Insert sample document uploads
-                $documentTypes = ['cv', 'photo', 'certificates'];
+                // ✅ UPDATED: Insert sample document uploads with KTP included
+                $documentTypes = ['cv', 'photo', 'ktp', 'certificates', 'transcript']; // Added KTP and transcript
                 foreach ($documentTypes as $docType) {
                     DB::table('document_uploads')->insert([
                         'candidate_id' => $candidateId,
                         'document_type' => $docType,
                         'document_name' => $docType . '_' . $candidateData['candidate_code'],
-                        'original_filename' => $docType . '_' . strtolower(str_replace(' ', '_', $candidateData['personal_data']['full_name'])) . '.pdf',
-                        'file_path' => 'uploads/candidates/' . $candidateId . '/' . $docType . '.pdf',
+                        'original_filename' => $docType . '_' . strtolower(str_replace(' ', '_', $candidateData['personal_data']['full_name'])) . ($docType == 'photo' ? '.jpg' : '.pdf'),
+                        'file_path' => 'uploads/candidates/' . $candidateId . '/' . $docType . ($docType == 'photo' ? '.jpg' : '.pdf'),
                         'file_size' => rand(100000, 2000000),
                         'mime_type' => $docType == 'photo' ? 'image/jpeg' : 'application/pdf',
                         'created_at' => now(),
@@ -488,6 +486,9 @@ class CandidateSeeder extends Seeder
                     ]);
                 }
 
+                // ✅ NEW: Insert sample test sessions and results
+                $this->insertTestSessions($candidateId, $candidateData);
+
                 DB::commit();
                 $this->command->info("✅ Candidate {$candidateData['candidate_code']} seeded successfully! (NIK: {$candidateData['nik']})");
 
@@ -498,6 +499,181 @@ class CandidateSeeder extends Seeder
         }
 
         // Insert email templates
+        $this->insertEmailTemplates();
+
+        $this->command->info('✅ All candidates and email templates seeded successfully!');
+    }
+
+    /**
+     * ✅ NEW: Insert test sessions and results for candidates
+     */
+    private function insertTestSessions($candidateId, $candidateData)
+    {
+        try {
+            // Insert Kraeplin test session for first candidate (completed)
+            if ($candidateData['candidate_code'] === 'CND202501001') {
+                $kraeplinSessionId = DB::table('kraeplin_test_sessions')->insertGetId([
+                    'candidate_id' => $candidateId,
+                    'session_token' => 'KRAEPLIN_' . $candidateData['candidate_code'] . '_' . time(),
+                    'status' => 'completed',
+                    'started_at' => now()->subDays(2),
+                    'completed_at' => now()->subDays(2)->addMinutes(30),
+                    'expires_at' => now()->addDays(7),
+                    'total_questions' => 100,
+                    'answered_questions' => 100,
+                    'answers' => json_encode(array_fill(0, 100, rand(1, 4))),
+                    'correct_answers' => 75,
+                    'score' => 75,
+                    'notes' => 'Good performance with consistent accuracy',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // Insert DISC 3D test session (completed)
+                $discSessionId = DB::table('disc3d_test_sessions')->insertGetId([
+                    'candidate_id' => $candidateId,
+                    'session_token' => 'DISC3D_' . $candidateData['candidate_code'] . '_' . time(),
+                    'status' => 'completed',
+                    'started_at' => now()->subDays(1),
+                    'completed_at' => now()->subDays(1)->addMinutes(20),
+                    'expires_at' => now()->addDays(7),
+                    'current_question' => 24,
+                    'total_questions' => 24,
+                    'sections_completed' => 24,
+                    'progress' => 100,
+                    'answers' => json_encode($this->generateSampleDiscAnswers()),
+                    'notes' => 'Test completed successfully',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // Insert DISC 3D result
+                DB::table('disc3d_results')->insert([
+                    'candidate_id' => $candidateId,
+                    'test_session_id' => $discSessionId,
+                    'd_score' => 18,
+                    'i_score' => 22,
+                    's_score' => 16,
+                    'c_score' => 14,
+                    'primary_type' => 'I',
+                    'secondary_type' => 'D',
+                    'personality_profile' => json_encode([
+                        'description' => 'Influence-Dominance type',
+                        'characteristics' => ['Outgoing', 'Enthusiastic', 'Results-oriented', 'People-focused'],
+                        'strengths' => ['Great communicator', 'Natural leader', 'Motivates others'],
+                        'challenges' => ['May be impatient', 'Can be overly optimistic']
+                    ]),
+                    'summary' => 'Strong people-oriented leader with excellent communication skills',
+                    'strengths' => 'Natural ability to influence and motivate others, results-driven approach',
+                    'challenges' => 'May need to work on patience and attention to detail',
+                    'ideal_environment' => 'Dynamic team environment with opportunities for leadership and people interaction',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
+            // Insert Kraeplin test session for second candidate (completed)
+            if ($candidateData['candidate_code'] === 'CND202501002') {
+                $kraeplinSessionId = DB::table('kraeplin_test_sessions')->insertGetId([
+                    'candidate_id' => $candidateId,
+                    'session_token' => 'KRAEPLIN_' . $candidateData['candidate_code'] . '_' . time(),
+                    'status' => 'completed',
+                    'started_at' => now()->subDays(3),
+                    'completed_at' => now()->subDays(3)->addMinutes(28),
+                    'expires_at' => now()->addDays(7),
+                    'total_questions' => 100,
+                    'answered_questions' => 100,
+                    'answers' => json_encode(array_fill(0, 100, rand(1, 4))),
+                    'correct_answers' => 88,
+                    'score' => 88,
+                    'notes' => 'Excellent accuracy and speed',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // Insert DISC 3D test session (in progress)
+                DB::table('disc3d_test_sessions')->insert([
+                    'candidate_id' => $candidateId,
+                    'session_token' => 'DISC3D_' . $candidateData['candidate_code'] . '_' . time(),
+                    'status' => 'in_progress',
+                    'started_at' => now()->subHours(2),
+                    'completed_at' => null,
+                    'expires_at' => now()->addDays(7),
+                    'current_question' => 15,
+                    'total_questions' => 24,
+                    'sections_completed' => 15,
+                    'progress' => 62,
+                    'answers' => json_encode(array_slice($this->generateSampleDiscAnswers(), 0, 15)),
+                    'notes' => 'Test in progress',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
+            // Insert Kraeplin test session for third candidate (not started)
+            if ($candidateData['candidate_code'] === 'CND202501003') {
+                DB::table('kraeplin_test_sessions')->insert([
+                    'candidate_id' => $candidateId,
+                    'session_token' => 'KRAEPLIN_' . $candidateData['candidate_code'] . '_' . time(),
+                    'status' => 'not_started',
+                    'started_at' => null,
+                    'completed_at' => null,
+                    'expires_at' => now()->addDays(7),
+                    'total_questions' => 100,
+                    'answered_questions' => 0,
+                    'answers' => null,
+                    'correct_answers' => null,
+                    'score' => null,
+                    'notes' => 'Awaiting test start',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            $this->command->warn("Warning: Could not insert test sessions for candidate {$candidateId}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * ✅ NEW: Generate sample DISC answers
+     */
+    private function generateSampleDiscAnswers()
+    {
+        $answers = [];
+        
+        // Generate 24 DISC responses (4 choices per section, ranked 1-4)
+        for ($i = 1; $i <= 24; $i++) {
+            $section = [
+                'section_id' => $i,
+                'choices' => [
+                    'D' => rand(1, 4),  // Dominance
+                    'I' => rand(1, 4),  // Influence
+                    'S' => rand(1, 4),  // Steadiness
+                    'C' => rand(1, 4)   // Compliance
+                ]
+            ];
+            
+            // Ensure no duplicate rankings within a section
+            $rankings = [1, 2, 3, 4];
+            shuffle($rankings);
+            $dimensions = ['D', 'I', 'S', 'C'];
+            
+            foreach ($dimensions as $index => $dimension) {
+                $section['choices'][$dimension] = $rankings[$index];
+            }
+            
+            $answers[] = $section;
+        }
+        
+        return $answers;
+    }
+
+    /**
+     * ✅ Insert email templates
+     */
+    private function insertEmailTemplates()
+    {
         $emailTemplates = [
             [
                 'template_name' => 'Application Received',
@@ -538,7 +714,10 @@ class CandidateSeeder extends Seeder
                 ]
             ));
         }
-
-        $this->command->info('✅ All candidates and email templates seeded successfully!');
     }
-}
+    }
+
+    /**
+     * ✅ NEW: Insert test sessions and results for candidates
+     */
+    
