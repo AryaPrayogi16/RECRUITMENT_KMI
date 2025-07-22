@@ -6,7 +6,8 @@ use App\Models\{
     Candidate, 
     Position,
     FamilyMember,
-    Education,
+    FormalEducation,      // ✅ UPDATED: Use FormalEducation model
+    NonFormalEducation,   // ✅ UPDATED: Use NonFormalEducation model
     WorkExperience,
     LanguageSkill,
     Activity,
@@ -26,6 +27,7 @@ use Illuminate\Support\Str;
 use App\Http\Requests\JobApplicationRequest;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Carbon\Carbon;
 
 class JobApplicationController extends Controller
 {
@@ -100,14 +102,14 @@ class JobApplicationController extends Controller
                 Log::info('Family members created', ['candidate_id' => $candidate->id, 'count' => count($validated['family_members'])]);
             }
             
-            // 3. Create Education Records
+            // 3. ✅ UPDATED: Create Education Records using separate models
             if (!empty($validated['formal_education'])) {
-                $this->createEducation($candidate, $validated['formal_education'], 'formal');
+                $this->createFormalEducation($candidate, $validated['formal_education']);
                 Log::info('Formal education created', ['candidate_id' => $candidate->id, 'count' => count($validated['formal_education'])]);
             }
             
             if (!empty($validated['non_formal_education'])) {
-                $this->createEducation($candidate, $validated['non_formal_education'], 'non_formal');
+                $this->createNonFormalEducation($candidate, $validated['non_formal_education']);
                 Log::info('Non-formal education created', ['candidate_id' => $candidate->id, 'count' => count($validated['non_formal_education'])]);
             }
             
@@ -145,7 +147,7 @@ class JobApplicationController extends Controller
                 Log::info('Driving licenses created', ['candidate_id' => $candidate->id, 'count' => count($validated['driving_licenses'])]);
             }
             
-            // 10. Handle File Uploads
+            // 10. Handle File Uploads (including KTP) - 🔧 UPDATED dengan perbaikan
             $uploadedFiles = $this->handleDocumentUploads($candidate, $request);
             Log::info('Document uploads processed', ['candidate_id' => $candidate->id, 'files_count' => count($uploadedFiles)]);
             
@@ -160,7 +162,22 @@ class JobApplicationController extends Controller
             
             DB::commit();
             Log::info('Job application submitted successfully', ['candidate_code' => $candidate->candidate_code]);
-            
+
+            // 🆕 Clear OCR session data setelah berhasil submit
+            session()->forget([
+                'ocr_validated',
+                'ocr_nik', 
+                'ocr_ktp_path',
+                'ocr_ktp_original',
+                'ocr_ktp_size',
+                'ocr_ktp_mime',
+                'ocr_timestamp'
+            ]);
+
+            Log::info('OCR session data cleared after successful submission', [
+                'candidate_id' => $candidate->id
+            ]);
+
             // Clear form data from session/cache after successful submission
             session()->flash('form_submitted', true);
             
@@ -181,6 +198,689 @@ class JobApplicationController extends Controller
         }
     }
 
+    /**
+     * 🔧 IMPROVED: Enhanced KTP OCR upload with better error handling
+     */
+    public function uploadKtpOcr(Request $request)
+    {
+        try {
+            $request->validate([
+                'ktp_image' => 'required|file|mimes:jpg,jpeg,png|max:5120',
+                'extracted_nik' => 'required|string|size:16|regex:/^[0-9]{16}$/'
+            ]);
+
+            $file = $request->file('ktp_image');
+            $extractedNik = $request->input('extracted_nik');
+            
+            Log::info('Processing KTP OCR upload', [
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'extracted_nik' => $extractedNik,
+                'session_id' => session()->getId()
+            ]);
+            
+            // Validate NIK format
+            if (!preg_match('/^[0-9]{16}$/', $extractedNik)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'NIK harus 16 digit angka'
+                ], 400);
+            }
+
+            // Check if NIK already exists
+            $existingCandidate = Candidate::where('nik', $extractedNik)->first();
+            if ($existingCandidate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'NIK sudah terdaftar dalam sistem'
+                ], 409);
+            }
+
+            // 🔧 IMPROVED: Better temp file naming and storage
+            $sessionId = session()->getId();
+            $timestamp = time();
+            $extension = $file->getClientOriginalExtension();
+            $tempFilename = "ktp_{$sessionId}_{$timestamp}.{$extension}";
+            
+            // Ensure temp directory exists
+            $tempDir = 'temp/ktp';
+            if (!Storage::disk('public')->exists($tempDir)) {
+                Storage::disk('public')->makeDirectory($tempDir);
+            }
+            
+            // Store file in temp location
+            $tempPath = $file->storeAs($tempDir, $tempFilename, 'public');
+            
+            // Verify file was stored
+            if (!Storage::disk('public')->exists($tempPath)) {
+                throw new \Exception('Failed to store temporary KTP file');
+            }
+            
+            $storedFileSize = Storage::disk('public')->size($tempPath);
+            
+            Log::info('KTP file stored temporarily', [
+                'temp_path' => $tempPath,
+                'original_size' => $file->getSize(),
+                'stored_size' => $storedFileSize,
+                'temp_file_exists' => Storage::disk('public')->exists($tempPath)
+            ]);
+
+            // 🔧 IMPROVED: Enhanced session storage with verification
+            session([
+                'ocr_validated' => true,
+                'ocr_nik' => $extractedNik,
+                'ocr_ktp_path' => $tempPath,
+                'ocr_ktp_original' => $file->getClientOriginalName(),
+                'ocr_ktp_size' => $storedFileSize,
+                'ocr_ktp_mime' => $file->getMimeType(),
+                'ocr_timestamp' => $timestamp
+            ]);
+
+            // Verify session data was saved
+            $sessionVerification = [
+                'ocr_validated' => session('ocr_validated'),
+                'ocr_nik' => session('ocr_nik'),
+                'ocr_ktp_path' => session('ocr_ktp_path'),
+                'session_saved' => session('ocr_validated') === true
+            ];
+
+            Log::info('✅ OCR KTP processed successfully', [
+                'nik' => $extractedNik,
+                'temp_path' => $tempPath,
+                'session_id' => $sessionId,
+                'file_size' => $storedFileSize,
+                'session_verification' => $sessionVerification
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'KTP berhasil diproses dan NIK berhasil diekstrak',
+                'data' => [
+                    'nik' => $extractedNik,
+                    'filename' => $file->getClientOriginalName(),
+                    'file_size' => $this->formatFileSize($storedFileSize),
+                    'temp_path' => $tempPath
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Error uploading KTP OCR', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'session_id' => session()->getId()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memproses file KTP: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Clear KTP temporary file from session
+     */
+    public function clearKtpTemp(Request $request)
+    {
+        try {
+            $tempPath = session('ocr_ktp_path');
+            
+            if ($tempPath && Storage::disk('public')->exists($tempPath)) {
+                Storage::disk('public')->delete($tempPath);
+                Log::info('Temporary KTP file deleted', ['path' => $tempPath]);
+            }
+
+            // Clear session data
+            session()->forget([
+                'ocr_validated',
+                'ocr_nik', 
+                'ocr_ktp_path',
+                'ocr_ktp_original',
+                'ocr_ktp_size',
+                'ocr_ktp_mime',
+                'ocr_timestamp'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'File KTP temporary berhasil dihapus'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error clearing KTP temp file', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus file temporary'
+            ], 500);
+        }
+    }
+
+    // 🔧 FIXED: Enhanced document uploads handler with proper KTP storage
+    private function handleDocumentUploads($candidate, $request)
+    {
+        $uploadedFiles = [];
+        
+        try {
+            // Handle CV
+            if ($request->hasFile('cv')) {
+                $file = $request->file('cv');
+                $filename = 'cv_' . time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
+                $uploadedFiles[] = $path;
+
+                DocumentUpload::create([
+                    'candidate_id' => $candidate->id,
+                    'document_type' => 'cv',
+                    'document_name' => 'CV',
+                    'original_filename' => $file->getClientOriginalName(),
+                    'file_path' => $path,
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                ]);
+
+                Log::info('CV uploaded', ['candidate_id' => $candidate->id, 'path' => $path]);
+            }
+
+            // Handle Photo  
+            if ($request->hasFile('photo')) {
+                $file = $request->file('photo');
+                $filename = 'photo_' . time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
+                $uploadedFiles[] = $path;
+
+                DocumentUpload::create([
+                    'candidate_id' => $candidate->id,
+                    'document_type' => 'photo',
+                    'document_name' => 'Photo',
+                    'original_filename' => $file->getClientOriginalName(),
+                    'file_path' => $path,
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                ]);
+
+                Log::info('Photo uploaded', ['candidate_id' => $candidate->id, 'path' => $path]);
+            }
+
+            // 🔧 FIXED: Enhanced KTP handling from OCR session
+            $ktpProcessed = $this->handleKTPFromOCRSession($candidate, $uploadedFiles);
+            if (!$ktpProcessed) {
+                Log::warning('No KTP file processed from OCR session', [
+                    'candidate_id' => $candidate->id,
+                    'session_data' => [
+                        'ocr_validated' => session('ocr_validated'),
+                        'ocr_ktp_path' => session('ocr_ktp_path'),
+                        'ocr_ktp_original' => session('ocr_ktp_original'),
+                    ]
+                ]);
+            }
+
+            // Handle Transcript
+            if ($request->hasFile('transcript')) {
+                $file = $request->file('transcript');
+                $filename = 'transcript_' . time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
+                $uploadedFiles[] = $path;
+
+                DocumentUpload::create([
+                    'candidate_id' => $candidate->id,
+                    'document_type' => 'transcript',
+                    'document_name' => 'Transcript',
+                    'original_filename' => $file->getClientOriginalName(),
+                    'file_path' => $path,
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                ]);
+
+                Log::info('Transcript uploaded', ['candidate_id' => $candidate->id, 'path' => $path]);
+            }
+
+            // Handle Certificates (multiple)
+            if ($request->hasFile('certificates')) {
+                $certificates = $request->file('certificates');
+                foreach ($certificates as $index => $certificate) {
+                    $filename = 'certificate_' . time() . '_' . ($index + 1) . '_' . Str::slug(pathinfo($certificate->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $certificate->getClientOriginalExtension();
+                    $path = $certificate->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
+                    $uploadedFiles[] = $path;
+
+                    DocumentUpload::create([
+                        'candidate_id' => $candidate->id,
+                        'document_type' => 'certificates',
+                        'document_name' => 'Certificate ' . ($index + 1),
+                        'original_filename' => $certificate->getClientOriginalName(),
+                        'file_path' => $path,
+                        'file_size' => $certificate->getSize(),
+                        'mime_type' => $certificate->getMimeType(),
+                    ]);
+
+                    Log::info('Certificate uploaded', ['candidate_id' => $candidate->id, 'index' => $index + 1, 'path' => $path]);
+                }
+            }
+
+            return $uploadedFiles;
+
+        } catch (\Exception $e) {
+            Log::error('Error during file upload', [
+                'candidate_id' => $candidate->id,
+                'error' => $e->getMessage(),
+                'uploaded_files' => $uploadedFiles
+            ]);
+            $this->cleanupUploadedFiles($uploadedFiles);
+            throw $e;
+        }
+    }
+
+    /**
+     * 🆕 NEW: Dedicated method to handle KTP from OCR session
+     */
+    private function handleKTPFromOCRSession($candidate, &$uploadedFiles)
+    {
+        // Check if we have OCR session data
+        if (!session('ocr_validated') || !session('ocr_ktp_path')) {
+            Log::info('No OCR KTP session data found', [
+                'candidate_id' => $candidate->id,
+                'ocr_validated' => session('ocr_validated', 'not_set'),
+                'ocr_ktp_path' => session('ocr_ktp_path', 'not_set')
+            ]);
+            return false;
+        }
+
+        $ktpTempPath = session('ocr_ktp_path');
+        $ktpOriginalName = session('ocr_ktp_original');
+        $ktpFileSize = session('ocr_ktp_size');
+        $ktpMimeType = session('ocr_ktp_mime');
+        
+        Log::info('Processing KTP from OCR session', [
+            'candidate_id' => $candidate->id,
+            'temp_path' => $ktpTempPath,
+            'original_name' => $ktpOriginalName,
+            'file_size' => $ktpFileSize,
+            'mime_type' => $ktpMimeType
+        ]);
+
+        try {
+            // Check if temp file exists
+            if (!Storage::disk('public')->exists($ktpTempPath)) {
+                Log::error('KTP temp file not found', [
+                    'candidate_id' => $candidate->id,
+                    'temp_path' => $ktpTempPath,
+                    'full_path' => Storage::disk('public')->path($ktpTempPath)
+                ]);
+                return false;
+            }
+
+            // Ensure destination directory exists
+            $destinationDir = 'documents/' . $candidate->candidate_code;
+            if (!Storage::disk('public')->exists($destinationDir)) {
+                Storage::disk('public')->makeDirectory($destinationDir);
+                Log::info('Created destination directory', [
+                    'candidate_id' => $candidate->id,
+                    'directory' => $destinationDir
+                ]);
+            }
+
+            // Generate permanent filename
+            $extension = pathinfo($ktpOriginalName, PATHINFO_EXTENSION);
+            $ktpFilename = 'ktp_' . time() . '_' . Str::random(8) . '.' . $extension;
+            $ktpPermanentPath = $destinationDir . '/' . $ktpFilename;
+            
+            Log::info('Moving KTP file', [
+                'candidate_id' => $candidate->id,
+                'from' => $ktpTempPath,
+                'to' => $ktpPermanentPath
+            ]);
+
+            // 🔧 FIXED: Use Storage::move() instead of copy() for better reliability
+            if (Storage::disk('public')->move($ktpTempPath, $ktpPermanentPath)) {
+                $uploadedFiles[] = $ktpPermanentPath;
+                
+                // 🔧 FIXED: Get actual file size from moved file
+                $actualFileSize = Storage::disk('public')->size($ktpPermanentPath);
+                
+                // Save to database
+                DocumentUpload::create([
+                    'candidate_id' => $candidate->id,
+                    'document_type' => 'ktp',
+                    'document_name' => 'KTP (OCR Scan)',
+                    'original_filename' => $ktpOriginalName ?: 'ktp_scan.jpg',
+                    'file_path' => $ktpPermanentPath,
+                    'file_size' => $actualFileSize ?: $ktpFileSize,
+                    'mime_type' => $ktpMimeType ?: 'image/jpeg',
+                ]);
+                
+                Log::info('✅ KTP successfully moved and saved to database', [
+                    'candidate_id' => $candidate->id,
+                    'permanent_path' => $ktpPermanentPath,
+                    'original_name' => $ktpOriginalName,
+                    'file_size' => $actualFileSize,
+                    'database_record_created' => true
+                ]);
+                
+                return true;
+                
+            } else {
+                Log::error('❌ Failed to move KTP from temp to permanent location', [
+                    'candidate_id' => $candidate->id,
+                    'temp_path' => $ktpTempPath,
+                    'permanent_path' => $ktpPermanentPath,
+                    'temp_exists' => Storage::disk('public')->exists($ktpTempPath),
+                    'dest_dir_exists' => Storage::disk('public')->exists($destinationDir)
+                ]);
+                return false;
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Exception while processing KTP from OCR session', [
+                'candidate_id' => $candidate->id,
+                'temp_path' => $ktpTempPath,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
+    }
+
+    // ✅ NEW: Create formal education records
+    private function createFormalEducation($candidate, $formalEducations)
+    {
+        foreach ($formalEducations as $index => $education) {
+            // Skip if main fields are empty
+            if (empty($education['education_level']) && empty($education['institution_name'])) {
+                continue;
+            }
+
+            try {
+                FormalEducation::create([
+                    'candidate_id' => $candidate->id,
+                    'education_level' => $education['education_level'] ?? null,
+                    'institution_name' => $education['institution_name'] ?? null,
+                    'major' => $education['major'] ?? null,
+                    'start_year' => $education['start_year'] ?? null,
+                    'end_year' => $education['end_year'] ?? null,
+                    'gpa' => $education['gpa'] ?? null,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error creating formal education', [
+                    'candidate_id' => $candidate->id,
+                    'education_index' => $index,
+                    'error' => $e->getMessage(),
+                    'education_data' => $education
+                ]);
+                throw $e;
+            }
+        }
+    }
+
+    // ✅ NEW: Create non-formal education records
+    private function createNonFormalEducation($candidate, $nonFormalEducations)
+    {
+        foreach ($nonFormalEducations as $index => $education) {
+            // Skip if course name is empty
+            if (empty($education['course_name'])) {
+                continue;
+            }
+
+            try {
+                NonFormalEducation::create([
+                    'candidate_id' => $candidate->id,
+                    'course_name' => $education['course_name'] ?? null,
+                    'organizer' => $education['organizer'] ?? null,
+                    'date' => $education['date'] ?? null,
+                    'description' => $education['description'] ?? null,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error creating non-formal education', [
+                    'candidate_id' => $candidate->id,
+                    'education_index' => $index,
+                    'error' => $e->getMessage(),
+                    'education_data' => $education
+                ]);
+                throw $e;
+            }
+        }
+    }
+
+    // 🆕 NEW: Debug method to check KTP file status
+    public function debugKtpStatus(Request $request)
+    {
+        $sessionId = session()->getId();
+        
+        $debugInfo = [
+            'session_id' => $sessionId,
+            'session_data' => [
+                'ocr_validated' => session('ocr_validated'),
+                'ocr_nik' => session('ocr_nik'),
+                'ocr_ktp_path' => session('ocr_ktp_path'),
+                'ocr_ktp_original' => session('ocr_ktp_original'),
+                'ocr_ktp_size' => session('ocr_ktp_size'),
+                'ocr_ktp_mime' => session('ocr_ktp_mime'),
+                'ocr_timestamp' => session('ocr_timestamp')
+            ],
+            'file_system_check' => [],
+            'recent_candidates' => [],
+            'recent_document_uploads' => []
+        ];
+        
+        // Check if temp file exists
+        $tempPath = session('ocr_ktp_path');
+        if ($tempPath) {
+            $debugInfo['file_system_check'] = [
+                'temp_path' => $tempPath,
+                'file_exists' => Storage::disk('public')->exists($tempPath),
+                'file_size' => Storage::disk('public')->exists($tempPath) ? Storage::disk('public')->size($tempPath) : null,
+                'full_path' => Storage::disk('public')->path($tempPath),
+                'temp_directory_contents' => Storage::disk('public')->files('temp/ktp')
+            ];
+        }
+        
+        // Check recent candidates
+        $debugInfo['recent_candidates'] = Candidate::latest()
+            ->take(5)
+            ->select('id', 'candidate_code', 'nik', 'full_name', 'created_at')
+            ->get()
+            ->toArray();
+        
+        // Check recent document uploads
+        $debugInfo['recent_document_uploads'] = DocumentUpload::where('document_type', 'ktp')
+            ->latest()
+            ->take(10)
+            ->select('id', 'candidate_id', 'document_type', 'original_filename', 'file_path', 'file_size', 'created_at')
+            ->with('candidate:id,candidate_code,nik,full_name')
+            ->get()
+            ->toArray();
+        
+        Log::info('🔍 KTP Debug Status', $debugInfo);
+        
+        return response()->json([
+            'success' => true,
+            'debug_info' => $debugInfo
+        ]);
+    }
+
+    /**
+     * 🆕 NEW: Clean temp files method  
+     */
+    public function cleanTempKtpFiles(Request $request)
+    {
+        try {
+            $tempDir = 'temp/ktp';
+            $cleaned = 0;
+            
+            if (Storage::disk('public')->exists($tempDir)) {
+                $files = Storage::disk('public')->files($tempDir);
+                
+                foreach ($files as $file) {
+                    $lastModified = Storage::disk('public')->lastModified($file);
+                    $hoursOld = now()->diffInHours(Carbon::createFromTimestamp($lastModified));
+                    
+                    // Delete files older than 24 hours
+                    if ($hoursOld > 24) {
+                        Storage::disk('public')->delete($file);
+                        $cleaned++;
+                        Log::info('Cleaned old temp KTP file', [
+                            'file' => $file,
+                            'hours_old' => $hoursOld
+                        ]);
+                    }
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Cleaned {$cleaned} old temp files",
+                'cleaned_count' => $cleaned
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error cleaning temp KTP files', [
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error cleaning temp files: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 NEW: Verify KTP file integrity
+     */
+    public function verifyKtpIntegrity($candidateCode = null)
+    {
+        try {
+            $query = Candidate::with(['documentUploads' => function($q) {
+                $q->where('document_type', 'ktp');
+            }]);
+            
+            if ($candidateCode) {
+                $query->where('candidate_code', $candidateCode);
+            } else {
+                $query->latest()->take(10);
+            }
+            
+            $candidates = $query->get();
+            $results = [];
+            
+            foreach ($candidates as $candidate) {
+                $ktpDocument = $candidate->documentUploads->where('document_type', 'ktp')->first();
+                
+                $result = [
+                    'candidate_code' => $candidate->candidate_code,
+                    'nik' => $candidate->nik,
+                    'has_ktp_record' => !is_null($ktpDocument),
+                    'ktp_file_exists' => false,
+                    'file_path' => null,
+                    'file_size' => null,
+                    'database_size' => null,
+                    'size_match' => false
+                ];
+                
+                if ($ktpDocument) {
+                    $result['file_path'] = $ktpDocument->file_path;
+                    $result['database_size'] = $ktpDocument->file_size;
+                    $result['ktp_file_exists'] = Storage::disk('public')->exists($ktpDocument->file_path);
+                    
+                    if ($result['ktp_file_exists']) {
+                        $actualSize = Storage::disk('public')->size($ktpDocument->file_path);
+                        $result['file_size'] = $actualSize;
+                        $result['size_match'] = ($actualSize == $ktpDocument->file_size);
+                    }
+                }
+                
+                $results[] = $result;
+            }
+            
+            return response()->json([
+                'success' => true,
+                'results' => $results,
+                'summary' => [
+                    'total_checked' => count($results),
+                    'with_ktp_record' => collect($results)->where('has_ktp_record', true)->count(),
+                    'files_exist' => collect($results)->where('ktp_file_exists', true)->count(),
+                    'size_matches' => collect($results)->where('size_match', true)->count()
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error verifying KTP integrity', [
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error verifying KTP integrity: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 NEW: Force process pending KTP from session
+     */
+    public function forceProcessKtpFromSession(Request $request)
+    {
+        try {
+            // Get the latest candidate or use provided candidate code
+            $candidateCode = $request->get('candidate_code');
+            
+            if ($candidateCode) {
+                $candidate = Candidate::where('candidate_code', $candidateCode)->first();
+            } else {
+                $candidate = Candidate::latest()->first();
+            }
+            
+            if (!$candidate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No candidate found'
+                ], 404);
+            }
+            
+            Log::info('🔧 Force processing KTP from session', [
+                'candidate_id' => $candidate->id,
+                'candidate_code' => $candidate->candidate_code
+            ]);
+            
+            $uploadedFiles = [];
+            $processed = $this->handleKTPFromOCRSession($candidate, $uploadedFiles);
+            
+            return response()->json([
+                'success' => $processed,
+                'message' => $processed ? 'KTP processed successfully' : 'Failed to process KTP',
+                'candidate_code' => $candidate->candidate_code,
+                'uploaded_files' => $uploadedFiles
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error force processing KTP from session', [
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing KTP: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper method to format file size
+     */
+    private function formatFileSize($bytes)
+    {
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2) . ' MB';
+        } elseif ($bytes >= 1024) {
+            return number_format($bytes / 1024, 2) . ' KB';
+        } else {
+            return $bytes . ' bytes';
+        }
+    }
+
+    // ✅ KEEP ALL EXISTING METHODS UNCHANGED BELOW THIS POINT
+    
     public function success()
     {
         // Get candidate code from URL parameter 
@@ -460,6 +1160,13 @@ class JobApplicationController extends Controller
     private function createCandidate($validated, $positionId)
     {
         try {
+            // Prioritas NIK: OCR Session > Form input (sebagai fallback)
+            $nik = session('ocr_nik') ?: $validated['nik'] ?? null;
+            
+            if (!$nik || strlen($nik) !== 16) {
+                throw new \Exception('NIK tidak valid atau tidak ditemukan dari OCR session');
+            }
+
             $candidateData = [
                 'candidate_code' => $this->generateCandidateCode(),
                 'position_id' => $positionId,
@@ -469,7 +1176,7 @@ class JobApplicationController extends Controller
                 'application_date' => now(),
 
                 // Data pribadi langsung di tabel candidates
-                'nik' => $validated['nik'] ?? null,
+                'nik' => $nik,
                 'full_name' => $validated['full_name'] ?? null,
                 'email' => $validated['email'] ?? null,
                 'phone_number' => $validated['phone_number'] ?? null,
@@ -488,13 +1195,16 @@ class JobApplicationController extends Controller
                 'vaccination_status' => $validated['vaccination_status'] ?? null,
             ];
 
-            Log::info('Creating candidate with data', $candidateData);
+            Log::info('Creating candidate with OCR NIK', [
+                'nik' => $nik,
+                'ocr_validated' => session('ocr_validated', false)
+            ]);
 
             return Candidate::create($candidateData);
         } catch (\Exception $e) {
             Log::error('Error creating candidate', [
                 'error' => $e->getMessage(),
-                'data' => $candidateData ?? []
+                'nik_source' => session('ocr_nik') ? 'OCR' : 'FORM'
             ]);
             throw $e;
         }
@@ -521,58 +1231,6 @@ class JobApplicationController extends Controller
                     'member_index' => $index,
                     'error' => $e->getMessage(),
                     'member_data' => $member
-                ]);
-                throw $e;
-            }
-        }
-    }
-
-    private function createEducation($candidate, $educations, $educationType = 'formal')
-    {
-        foreach ($educations as $index => $education) {
-            // Skip jika field utama kosong
-            if ($educationType === 'formal') {
-                if (empty($education['education_level']) && empty($education['institution_name'])) {
-                    continue;
-                }
-            } else {
-                if (empty($education['course_name'])) {
-                    continue;
-                }
-            }
-
-            try {
-                $educationData = [
-                    'candidate_id' => $candidate->id,
-                    'education_type' => $educationType,
-                ];
-
-                if ($educationType === 'formal') {
-                    $educationData = array_merge($educationData, [
-                        'education_level' => $education['education_level'] ?? null,
-                        'institution_name' => $education['institution_name'] ?? null,
-                        'major' => $education['major'] ?? null,
-                        'start_year' => $education['start_year'] ?? null,
-                        'end_year' => $education['end_year'] ?? null,
-                        'gpa' => $education['gpa'] ?? null,
-                    ]);
-                } else {
-                    $educationData = array_merge($educationData, [
-                        'course_name' => $education['course_name'] ?? null,
-                        'organizer' => $education['organizer'] ?? null,
-                        'date' => $education['date'] ?? null,
-                        'description' => $education['description'] ?? null,
-                    ]);
-                }
-
-                Education::create($educationData);
-            } catch (\Exception $e) {
-                Log::error('Error creating education', [
-                    'candidate_id' => $candidate->id,
-                    'education_index' => $index,
-                    'education_type' => $educationType,
-                    'error' => $e->getMessage(),
-                    'education_data' => $education
                 ]);
                 throw $e;
             }
@@ -662,126 +1320,20 @@ class JobApplicationController extends Controller
         }
     }
 
-    
-    private function handleDocumentUploads($candidate, $request)
-    {
-        $uploadedFiles = [];
-        
-        try {
-            // Handle CV
-            if ($request->hasFile('cv')) {
-                $file = $request->file('cv');
-                $filename = 'cv_' . time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
-                $uploadedFiles[] = $path;
-                
-                DocumentUpload::create([
-                    'candidate_id' => $candidate->id,
-                    'document_type' => 'cv',
-                    'document_name' => 'CV',
-                    'original_filename' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                ]);
-                
-                Log::info('CV uploaded', ['candidate_id' => $candidate->id, 'path' => $path]);
-            }
-            
-            // Handle Photo
-            if ($request->hasFile('photo')) {
-                $file = $request->file('photo');
-                $filename = 'photo_' . time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
-                $uploadedFiles[] = $path;
-                
-                DocumentUpload::create([
-                    'candidate_id' => $candidate->id,
-                    'document_type' => 'photo',
-                    'document_name' => 'Photo',
-                    'original_filename' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                ]);
-                
-                Log::info('Photo uploaded', ['candidate_id' => $candidate->id, 'path' => $path]);
-            }
-            
-            // Handle Transcript
-            if ($request->hasFile('transcript')) {
-                $file = $request->file('transcript');
-                $filename = 'transcript_' . time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
-                $uploadedFiles[] = $path;
-                
-                DocumentUpload::create([
-                    'candidate_id' => $candidate->id,
-                    'document_type' => 'transcript',
-                    'document_name' => 'Transcript',
-                    'original_filename' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                ]);
-                
-                Log::info('Transcript uploaded', ['candidate_id' => $candidate->id, 'path' => $path]);
-            }
-            
-            // Handle Certificates (multiple)
-            if ($request->hasFile('certificates')) {
-                $certificates = $request->file('certificates');
-                
-                foreach ($certificates as $index => $certificate) {
-                    $filename = 'certificate_' . time() . '_' . ($index + 1) . '_' . Str::slug(pathinfo($certificate->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $certificate->getClientOriginalExtension();
-                    $path = $certificate->storeAs('documents/' . $candidate->candidate_code, $filename, 'public');
-                    $uploadedFiles[] = $path;
-                    
-                    DocumentUpload::create([
-                        'candidate_id' => $candidate->id,
-                        'document_type' => 'certificates',
-                        'document_name' => 'Certificate ' . ($index + 1),
-                        'original_filename' => $certificate->getClientOriginalName(),
-                        'file_path' => $path,
-                        'file_size' => $certificate->getSize(),
-                        'mime_type' => $certificate->getMimeType(),
-                    ]);
-                    
-                    Log::info('Certificate uploaded', ['candidate_id' => $candidate->id, 'index' => $index + 1, 'path' => $path]);
-                }
-            }
-            
-            return $uploadedFiles;
-            
-        } catch (\Exception $e) {
-            Log::error('Error during file upload', [
-                'candidate_id' => $candidate->id,
-                'error' => $e->getMessage(),
-                'uploaded_files' => $uploadedFiles
-            ]);
-            
-            // Clean up any files that were uploaded before the error
-            $this->cleanupUploadedFiles($uploadedFiles);
-            
-            throw $e;
-        }
-    }
-
     private function generateCandidateCode()
     {
-        $prefix = 'KMI' . date('Y');
-        $lastCandidate = Candidate::where('candidate_code', 'like', $prefix . '%')
-            ->orderBy('candidate_code', 'desc')
-            ->first();
+        $prefix = 'CND';
+        $year = date('Y');
+        $month = date('m');
         
-        if ($lastCandidate) {
-            $lastNumber = (int) substr($lastCandidate->candidate_code, -4);
-            $newNumber = $lastNumber + 1;
-        } else {
-            $newNumber = 1;
-        }
+        $lastCandidate = Candidate::whereYear('created_at', $year)
+                            ->whereMonth('created_at', $month)
+                            ->orderBy('id', 'desc')
+                            ->first();
         
-        return $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+        $sequence = $lastCandidate ? (int)substr($lastCandidate->candidate_code, -4) + 1 : 1;
+        
+        return $prefix . $year . $month . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 
     private function createLanguageSkills($candidate, $skills)
@@ -866,173 +1418,46 @@ class JobApplicationController extends Controller
     }
 
     /**
-     * Force create minimal records di semua tabel untuk menjaga konsistensi ID
+     * Check if email already exists - AJAX endpoint
      */
-    private function forceCreateMinimalRecords($candidate, $validated)
+    public function checkEmailExists(Request $request)
     {
-        // 1. Family Members - minimal 1 record
-        $this->ensureFamilyMembers($candidate, $validated['family_members'] ?? []);
+        $email = $request->get('email');
         
-        // 2. Education - minimal 2 records (1 formal + 1 non-formal)
-        $this->ensureEducation($candidate, $validated);
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return response()->json([
+                'exists' => false,
+                'message' => 'Email tidak valid'
+            ]);
+        }
         
-        // 3. Language Skills - minimal 1 record
-        $this->ensureLanguageSkills($candidate, $validated['language_skills'] ?? []);
+        $exists = \App\Models\Candidate::where('email', $email)->exists();
         
-        // 4. Work Experience - minimal 1 record
-        $this->ensureWorkExperience($candidate, $validated['work_experiences'] ?? []);
-        
-        // 5. Driving License - minimal 1 record
-        $this->ensureDrivingLicense($candidate, $validated['driving_licenses'] ?? []);
-        
-        // 6. Activities - minimal 2 records (1 social + 1 achievement)
-        $this->ensureActivities($candidate, $validated);
-        
-        // 7. Additional Info - selalu 1 record
-        $this->createCandidateAdditionalInfo($candidate, $validated);
-        
-        Log::info('✅ All minimal records ensured for candidate', ['candidate_id' => $candidate->id]);
+        return response()->json([
+            'exists' => $exists,
+            'message' => $exists ? 'Email sudah terdaftar dalam sistem' : 'Email tersedia'
+        ]);
     }
 
-    private function ensureFamilyMembers($candidate, $familyMembers)
+    /**
+     * Check if NIK already exists - AJAX endpoint
+     */
+    public function checkNikExists(Request $request)
     {
-        if (!empty($familyMembers)) {
-            $this->createFamilyMembers($candidate, $familyMembers);
-            Log::info('Family members created from data', ['count' => count($familyMembers)]);
-        } else {
-            FamilyMember::create([
-                'candidate_id' => $candidate->id,
-                'relationship' => null,
-                'name' => null,
-                'age' => null,
-                'education' => null,
-                'occupation' => null,
+        $nik = $request->get('nik');
+        
+        if (!$nik || !preg_match('/^[0-9]{16}$/', $nik)) {
+            return response()->json([
+                'exists' => false,
+                'message' => 'NIK harus 16 digit angka'
             ]);
-            Log::info('Empty family member record created for ID consistency');
-        }
-    }
-
-    private function ensureEducation($candidate, $validated)
-    {
-        // Formal Education - minimal 1 record
-        if (!empty($validated['formal_education'])) {
-            $this->createEducation($candidate, $validated['formal_education'], 'formal');
-            Log::info('Formal education created from data', ['count' => count($validated['formal_education'])]);
-        } else {
-            Education::create([
-                'candidate_id' => $candidate->id,
-                'education_type' => 'formal',
-                'education_level' => null,
-                'institution_name' => null,
-                'major' => null,
-                'start_year' => null,
-                'end_year' => null,
-                'gpa' => null,
-            ]);
-            Log::info('Empty formal education record created for ID consistency');
         }
         
-        // Non-formal Education - minimal 1 record
-        if (!empty($validated['non_formal_education'])) {
-            $this->createEducation($candidate, $validated['non_formal_education'], 'non_formal');
-            Log::info('Non-formal education created from data', ['count' => count($validated['non_formal_education'])]);
-        } else {
-            Education::create([
-                'candidate_id' => $candidate->id,
-                'education_type' => 'non_formal',
-                'course_name' => null,
-                'organizer' => null,
-                'date' => null,
-                'description' => null,
-            ]);
-            Log::info('Empty non-formal education record created for ID consistency');
-        }
-    }
-
-    private function ensureLanguageSkills($candidate, $languageSkills)
-    {
-        if (!empty($languageSkills)) {
-            $this->createLanguageSkills($candidate, $languageSkills);
-            Log::info('Language skills created from data', ['count' => count($languageSkills)]);
-        } else {
-            LanguageSkill::create([
-                'candidate_id' => $candidate->id,
-                'language' => null,
-                'speaking_level' => null,
-                'writing_level' => null,
-            ]);
-            Log::info('Empty language skill record created for ID consistency');
-        }
-    }
-
-    private function ensureWorkExperience($candidate, $workExperiences)
-    {
-        if (!empty($workExperiences)) {
-            $this->createWorkExperiences($candidate, $workExperiences);
-            Log::info('Work experiences created from data', ['count' => count($workExperiences)]);
-        } else {
-            WorkExperience::create([
-                'candidate_id' => $candidate->id,
-                'company_name' => null,
-                'company_address' => null,
-                'company_field' => null,
-                'position' => null,
-                'start_year' => null,
-                'end_year' => null,
-                'salary' => null,
-                'reason_for_leaving' => null,
-                'supervisor_contact' => null,
-            ]);
-            Log::info('Empty work experience record created for ID consistency');
-        }
-    }
-
-    private function ensureDrivingLicense($candidate, $drivingLicenses)
-    {
-        if (!empty($drivingLicenses)) {
-            $this->createDrivingLicenses($candidate, $drivingLicenses);
-            Log::info('Driving licenses created from data', ['count' => count($drivingLicenses)]);
-        } else {
-            DrivingLicense::create([
-                'candidate_id' => $candidate->id,
-                'license_type' => null,
-            ]);
-            Log::info('Empty driving license record created for ID consistency');
-        }
-    }
-
-    private function ensureActivities($candidate, $validated)
-    {
-        // Social Activities - minimal 1 record
-        if (!empty($validated['social_activities'])) {
-            $this->createActivities($candidate, $validated['social_activities'], 'social_activity');
-            Log::info('Social activities created from data', ['count' => count($validated['social_activities'])]);
-        } else {
-            Activity::create([
-                'candidate_id' => $candidate->id,
-                'activity_type' => 'social_activity',
-                'title' => null,
-                'field_or_year' => null,
-                'period' => null,
-                'description' => null,
-            ]);
-            Log::info('Empty social activity record created for ID consistency');
-        }
+        $exists = \App\Models\Candidate::where('nik', $nik)->exists();
         
-        // Achievements - minimal 1 record
-        if (!empty($validated['achievements'])) {
-            $this->createActivities($candidate, $validated['achievements'], 'achievement');
-            Log::info('Achievements created from data', ['count' => count($validated['achievements'])]);
-        } else {
-            Activity::create([
-                'candidate_id' => $candidate->id,
-                'activity_type' => 'achievement',
-                'title' => null,
-                'field_or_year' => null,
-                'period' => null,
-                'description' => null,
-            ]);
-            Log::info('Empty achievement record created for ID consistency');
-        }
+        return response()->json([
+            'exists' => $exists,
+            'message' => $exists ? 'NIK sudah terdaftar dalam sistem' : 'NIK tersedia'
+        ]);
     }
 }

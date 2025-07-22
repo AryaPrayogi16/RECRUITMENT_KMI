@@ -16,6 +16,50 @@ class JobApplicationRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation()
+    {
+        // 🆕 UPDATED: Simplified NIK validation focusing on actual OCR data
+        $ocrNik = session('ocr_nik');
+        $formNik = $this->input('nik');
+        $ocrValidated = session('ocr_validated', false);
+        
+        // 🔍 ENHANCED DEBUGGING: Log all relevant session information
+        \Log::info('=== NIK VALIDATION PREPARATION (Simplified) ===', [
+            'ocr_nik' => $ocrNik,
+            'form_nik' => $formNik,
+            'ocr_validated' => $ocrValidated,
+            'session_id' => session()->getId(),
+            'has_ocr_ktp_path' => session()->has('ocr_ktp_path'),
+            'ocr_ktp_path' => session('ocr_ktp_path'),
+            'ocr_timestamp' => session('ocr_timestamp'),
+        ]);
+
+        // 🆕 SIMPLIFIED: Use OCR NIK if available, otherwise allow form input as fallback
+        $finalNik = null;
+        if ($ocrNik && strlen(trim($ocrNik)) === 16) {
+            $finalNik = $ocrNik;
+            \Log::info('✅ Using NIK from OCR session', ['nik' => $finalNik]);
+        } elseif ($formNik && strlen(trim($formNik)) === 16) {
+            $finalNik = $formNik;
+            \Log::info('⚠️ Using NIK from form input (fallback)', ['nik' => $finalNik]);
+        } else {
+            \Log::error('❌ No valid NIK found', [
+                'ocr_nik_length' => $ocrNik ? strlen(trim($ocrNik)) : 0,
+                'form_nik_length' => $formNik ? strlen(trim($formNik)) : 0
+            ]);
+        }
+
+        if ($finalNik) {
+            $this->merge(['nik' => $finalNik]);
+            \Log::info('✅ Final NIK merged into request', ['final_nik' => $finalNik]);
+        } else {
+            \Log::error('❌ No NIK to merge into request - form will fail validation');
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      */
     public function rules(): array
@@ -25,7 +69,83 @@ class JobApplicationRequest extends FormRequest
             'position_applied' => 'required|string|max:255',
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:candidates,email',
-            'nik' => 'required|string|size:16|regex:/^[0-9]{16}$/|unique:candidates,nik',
+            
+            // 🆕 UPDATED: Simplified NIK validation - less restrictive but still secure
+            'nik' => [
+                'required',
+                'string',
+                'size:16',
+                'regex:/^[0-9]{16}$/',
+                function ($attribute, $value, $fail) {
+                    \Log::info('=== NIK CUSTOM VALIDATION (Simplified) ===', [
+                        'attribute' => $attribute,
+                        'provided_value' => $value,
+                        'value_length' => strlen($value ?? ''),
+                        'is_numeric' => is_numeric($value ?? ''),
+                    ]);
+
+                    // Enhanced NIK format validation
+                    if (!$this->validateNIKFormat($value)) {
+                        \Log::warning('❌ NIK format validation failed', ['nik' => $value]);
+                        $fail('Format NIK tidak valid.');
+                        return;
+                    }
+
+                    // Check if NIK already exists in database
+                    $existingCandidate = \App\Models\Candidate::where('nik', $value)
+                                                           ->whereNull('deleted_at')
+                                                           ->first();
+                    if ($existingCandidate) {
+                        \Log::warning('❌ NIK already exists in database', [
+                            'nik' => $value,
+                            'existing_candidate_id' => $existingCandidate->id,
+                            'existing_created_at' => $existingCandidate->created_at
+                        ]);
+                        $fail("NIK sudah terdaftar dalam sistem pada tanggal " . 
+                              $existingCandidate->created_at->format('d/m/Y') . 
+                              " untuk posisi " . $existingCandidate->position_applied . ".");
+                        return;
+                    }
+
+                    // 🆕 SIMPLIFIED SECURITY: Only require OCR validation if OCR session exists
+                    $ocrValidated = session('ocr_validated', false);
+                    $ocrNik = session('ocr_nik');
+                    $hasOcrData = session()->has('ocr_ktp_path') || session()->has('ocr_timestamp');
+                    
+                    \Log::info('=== NIK SECURITY VALIDATION (Simplified) ===', [
+                        'provided_nik' => $value,
+                        'ocr_nik' => $ocrNik,
+                        'ocr_validated' => $ocrValidated,
+                        'has_ocr_data' => $hasOcrData,
+                        'nik_match_ocr' => $ocrNik === $value,
+                    ]);
+
+                    // If OCR was performed and NIK doesn't match, require matching
+                    if ($ocrValidated && $ocrNik && $ocrNik !== $value) {
+                        \Log::warning('❌ NIK mismatch with validated OCR result', [
+                            'provided' => $value,
+                            'ocr_result' => $ocrNik
+                        ]);
+                        $fail('NIK tidak sesuai dengan hasil scan KTP. NIK dari scan: ' . $ocrNik);
+                        return;
+                    }
+
+                    // 🆕 RELAXED: Allow form submission without OCR if no OCR data exists
+                    // This provides a fallback for cases where OCR fails or isn't available
+                    if (!$ocrValidated && !$hasOcrData && !$ocrNik) {
+                        \Log::info('⚠️ No OCR data found - allowing manual NIK entry', [
+                            'nik' => $value,
+                            'note' => 'This is a fallback for when OCR is not available'
+                        ]);
+                        return; // Allow the NIK to pass validation
+                    }
+
+                    \Log::info('✅ NIK validation passed', [
+                        'nik' => $value,
+                        'validation_method' => $ocrValidated ? 'ocr_validated' : 'manual_fallback'
+                    ]);
+                },
+            ],
             'agreement' => 'required|accepted',
             
             // Personal Data
@@ -72,7 +192,7 @@ class JobApplicationRequest extends FormRequest
                     }
                 },
             ],
-            'formal_education.*.gpa' => 'required|numeric|min:0|max:4',
+            'formal_education.*.gpa' => 'required|numeric|min:0|max:100',
             
             // Non-Formal Education - Optional
             'non_formal_education' => 'nullable|array',
@@ -148,11 +268,10 @@ class JobApplicationRequest extends FormRequest
             'has_other_business' => 'nullable|boolean',
             'other_business_detail' => 'nullable|required_if:has_other_business,1|string|max:255',
             'absence_days' => 'nullable|integer|min:0|max:365',
-            // ✅ PERUBAHAN: Explicit date validation untuk start_work_date
             'start_work_date' => 'required|date|after:' . now()->format('Y-m-d'),
             'information_source' => 'required|string|max:255',
             
-            // Document Uploads - Enhanced validation with custom rule
+            // Document Uploads
             'cv' => 'required|file|mimes:pdf|max:2048',
             'photo' => ['required', 'file', 'max:2048', function ($attribute, $value, $fail) {
                 $this->validateImageFile($attribute, $value, $fail);
@@ -164,7 +283,67 @@ class JobApplicationRequest extends FormRequest
     }
 
     /**
-     * Custom validation for image files
+     * 🆕 Enhanced NIK format validation
+     */
+    private function validateNIKFormat($nik)
+    {
+        \Log::info('Validating NIK format', ['nik' => $nik]);
+
+        // Basic format check
+        if (!preg_match('/^[0-9]{16}$/', $nik)) {
+            \Log::warning('NIK format check failed: not 16 digits', ['nik' => $nik]);
+            return false;
+        }
+        
+        // Check if all digits are the same (invalid pattern)
+        if (preg_match('/^(\d)\1{15}$/', $nik)) {
+            \Log::warning('NIK format check failed: all same digits', ['nik' => $nik]);
+            return false;
+        }
+        
+        // Check if starts with 00 (usually invalid)
+        if (substr($nik, 0, 2) === '00') {
+            \Log::warning('NIK format check failed: starts with 00', ['nik' => $nik]);
+            return false;
+        }
+        
+        // Basic province code validation (first 2 digits should be 11-94)
+        $provinceCode = (int)substr($nik, 0, 2);
+        if ($provinceCode < 11 || $provinceCode > 94) {
+            \Log::warning('NIK format check failed: invalid province code', [
+                'nik' => $nik,
+                'province_code' => $provinceCode
+            ]);
+            return false;
+        }
+        
+        // Basic date validation (digits 7-12 represent DDMMYY)
+        $day = (int)substr($nik, 6, 2);
+        $month = (int)substr($nik, 8, 2);
+        $year = (int)substr($nik, 10, 2);
+        
+        // Adjust day for female (subtract 40)
+        if ($day > 40) {
+            $day -= 40;
+        }
+        
+        // Basic date range validation
+        if ($day < 1 || $day > 31 || $month < 1 || $month > 12) {
+            \Log::warning('NIK format check failed: invalid date', [
+                'nik' => $nik,
+                'day' => $day,
+                'month' => $month,
+                'year' => $year
+            ]);
+            return false;
+        }
+        
+        \Log::info('✅ NIK format validation passed', ['nik' => $nik]);
+        return true;
+    }
+
+    /**
+     * Custom validation for image files - enhanced
      */
     private function validateImageFile($attribute, $value, $fail)
     {
@@ -207,6 +386,12 @@ class JobApplicationRequest extends FormRequest
                 'valid_extensions' => $validExtensions
             ]);
             $fail("File {$attribute} harus berformat JPG atau PNG (ekstensi file: {$extension}).");
+            return;
+        }
+
+        // Check file size
+        if ($value->getSize() > 2 * 1024 * 1024) {
+            $fail("File {$attribute} maksimal 2MB.");
             return;
         }
 
@@ -331,11 +516,10 @@ class JobApplicationRequest extends FormRequest
             'certificates.*.mimes' => 'Sertifikat harus berformat PDF.',
             'certificates.*.max' => 'Ukuran sertifikat maksimal 2MB.',
 
-            // NIK validation messages
-            'nik.required' => 'NIK harus diisi.',
-            'nik.size' => 'NIK harus terdiri dari 16 digit.',
-            'nik.regex' => 'NIK harus berupa 16 digit angka.',
-            'nik.unique' => 'NIK sudah terdaftar dalam sistem.',
+            // 🆕 UPDATED: Improved NIK validation messages
+            'nik.required' => 'NIK harus diisi. Gunakan fitur scan KTP untuk pengisian otomatis.',
+            'nik.size' => 'NIK harus terdiri dari 16 digit angka.',
+            'nik.regex' => 'NIK harus berupa 16 digit angka tanpa spasi atau karakter lain.',
         ];
     }
 
@@ -350,6 +534,7 @@ class JobApplicationRequest extends FormRequest
             'transcript' => 'Transkrip Nilai',
             'certificates' => 'Sertifikat',
             'certificates.*' => 'Sertifikat',
+            'nik' => 'NIK'
         ];
     }
 }

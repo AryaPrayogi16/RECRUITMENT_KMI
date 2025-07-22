@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <link href="{{ asset('css/form-style.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/ktp-ocr.css') }}" rel="stylesheet">
 
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -90,6 +91,7 @@
                             value="{{ old('nik') }}" maxlength="16" pattern="[0-9]{16}" 
                             placeholder="Masukkan 16 digit NIK" required>
                         <small class="text-gray-500 text-xs">NIK harus 16 digit angka sesuai KTP</small>
+                        <!-- Enhanced OCR Upload Area akan ditambahkan di sini oleh JavaScript -->
                     </div>
                     
                     <div class="form-group">
@@ -288,7 +290,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">IPK/Nilai <span class="required-star">*</span></label>
-                                <input type="number" name="formal_education[0][gpa]" class="form-input" step="0.01" min="0" max="4" required>
+                                <input type="number" name="formal_education[0][gpa]" class="form-input"  min="0" max="100" required>
                             </div>
                         </div>
                         <div class="mt-4">
@@ -455,7 +457,7 @@
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" for="motivation">Motivasi untuk bergabung dengan PT Kayu Mebel Indonesia <span class="required-star">*</span></label>
+                    <label class="form-label" for="motivation">Motivasi untuk bergabung dengan PT Kayu Mebel Indonesia Group <span class="required-star">*</span></label>
                     <textarea name="motivation" id="motivation" class="form-input" rows="3" 
                               placeholder="Jelaskan motivasi Anda bergabung dengan perusahaan" required>{{ old('motivation') }}</textarea>
                 </div>
@@ -648,13 +650,25 @@
         <span>Data tersimpan otomatis</span>
     </div>
 
-    <!-- Include External JavaScript -->
+    <!-- Include External JavaScript menggunakan CDN yang sama dengan index.html -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <script>
         // Pass Laravel session data to JavaScript
         @if(session('form_submitted'))
             var formSubmitted = true;
         @endif
+        
+        // Test Tesseract availability seperti index.html
+        window.addEventListener('load', function() {
+            console.log('✅ Tesseract loaded:', typeof Tesseract !== 'undefined');
+            if (typeof Tesseract !== 'undefined') {
+                console.log('📦 Tesseract ready for NIK extraction');
+            } else {
+                console.error('❌ Tesseract failed to load');
+            }
+        });
     </script>
     <script src="{{ asset('js/form-style.js') }}"></script>
+    <script src="{{ asset('js/ktp-ocr.js') }}"></script>
 </body>
 </html>

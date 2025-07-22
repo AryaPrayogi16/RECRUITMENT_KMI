@@ -30,6 +30,7 @@ class DocumentUpload extends Model
     const TYPE_PHOTO = 'photo';
     const TYPE_CERTIFICATES = 'certificates';
     const TYPE_TRANSCRIPT = 'transcript';
+    const TYPE_KTP = 'ktp'; // 🆕 New KTP document type
 
     // Relationships
     public function candidate(): BelongsTo
@@ -72,7 +73,8 @@ class DocumentUpload extends Model
             'cv' => 'CV/Resume',
             'photo' => 'Foto',
             'certificates' => 'Sertifikat',
-            'transcript' => 'Transkrip Nilai'
+            'transcript' => 'Transkrip Nilai',
+            'ktp' => 'KTP' // 🆕 New KTP label
         ];
 
         return $labels[$this->document_type] ?? $this->document_type;
@@ -95,7 +97,8 @@ class DocumentUpload extends Model
             self::TYPE_CV => 'CV/Resume',
             self::TYPE_PHOTO => 'Foto',
             self::TYPE_CERTIFICATES => 'Sertifikat',
-            self::TYPE_TRANSCRIPT => 'Transkrip Nilai'
+            self::TYPE_TRANSCRIPT => 'Transkrip Nilai',
+            self::TYPE_KTP => 'KTP' // 🆕 New KTP type
         ];
     }
 }

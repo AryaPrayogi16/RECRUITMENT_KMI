@@ -9,14 +9,14 @@ use App\Models\{
     Disc3DSectionChoice,
     Disc3DResponse,
     Disc3DResult,
-    Disc3DConfig
+    Disc3DConfig,
+    Disc3DProfileInterpretation
 };
 use App\Helpers\DeviceInfoHelper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Models\Disc3DProfileInterpretation;
 
 class DiscTestService
 {
@@ -427,10 +427,12 @@ class DiscTestService
     }
 
     /**
-     * ✅ Calculate comprehensive DISC results (core algorithm unchanged)
+     * ✅ FIXED: Calculate comprehensive DISC results with proper profile interpretations
      */
     private function calculateDisc3DResults(Disc3DTestSession $session, int $totalDuration): Disc3DResult
     {
+        Log::info('🔄 Starting DISC result calculation', ['session_id' => $session->id]);
+        
         // Load responses using DB query to ensure fresh data
         $responses = DB::table('disc_3d_responses')
             ->where('test_session_id', $session->id)
@@ -455,6 +457,12 @@ class DiscTestService
         $leastSegments = $this->convertToSegments($leastPercentages);
         $changeSegments = $this->convertChangeToSegments($changeRawScores);
         
+        Log::info('📊 Calculated segments', [
+            'most_segments' => $mostSegments,
+            'least_segments' => $leastSegments, 
+            'change_segments' => $changeSegments
+        ]);
+        
         // Determine patterns
         $mostPattern = $this->determinePattern($mostPercentages);
         $leastPattern = $this->determinePattern($leastPercentages);
@@ -462,15 +470,24 @@ class DiscTestService
         
         // Generate interpretations
         $interpretations = $this->generateInterpretations($mostSegments, $leastSegments, $changeSegments);
+        
+        // ✅ FIXED: Get profile interpretations with better error handling
         $profileInterpretations = $this->getProfileInterpretations($mostSegments, $leastSegments, $changeSegments);
+        
+        Log::info('📋 Profile interpretations loaded', [
+            'has_work_style' => !empty($profileInterpretations['work_style']),
+            'has_communication' => !empty($profileInterpretations['communication']),
+            'has_stress' => !empty($profileInterpretations['stress']),
+            'has_motivators' => !empty($profileInterpretations['motivators'])
+        ]);
         
         // Calculate consistency and validity
         $consistencyScore = $this->calculateConsistencyScore($responses);
         $validityFlags = $this->performValidityChecks($responses, $session);
         $isValid = empty($validityFlags['critical_flags']);
         
-        // Create result record
-        $result = Disc3DResult::create([
+        // ✅ FIXED: Create result record with ALL interpretation fields
+        $resultData = [
             'test_session_id' => $session->id,
             'candidate_id' => $session->candidate_id,
             'test_code' => $session->test_code,
@@ -558,29 +575,60 @@ class DiscTestService
             // Performance
             'response_consistency' => $this->calculateResponseConsistency($responses),
             'average_response_time' => round(collect($responses)->avg('time_spent_seconds')),
-            'timing_analysis' => json_encode($this->analyzeTimingPatterns($responses)),
-
-            // Work style interpretations
-            'work_style_most' => json_encode($profileInterpretations['work_style']['most']),
-            'work_style_least' => json_encode($profileInterpretations['work_style']['least']),
-            'work_style_adaptation' => json_encode($profileInterpretations['work_style']['adaptation']),
-            // Communication style interpretations  
-            'communication_style_most' => json_encode($profileInterpretations['communication']['most']),
-            'communication_style_least' => json_encode($profileInterpretations['communication']['least']),
-            // Stress behavior patterns
-            'stress_behavior_most' => json_encode($profileInterpretations['stress']['most']),
-            'stress_behavior_least' => json_encode($profileInterpretations['stress']['least']),
-            'stress_behavior_change' => json_encode($profileInterpretations['stress']['change']),
-            // Motivators and fears
-            'motivators_most' => json_encode($profileInterpretations['motivators']['most']),
-            'motivators_least' => json_encode($profileInterpretations['motivators']['least']),
-            'fears_most' => json_encode($profileInterpretations['fears']['most']),
-            'fears_least' => json_encode($profileInterpretations['fears']['least']),
-            // Compiled interpretations for easy access
-            'work_style_summary' => $this->compileWorkStyleSummary($profileInterpretations['work_style']),
-            'communication_summary' => $this->compileCommunicationSummary($profileInterpretations['communication']),
-            'motivators_summary' => $this->compileMotivatorsSummary($profileInterpretations['motivators']),
-            'stress_management_summary' => $this->compileStressSummary($profileInterpretations['stress']),
+            'timing_analysis' => json_encode($this->analyzeTimingPatterns($responses))
+        ];
+        
+        // ✅ FIXED: Add profile interpretation fields with safe JSON encoding
+        if (!empty($profileInterpretations['work_style'])) {
+            $resultData['work_style_most'] = json_encode($profileInterpretations['work_style']['most'] ?? []);
+            $resultData['work_style_least'] = json_encode($profileInterpretations['work_style']['least'] ?? []);
+            $resultData['work_style_adaptation'] = json_encode($profileInterpretations['work_style']['adaptation'] ?? []);
+        }
+        
+        if (!empty($profileInterpretations['communication'])) {
+            $resultData['communication_style_most'] = json_encode($profileInterpretations['communication']['most'] ?? []);
+            $resultData['communication_style_least'] = json_encode($profileInterpretations['communication']['least'] ?? []);
+        }
+        
+        if (!empty($profileInterpretations['stress'])) {
+            $resultData['stress_behavior_most'] = json_encode($profileInterpretations['stress']['most'] ?? []);
+            $resultData['stress_behavior_least'] = json_encode($profileInterpretations['stress']['least'] ?? []);
+            $resultData['stress_behavior_change'] = json_encode($profileInterpretations['stress']['change'] ?? []);
+        }
+        
+        if (!empty($profileInterpretations['motivators'])) {
+            $resultData['motivators_most'] = json_encode($profileInterpretations['motivators']['most'] ?? []);
+            $resultData['motivators_least'] = json_encode($profileInterpretations['motivators']['least'] ?? []);
+        }
+        
+        if (!empty($profileInterpretations['fears'])) {
+            $resultData['fears_most'] = json_encode($profileInterpretations['fears']['most'] ?? []);
+            $resultData['fears_least'] = json_encode($profileInterpretations['fears']['least'] ?? []);
+        }
+        
+        // ✅ Add compiled interpretation summaries
+        $resultData['work_style_summary'] = $this->compileWorkStyleSummary($profileInterpretations['work_style'] ?? []);
+        $resultData['communication_summary'] = $this->compileCommunicationSummary($profileInterpretations['communication'] ?? []);
+        $resultData['motivators_summary'] = $this->compileMotivatorsSummary($profileInterpretations['motivators'] ?? []);
+        $resultData['stress_management_summary'] = $this->compileStressSummary($profileInterpretations['stress'] ?? []);
+        
+        Log::info('💾 Creating result with profile interpretations', [
+            'has_work_style_most' => !empty($resultData['work_style_most']),
+            'has_communication_most' => !empty($resultData['communication_style_most']),
+            'has_stress_most' => !empty($resultData['stress_behavior_most']),
+            'has_motivators_most' => !empty($resultData['motivators_most'])
+        ]);
+        
+        $result = Disc3DResult::create($resultData);
+        
+        Log::info('✅ DISC result created successfully', [
+            'result_id' => $result->id,
+            'has_interpretations' => [
+                'work_style_most' => !is_null($result->work_style_most),
+                'communication_style_most' => !is_null($result->communication_style_most),
+                'stress_behavior_most' => !is_null($result->stress_behavior_most),
+                'motivators_most' => !is_null($result->motivators_most)
+            ]
         ]);
         
         return $result;
@@ -612,8 +660,7 @@ class DiscTestService
         return $code;
     }
 
-    // ===== ALL OTHER CALCULATION METHODS REMAIN THE SAME =====
-    // (Include all other helper methods for calculation, scoring, etc.)
+    // ===== CALCULATION METHODS =====
     
     private function calculateGraphRawScores($responses, string $graphType): array
     {
@@ -851,8 +898,7 @@ class DiscTestService
         }
     }
 
-    // ===== INCLUDE ALL OTHER HELPER METHODS =====
-    // (Add all remaining calculation, validation, and interpretation methods)
+    // ===== INTERPRETATION METHODS =====
     
     private function generateInterpretations(array $mostSegments, array $leastSegments, array $changeSegments): array
     {
@@ -1060,8 +1106,17 @@ class DiscTestService
         };
     }
 
+    /**
+     * ✅ FIXED: Get profile interpretations with better error handling
+     */
     private function getProfileInterpretations(array $mostSegments, array $leastSegments, array $changeSegments): array
     {
+        Log::info('📋 Getting profile interpretations', [
+            'most_segments' => $mostSegments,
+            'least_segments' => $leastSegments,
+            'change_segments' => $changeSegments
+        ]);
+        
         $interpretations = [
             'work_style' => ['most' => [], 'least' => [], 'adaptation' => []],
             'communication' => ['most' => [], 'least' => []],
@@ -1071,7 +1126,7 @@ class DiscTestService
         ];
         
         foreach (['D', 'I', 'S', 'C'] as $dimension) {
-            // MOST
+            // MOST interpretations
             $mostInterpretation = $this->getInterpretation($dimension, 'MOST', $mostSegments[$dimension]);
             if ($mostInterpretation) {
                 $interpretations['work_style']['most'][$dimension] = $this->decodeJsonField($mostInterpretation->work_style);
@@ -1079,8 +1134,14 @@ class DiscTestService
                 $interpretations['stress']['most'][$dimension] = $this->decodeJsonField($mostInterpretation->stress_behavior);
                 $interpretations['motivators']['most'][$dimension] = $this->decodeJsonField($mostInterpretation->motivators);
                 $interpretations['fears']['most'][$dimension] = $this->decodeJsonField($mostInterpretation->fears);
+            } else {
+                Log::warning('MOST interpretation not found', [
+                    'dimension' => $dimension,
+                    'segment' => $mostSegments[$dimension]
+                ]);
             }
-            // LEAST
+            
+            // LEAST interpretations
             $leastInterpretation = $this->getInterpretation($dimension, 'LEAST', $leastSegments[$dimension]);
             if ($leastInterpretation) {
                 $interpretations['work_style']['least'][$dimension] = $this->decodeJsonField($leastInterpretation->work_style);
@@ -1088,116 +1149,266 @@ class DiscTestService
                 $interpretations['stress']['least'][$dimension] = $this->decodeJsonField($leastInterpretation->stress_behavior);
                 $interpretations['motivators']['least'][$dimension] = $this->decodeJsonField($leastInterpretation->motivators);
                 $interpretations['fears']['least'][$dimension] = $this->decodeJsonField($leastInterpretation->fears);
+            } else {
+                Log::warning('LEAST interpretation not found', [
+                    'dimension' => $dimension,
+                    'segment' => $leastSegments[$dimension]
+                ]);
             }
-            // CHANGE
+            
+            // CHANGE interpretations
             $changeInterpretation = $this->getInterpretation($dimension, 'CHANGE', $changeSegments[$dimension]);
             if ($changeInterpretation) {
                 $interpretations['work_style']['adaptation'][$dimension] = $this->decodeJsonField($changeInterpretation->work_style);
                 $interpretations['stress']['change'][$dimension] = $this->decodeJsonField($changeInterpretation->stress_behavior);
+            } else {
+                Log::warning('CHANGE interpretation not found', [
+                    'dimension' => $dimension,
+                    'segment' => $changeSegments[$dimension]
+                ]);
             }
         }
+        
+        Log::info('📊 Profile interpretations processed', [
+            'work_style_most_count' => count(array_filter($interpretations['work_style']['most'])),
+            'communication_most_count' => count(array_filter($interpretations['communication']['most'])),
+            'stress_most_count' => count(array_filter($interpretations['stress']['most'])),
+            'motivators_most_count' => count(array_filter($interpretations['motivators']['most']))
+        ]);
+        
         return $interpretations;
     }
 
+    /**
+     * ✅ Get interpretation with better error handling
+     */
     private function getInterpretation(string $dimension, string $graphType, int $segmentLevel)
     {
         try {
-            return Disc3DProfileInterpretation::where('dimension', $dimension)
+            // ✅ FIXED: Add more detailed logging and validation
+            Log::info('Loading interpretation', [
+                'dimension' => $dimension,
+                'graph_type' => $graphType,
+                'segment_level' => $segmentLevel
+            ]);
+            
+            $interpretation = Disc3DProfileInterpretation::where('dimension', $dimension)
                 ->where('graph_type', $graphType)
                 ->where('segment_level', $segmentLevel)
                 ->first();
-        } catch (\Exception $e) {
-            Log::warning('Could not load interpretation', [
+                
+            if (!$interpretation) {
+                Log::warning('Interpretation not found in database', [
+                    'dimension' => $dimension,
+                    'graph_type' => $graphType,
+                    'segment_level' => $segmentLevel,
+                    'total_interpretations' => Disc3DProfileInterpretation::count(),
+                    'available_for_dimension' => Disc3DProfileInterpretation::where('dimension', $dimension)->count()
+                ]);
+                
+                // ✅ Create fallback interpretation to prevent null errors
+                return $this->createFallbackInterpretation($dimension, $graphType, $segmentLevel);
+            }
+            
+            Log::info('Interpretation loaded successfully', [
                 'dimension' => $dimension,
                 'graph_type' => $graphType,
                 'segment_level' => $segmentLevel,
-                'error' => $e->getMessage()
+                'has_work_style' => !is_null($interpretation->work_style),
+                'has_communication' => !is_null($interpretation->communication_style),
+                'has_stress' => !is_null($interpretation->stress_behavior),
+                'has_motivators' => !is_null($interpretation->motivators)
             ]);
-            return null;
+            
+            return $interpretation;
+            
+        } catch (\Exception $e) {
+            Log::error('Error loading interpretation', [
+                'dimension' => $dimension,
+                'graph_type' => $graphType,
+                'segment_level' => $segmentLevel,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // ✅ Return fallback instead of null
+            return $this->createFallbackInterpretation($dimension, $graphType, $segmentLevel);
         }
     }
 
+    /**
+     * ✅ Create fallback interpretation when database lookup fails
+     */
+    private function createFallbackInterpretation(string $dimension, string $graphType, int $segmentLevel)
+    {
+        $dimensionNames = ['D' => 'Dominance', 'I' => 'Influence', 'S' => 'Steadiness', 'C' => 'Conscientiousness'];
+        $dimensionName = $dimensionNames[$dimension] ?? $dimension;
+        
+        // Create a simple object with fallback data
+        return (object) [
+            'dimension' => $dimension,
+            'graph_type' => $graphType,
+            'segment_level' => $segmentLevel,
+            'title' => "Fallback {$dimensionName} Level {$segmentLevel}",
+            'description' => "Fallback interpretation for {$dimensionName} on {$graphType} graph, level {$segmentLevel}",
+            'work_style' => json_encode(["Fallback work style for {$dimension}"]),
+            'communication_style' => json_encode(["Fallback communication style for {$dimension}"]),
+            'stress_behavior' => json_encode(["Fallback stress behavior for {$dimension}"]),
+            'motivators' => json_encode(["Fallback motivators for {$dimension}"]),
+            'fears' => json_encode(["Fallback fears for {$dimension}"])
+        ];
+    }
+
+    /**
+     * ✅ Decode JSON field with better error handling
+     */
     private function decodeJsonField($field): array
     {
-        if (is_null($field)) return [];
-        if (is_array($field)) return $field;
-        if (is_string($field)) {
-            $decoded = json_decode($field, true);
-            return is_array($decoded) ? $decoded : [$field];
+        if (is_null($field)) {
+            return [];
         }
+        
+        if (is_array($field)) {
+            return $field;
+        }
+        
+        if (is_string($field)) {
+            try {
+                $decoded = json_decode($field, true);
+                return is_array($decoded) ? $decoded : [$field];
+            } catch (\Exception $e) {
+                Log::warning('Failed to decode JSON field', [
+                    'field' => substr($field, 0, 100),
+                    'error' => $e->getMessage()
+                ]);
+                return [$field];
+            }
+        }
+        
         return [];
     }
 
+    /**
+     * ✅ Compile work style summary
+     */
     private function compileWorkStyleSummary(array $workStyleData): string
     {
         $summary = [];
+        
         if (!empty($workStyleData['most'])) {
             $mostStyles = $this->extractMainPoints($workStyleData['most']);
-            if (!empty($mostStyles)) $summary[] = "Gaya kerja publik: " . implode(', ', $mostStyles);
+            if (!empty($mostStyles)) {
+                $summary[] = "Gaya kerja publik: " . implode(', ', $mostStyles);
+            }
         }
+        
         if (!empty($workStyleData['least'])) {
             $leastStyles = $this->extractMainPoints($workStyleData['least']);
-            if (!empty($leastStyles)) $summary[] = "Gaya kerja alami: " . implode(', ', $leastStyles);
+            if (!empty($leastStyles)) {
+                $summary[] = "Gaya kerja alami: " . implode(', ', $leastStyles);
+            }
         }
+        
         if (!empty($workStyleData['adaptation'])) {
             $adaptationStyles = $this->extractMainPoints($workStyleData['adaptation']);
-            if (!empty($adaptationStyles)) $summary[] = "Adaptasi: " . implode(', ', $adaptationStyles);
+            if (!empty($adaptationStyles)) {
+                $summary[] = "Adaptasi: " . implode(', ', $adaptationStyles);
+            }
         }
-        return !empty($summary) ? implode('. ', $summary) . '.' : 'Gaya kerja yang seimbang dan fleksibel.';
+        
+        return !empty($summary) 
+            ? implode('. ', $summary) . '.'
+            : 'Gaya kerja yang seimbang dan fleksibel.';
     }
 
+    /**
+     * ✅ Compile communication summary
+     */
     private function compileCommunicationSummary(array $communicationData): string
     {
         $summary = [];
+        
         if (!empty($communicationData['most'])) {
             $mostComm = $this->extractMainPoints($communicationData['most']);
-            if (!empty($mostComm)) $summary[] = "Komunikasi publik: " . implode(', ', $mostComm);
+            if (!empty($mostComm)) {
+                $summary[] = "Komunikasi publik: " . implode(', ', $mostComm);
+            }
         }
+        
         if (!empty($communicationData['least'])) {
             $leastComm = $this->extractMainPoints($communicationData['least']);
-            if (!empty($leastComm)) $summary[] = "Komunikasi alami: " . implode(', ', $leastComm);
+            if (!empty($leastComm)) {
+                $summary[] = "Komunikasi alami: " . implode(', ', $leastComm);
+            }
         }
-        return !empty($summary) ? implode('. ', $summary) . '.' : 'Gaya komunikasi yang adaptif sesuai situasi.';
+        
+        return !empty($summary) 
+            ? implode('. ', $summary) . '.'
+            : 'Gaya komunikasi yang adaptif sesuai situasi.';
     }
 
+    /**
+     * ✅ Compile motivators summary
+     */
     private function compileMotivatorsSummary(array $motivatorsData): string
     {
         $motivators = [];
+        
         if (!empty($motivatorsData['most'])) {
             $motivators = array_merge($motivators, $this->extractMainPoints($motivatorsData['most']));
         }
+        
         if (!empty($motivatorsData['least'])) {
             $motivators = array_merge($motivators, $this->extractMainPoints($motivatorsData['least']));
         }
+        
         $uniqueMotivators = array_unique($motivators);
+        
         return !empty($uniqueMotivators) 
             ? "Dimotivasi oleh: " . implode(', ', array_slice($uniqueMotivators, 0, 5)) . "."
             : "Motivasi yang beragam dan situasional.";
     }
 
+    /**
+     * ✅ Compile stress summary
+     */
     private function compileStressSummary(array $stressData): string
     {
         $stressPoints = [];
+        
         if (!empty($stressData['change'])) {
             $changeStress = $this->extractMainPoints($stressData['change']);
-            if (!empty($changeStress)) $stressPoints[] = "Tekanan adaptasi: " . implode(', ', $changeStress);
+            if (!empty($changeStress)) {
+                $stressPoints[] = "Tekanan adaptasi: " . implode(', ', $changeStress);
+            }
         }
+        
         if (!empty($stressData['most'])) {
             $publicStress = $this->extractMainPoints($stressData['most']);
-            if (!empty($publicStress)) $stressPoints[] = "Manajemen stress publik: " . implode(', ', $publicStress);
+            if (!empty($publicStress)) {
+                $stressPoints[] = "Manajemen stress publik: " . implode(', ', $publicStress);
+            }
         }
+        
         if (!empty($stressData['least'])) {
             $privateStress = $this->extractMainPoints($stressData['least']);
-            if (!empty($privateStress)) $stressPoints[] = "Pola stress alami: " . implode(', ', $privateStress);
+            if (!empty($privateStress)) {
+                $stressPoints[] = "Pola stress alami: " . implode(', ', $privateStress);
+            }
         }
+        
         return !empty($stressPoints) 
             ? implode('. ', $stressPoints) . '.'
             : "Manajemen stress yang seimbang dan adaptif.";
     }
 
+    /**
+     * ✅ Extract main points from interpretation data
+     */
     private function extractMainPoints(array $data, int $limit = 3): array
     {
         $points = [];
+        
         foreach ($data as $dimension => $content) {
             if (is_string($content)) {
                 $points[] = trim($content);
@@ -1209,9 +1420,12 @@ class DiscTestService
                 }
             }
         }
+        
+        // Filter and clean points
         $points = array_filter(array_unique($points), function($point) {
-            return !empty(trim($point));
+            return !empty(trim($point)) && strlen(trim($point)) > 3;
         });
+        
         return array_slice($points, 0, $limit);
     }
 }

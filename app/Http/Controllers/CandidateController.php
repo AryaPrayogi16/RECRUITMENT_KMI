@@ -7,7 +7,8 @@ use App\Models\{
     Position, 
     ApplicationLog,
     FamilyMember,
-    Education,
+    FormalEducation,        // ✅ UPDATED: Use separate formal education model
+    NonFormalEducation,     // ✅ UPDATED: Use separate non-formal education model
     WorkExperience,
     LanguageSkill,
     CandidateAdditionalInfo,
@@ -19,62 +20,11 @@ use App\Models\{
     KraeplinTestResult,
     KraeplinAnswer
 };
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
 
 class CandidateController extends Controller
 {
     /**
-     * Display a listing of candidates
-     */
-    public function index(Request $request)
-    {
-        Gate::authorize('hr-access');
-        
-        $query = Candidate::with(['position'])
-            ->latest();
-        
-        // Search functionality - sesuai dengan struktur baru (data di candidates table)
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('candidate_code', 'like', "%{$search}%")
-                  ->orWhere('full_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-        
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('application_status', $request->status);
-        }
-        
-        // Filter by position
-        if ($request->filled('position')) {
-            $query->where('position_applied', $request->position);
-        }
-        
-        $candidates = $query->paginate(15)->withQueryString();
-        
-        // Get all active positions for filter dropdown
-        $positions = Position::where('is_active', true)
-            ->orderBy('position_name')
-            ->get();
-        
-        // Count new applications for notification badge
-        $newApplicationsCount = Candidate::where('application_status', 'submitted')
-            ->whereDate('created_at', today())
-            ->count();
-        
-        return view('candidates.index', compact('candidates', 'positions', 'newApplicationsCount'));
-    }
-
-    /**
-     * Show candidate details
+     * ✅ UPDATED: Show candidate details with correct education relationships
      */
     public function show($id)
     {
@@ -82,8 +32,12 @@ class CandidateController extends Controller
         
         $candidate = Candidate::with([
             'familyMembers',
-            'education' => function($query) {
-                $query->orderBy('education_type')->orderBy('end_year', 'desc');
+            // ✅ UPDATED: Use separate education models instead of unified education
+            'formalEducation' => function($query) {
+                $query->orderBy('education_level')->orderBy('end_year', 'desc');
+            },
+            'nonFormalEducation' => function($query) {
+                $query->orderBy('date', 'desc');
             },
             'workExperiences' => function($query) {
                 $query->orderBy('end_year', 'desc');
@@ -124,7 +78,7 @@ class CandidateController extends Controller
     }
 
     /**
-     * Show edit form
+     * ✅ UPDATED: Edit form with correct education relationships
      */
     public function edit($id)
     {
@@ -132,7 +86,9 @@ class CandidateController extends Controller
         
         $candidate = Candidate::with([
             'familyMembers',
-            'education',
+            // ✅ UPDATED: Use separate education models
+            'formalEducation',
+            'nonFormalEducation',
             'workExperiences',
             'languageSkills',
             'additionalInfo',
@@ -146,7 +102,7 @@ class CandidateController extends Controller
     }
 
     /**
-     * Update candidate data
+     * ✅ UPDATED: Update candidate data with new education structure
      */
     public function update(Request $request, $id)
     {
@@ -207,15 +163,14 @@ class CandidateController extends Controller
                 }
             }
             
-            // Update education (using merged Education model)
+            // ✅ UPDATED: Handle formal education with separate model
             if ($request->has('formal_education')) {
-                $candidate->education()->where('education_type', 'formal')->delete();
+                $candidate->formalEducation()->delete();
                 
                 foreach ($request->formal_education as $education) {
                     if (!empty($education['education_level'])) {
-                        Education::create([
+                        FormalEducation::create([
                             'candidate_id' => $candidate->id,
-                            'education_type' => 'formal',
                             'education_level' => $education['education_level'],
                             'institution_name' => $education['institution_name'] ?? null,
                             'major' => $education['major'] ?? null,
@@ -227,15 +182,14 @@ class CandidateController extends Controller
                 }
             }
 
-            // Update non-formal education
+            // ✅ UPDATED: Handle non-formal education with separate model
             if ($request->has('non_formal_education')) {
-                $candidate->education()->where('education_type', 'non_formal')->delete();
+                $candidate->nonFormalEducation()->delete();
                 
                 foreach ($request->non_formal_education as $education) {
                     if (!empty($education['course_name'])) {
-                        Education::create([
+                        NonFormalEducation::create([
                             'candidate_id' => $candidate->id,
-                            'education_type' => 'non_formal',
                             'course_name' => $education['course_name'],
                             'organizer' => $education['organizer'] ?? null,
                             'date' => $education['date'] ?? null,
@@ -393,113 +347,7 @@ class CandidateController extends Controller
     }
 
     /**
-     * Update candidate status
-     */
-    public function updateStatus(Request $request, $id)
-    {
-        Gate::authorize('hr-access');
-        
-        $request->validate([
-            'status' => 'required|in:draft,submitted,screening,interview,offered,accepted,rejected'
-        ]);
-        
-        $candidate = Candidate::findOrFail($id);
-        $oldStatus = $candidate->application_status;
-        
-        $candidate->update([
-            'application_status' => $request->status
-        ]);
-        
-        // Log status change
-        ApplicationLog::logAction(
-            $candidate->id,
-            Auth::id(),
-            ApplicationLog::ACTION_STATUS_CHANGE,
-            sprintf(
-                'Status changed from %s to %s by %s',
-                ucfirst($oldStatus),
-                ucfirst($request->status),
-                Auth::user()->full_name
-            )
-        );
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Status berhasil diperbarui'
-        ]);
-    }
-
-    /**
-     * Show interview scheduling form
-     */
-    public function scheduleInterview($id)
-    {
-        Gate::authorize('hr-access');
-        
-        $candidate = Candidate::findOrFail($id);
-        
-        // Get available interviewers
-        $interviewers = \App\Models\User::whereIn('role', ['interviewer', 'hr', 'admin'])
-            ->where('is_active', true)
-            ->get();
-        
-        return view('candidates.schedule-interview', compact('candidate', 'interviewers'));
-    }
-
-    /**
-     * Store interview schedule
-     */
-    public function storeInterview(Request $request, $id)
-    {
-        Gate::authorize('hr-access');
-        
-        $request->validate([
-            'interview_date' => 'required|date|after:today',
-            'interview_time' => 'required',
-            'location' => 'nullable|string|max:255',
-            'interviewer_id' => 'required|exists:users,id',
-            'notes' => 'nullable|string'
-        ]);
-        
-        $candidate = Candidate::findOrFail($id);
-        
-        try {
-            $interview = Interview::create([
-                'candidate_id' => $candidate->id,
-                'interview_date' => $request->interview_date,
-                'interview_time' => $request->interview_time,
-                'location' => $request->location,
-                'interviewer_id' => $request->interviewer_id,
-                'notes' => $request->notes,
-                'status' => Interview::STATUS_SCHEDULED
-            ]);
-            
-            // Update candidate status to interview
-            $candidate->update(['application_status' => 'interview']);
-            
-            // Log interview scheduling
-            ApplicationLog::logAction(
-                $candidate->id,
-                Auth::id(),
-                ApplicationLog::ACTION_STATUS_CHANGE,
-                'Interview scheduled for ' . $request->interview_date . ' by ' . Auth::user()->full_name
-            );
-            
-            return redirect()->route('candidates.show', $candidate->id)
-                ->with('success', 'Interview berhasil dijadwalkan');
-                
-        } catch (\Exception $e) {
-            Log::error('Error scheduling interview', [
-                'candidate_id' => $id,
-                'error' => $e->getMessage(),
-                'user_id' => Auth::id()
-            ]);
-            return back()->with('error', 'Gagal menjadwalkan interview: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Show preview page
+     * ✅ UPDATED: Preview with correct education relationships
      */
     public function preview($id)
     {
@@ -507,7 +355,9 @@ class CandidateController extends Controller
         
         $candidate = Candidate::with([
             'familyMembers',
-            'education',
+            // ✅ UPDATED: Use separate education models
+            'formalEducation',
+            'nonFormalEducation',
             'workExperiences',
             'languageSkills',
             'additionalInfo',
@@ -521,7 +371,7 @@ class CandidateController extends Controller
     }
 
     /**
-     * Generate PDF preview
+     * ✅ UPDATED: Generate PDF preview with correct education relationships
      */
     public function previewPdf($id)
     {
@@ -529,7 +379,9 @@ class CandidateController extends Controller
         
         $candidate = Candidate::with([
             'familyMembers',
-            'education',
+            // ✅ UPDATED: Use separate education models
+            'formalEducation',
+            'nonFormalEducation',
             'workExperiences',
             'languageSkills',
             'additionalInfo',
@@ -546,7 +398,7 @@ class CandidateController extends Controller
     }
     
     /**
-     * Generate HTML preview
+     * ✅ UPDATED: Generate HTML preview with correct education relationships
      */
     public function previewHtml($id)
     {
@@ -554,7 +406,9 @@ class CandidateController extends Controller
         
         $candidate = Candidate::with([
             'familyMembers',
-            'education',
+            // ✅ UPDATED: Use separate education models
+            'formalEducation',
+            'nonFormalEducation',
             'workExperiences',
             'languageSkills',
             'additionalInfo',
@@ -568,7 +422,7 @@ class CandidateController extends Controller
     }
 
     /**
-     * Export single candidate to PDF
+     * ✅ UPDATED: Export single candidate to PDF with correct education relationships
      */
     public function exportSingle($id)
     {
@@ -576,7 +430,9 @@ class CandidateController extends Controller
         
         $candidate = Candidate::with([
             'familyMembers',
-            'education',
+            // ✅ UPDATED: Use separate education models
+            'formalEducation',
+            'nonFormalEducation',
             'workExperiences',
             'languageSkills',
             'additionalInfo',
@@ -603,52 +459,7 @@ class CandidateController extends Controller
     }
 
     /**
-     * Export multiple candidates to PDF (summary)
-     */
-    public function exportMultiple(Request $request)
-    {
-        Gate::authorize('hr-access');
-        
-        $query = Candidate::with(['position']);
-        
-        // Apply the same filters as index
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('candidate_code', 'like', "%{$search}%")
-                  ->orWhere('full_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-        
-        if ($request->filled('status')) {
-            $query->where('application_status', $request->status);
-        }
-        
-        if ($request->filled('position')) {
-            $query->where('position_applied', $request->position);
-        }
-        
-        // Get selected candidates or all filtered
-        if ($request->filled('selected_ids')) {
-            $selectedIds = is_array($request->selected_ids) 
-                ? $request->selected_ids 
-                : explode(',', $request->selected_ids);
-            $query->whereIn('id', $selectedIds);
-        }
-        
-        $candidates = $query->orderBy('created_at', 'desc')->get();
-        
-        $pdf = PDF::loadView('candidates.pdf.multiple', compact('candidates'));
-        $pdf->setPaper('A4', 'landscape');
-        
-        $filename = 'Kandidat_Summary_' . date('Ymd_His') . '.pdf';
-        
-        return $pdf->download($filename);
-    }
-
-    /**
-     * Export to Word format (using HTML)
+     * ✅ UPDATED: Export to Word format with correct education relationships
      */
     public function exportWord($id)
     {
@@ -656,7 +467,9 @@ class CandidateController extends Controller
         
         $candidate = Candidate::with([
             'familyMembers',
-            'education',
+            // ✅ UPDATED: Use separate education models
+            'formalEducation',
+            'nonFormalEducation',
             'workExperiences',
             'languageSkills',
             'additionalInfo',
@@ -846,17 +659,41 @@ class CandidateController extends Controller
         Gate::authorize('hr-access');
         
         try {
-            $candidate = Candidate::onlyTrashed()->findOrFail($id);
-            $candidateName = $candidate->full_name ?? 'Unknown';
+            DB::beginTransaction();
             
+            $candidate = Candidate::onlyTrashed()
+                ->with(['documentUploads'])
+                ->findOrFail($id);
+            
+            $candidateName = $candidate->full_name ?? 'Unknown';
+            $candidateCode = $candidate->candidate_code;
+            
+            // 1. Hapus semua file documents dari storage
+            $this->deleteDocumentFiles($candidate);
+            
+            // 2. Hapus folder kandidat jika ada
+            $this->deleteCandidateFolder($candidateCode);
+            
+            // 3. Force delete dari database (ini akan otomatis hapus relasi karena foreign key cascade)
             $candidate->forceDelete();
+            
+            DB::commit();
+            
+            Log::info('Candidate permanently deleted with file cleanup', [
+                'candidate_id' => $id,
+                'candidate_code' => $candidateCode,
+                'candidate_name' => $candidateName,
+                'user_id' => Auth::id()
+            ]);
             
             return response()->json([
                 'success' => true,
-                'message' => "Kandidat {$candidateName} berhasil dihapus permanen"
+                'message' => "Kandidat {$candidateName} berhasil dihapus permanen beserta semua filenya"
             ]);
             
         } catch (\Exception $e) {
+            DB::rollback();
+            
             Log::error('Error force deleting candidate', [
                 'candidate_id' => $id,
                 'error' => $e->getMessage(),
@@ -868,5 +705,274 @@ class CandidateController extends Controller
                 'message' => 'Gagal menghapus kandidat secara permanen: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Bulk force delete candidates dengan cleanup file storage
+     */
+    public function bulkForceDelete(Request $request)
+    {
+        Gate::authorize('hr-access');
+        
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:candidates,id'
+        ]);
+        
+        try {
+            DB::beginTransaction();
+            
+            $candidateIds = $request->ids;
+            $candidates = Candidate::onlyTrashed()
+                ->with(['documentUploads'])
+                ->whereIn('id', $candidateIds)
+                ->get();
+            
+            $deletedCount = 0;
+            
+            foreach ($candidates as $candidate) {
+                // 1. Hapus semua file documents dari storage
+                $this->deleteDocumentFiles($candidate);
+                
+                // 2. Hapus folder kandidat jika ada
+                $this->deleteCandidateFolder($candidate->candidate_code);
+                
+                // 3. Force delete dari database
+                $candidate->forceDelete();
+                
+                $deletedCount++;
+                
+                Log::info('Candidate bulk permanently deleted with file cleanup', [
+                    'candidate_id' => $candidate->id,
+                    'candidate_code' => $candidate->candidate_code,
+                    'candidate_name' => $candidate->full_name,
+                    'user_id' => Auth::id()
+                ]);
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => "{$deletedCount} kandidat berhasil dihapus permanen beserta semua filenya"
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            Log::error('Error bulk force deleting candidates', [
+                'candidate_ids' => $request->ids,
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus kandidat secara permanen: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Hapus semua file documents dari storage berdasarkan DocumentUpload records
+     */
+    private function deleteDocumentFiles($candidate)
+    {
+        try {
+            foreach ($candidate->documentUploads as $document) {
+                if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
+                    Storage::disk('public')->delete($document->file_path);
+                    Log::info('Document file deleted', [
+                        'file_path' => $document->file_path,
+                        'document_id' => $document->id,
+                        'candidate_id' => $candidate->id
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Error deleting document files', [
+                'candidate_id' => $candidate->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Hapus folder kandidat dari storage
+     */
+    private function deleteCandidateFolder($candidateCode)
+    {
+        try {
+            if (!$candidateCode) {
+                return;
+            }
+            
+            $folderPath = "documents/{$candidateCode}";
+            
+            // Hapus menggunakan Storage facade
+            if (Storage::disk('public')->exists($folderPath)) {
+                Storage::disk('public')->deleteDirectory($folderPath);
+                Log::info('Candidate folder deleted from storage', [
+                    'folder_path' => $folderPath,
+                    'candidate_code' => $candidateCode
+                ]);
+            }
+            
+            // Juga hapus dari file system langsung sebagai backup
+            $fullPath = storage_path("app/public/{$folderPath}");
+            if (File::exists($fullPath)) {
+                File::deleteDirectory($fullPath);
+                Log::info('Candidate folder deleted from file system', [
+                    'full_path' => $fullPath,
+                    'candidate_code' => $candidateCode
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            Log::warning('Error deleting candidate folder', [
+                'candidate_code' => $candidateCode,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Cleanup orphaned folders - utility method untuk membersihkan folder yatim
+     */
+    public function cleanupOrphanedFolders()
+    {
+        Gate::authorize('hr-access');
+        
+        try {
+            $documentsPath = storage_path('app/public/documents');
+            
+            if (!File::exists($documentsPath)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Folder documents tidak ditemukan'
+                ]);
+            }
+            
+            $folders = File::directories($documentsPath);
+            $deletedFolders = [];
+            
+            foreach ($folders as $folder) {
+                $folderName = basename($folder);
+                
+                // Cek apakah kandidat dengan kode ini masih ada
+                $candidateExists = Candidate::withTrashed()
+                    ->where('candidate_code', $folderName)
+                    ->exists();
+                
+                if (!$candidateExists) {
+                    // Folder yatim, hapus
+                    File::deleteDirectory($folder);
+                    $deletedFolders[] = $folderName;
+                    
+                    Log::info('Orphaned folder deleted', [
+                        'folder_name' => $folderName,
+                        'folder_path' => $folder,
+                        'user_id' => Auth::id()
+                    ]);
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => count($deletedFolders) > 0 
+                    ? 'Berhasil menghapus ' . count($deletedFolders) . ' folder yatim: ' . implode(', ', $deletedFolders)
+                    : 'Tidak ada folder yatim yang ditemukan'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error cleaning up orphaned folders', [
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membersihkan folder yatim: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get storage usage statistics
+     */
+    public function getStorageStats()
+    {
+        Gate::authorize('hr-access');
+        
+        try {
+            $documentsPath = storage_path('app/public/documents');
+            $totalSize = 0;
+            $totalFiles = 0;
+            $totalFolders = 0;
+            $orphanedFolders = 0;
+            
+            if (File::exists($documentsPath)) {
+                $folders = File::directories($documentsPath);
+                $totalFolders = count($folders);
+                
+                foreach ($folders as $folder) {
+                    $folderName = basename($folder);
+                    
+                    // Cek apakah kandidat dengan kode ini masih ada
+                    $candidateExists = Candidate::withTrashed()
+                        ->where('candidate_code', $folderName)
+                        ->exists();
+                    
+                    if (!$candidateExists) {
+                        $orphanedFolders++;
+                    }
+                    
+                    // Hitung ukuran folder
+                    $files = File::allFiles($folder);
+                    foreach ($files as $file) {
+                        $totalSize += $file->getSize();
+                        $totalFiles++;
+                    }
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total_size' => $this->formatBytes($totalSize),
+                    'total_size_bytes' => $totalSize,
+                    'total_files' => $totalFiles,
+                    'total_folders' => $totalFolders,
+                    'orphaned_folders' => $orphanedFolders,
+                    'active_candidates' => Candidate::count(),
+                    'trashed_candidates' => Candidate::onlyTrashed()->count()
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error getting storage stats', [
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil statistik storage: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Format bytes ke human readable
+     */
+    private function formatBytes($bytes, $precision = 2)
+    {
+        $units = array('B', 'KB', 'MB', 'GB', 'TB');
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        
+        return round($bytes, $precision) . ' ' . $units[$i];
     }
 }

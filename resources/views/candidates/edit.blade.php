@@ -424,7 +424,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">IPK/Nilai</label>
-                                <input type="number" name="formal_education[0][gpa]" class="form-input" step="0.01" min="0" max="4">
+                                <input type="number" name="formal_education[0][gpa]" class="form-input" min="0" max="100">
                             </div>
                         </div>
                         <div class="mt-4">

@@ -1,0 +1,797 @@
+/* Enhanced KTP OCR Styles - Replacement untuk ktp-ocr.css */
+
+/* OCR Upload Container */
+.ocr-upload-container {
+    margin-top: 12px;
+    margin-bottom: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+    padding: 12px;
+    transition: all 0.3s ease;
+}
+
+.ocr-upload-area {
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    background-color: #f9fafb;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.ocr-upload-area::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+    transition: left 0.6s ease;
+}
+
+.ocr-upload-area:hover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.ocr-upload-area:hover::before {
+    left: 100%;
+}
+
+.ocr-file-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.ocr-upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: #374151;
+    transition: all 0.3s ease;
+}
+
+.ocr-upload-label:hover {
+    color: #3b82f6;
+}
+
+.ocr-camera-icon {
+    width: 32px;
+    height: 32px;
+    color: #6b7280;
+    transition: all 0.3s ease;
+}
+
+.ocr-upload-label:hover .ocr-camera-icon {
+    color: #3b82f6;
+    transform: scale(1.1);
+}
+
+.ocr-upload-text {
+    text-align: center;
+    line-height: 1.4;
+}
+
+.ocr-upload-text strong {
+    color: #1f2937;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.ocr-upload-text small {
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.ocr-tips {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
+    border: 1px solid #f59e0b;
+    border-radius: 6px;
+    color: #92400e;
+    font-size: 11px;
+    text-align: left;
+    font-weight: 500;
+}
+
+/* Enhanced OCR Controls */
+.ocr-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+    padding: 8px 0;
+    border-top: 1px solid #e5e7eb;
+}
+
+#ocr-try-again-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+#ocr-try-again-btn:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+#ocr-try-again-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Enhanced OCR Progress Indicator */
+.ocr-progress-container {
+    margin-top: 12px;
+    padding: 16px;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    display: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.ocr-progress-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: progressShimmer 2s infinite;
+}
+
+@keyframes progressShimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.ocr-progress-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+}
+
+.ocr-progress-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid #e5e7eb;
+    border-top: 3px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.ocr-progress-text {
+    color: #1e40af;
+    font-weight: 600;
+    font-size: 14px;
+    text-align: center;
+}
+
+.ocr-progress-track {
+    width: 100%;
+    height: 8px;
+    background-color: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.ocr-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.ocr-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent
+    );
+    animation: progressBarShimmer 2s infinite;
+}
+
+@keyframes progressBarShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Enhanced OCR Messages dengan animasi */
+.ocr-message {
+    margin-top: 12px;
+    border-radius: 8px;
+    padding: 12px;
+    animation: slideInMessage 0.4s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideInMessage {
+    from {
+        opacity: 0;
+        transform: translateY(-15px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.ocr-message-success {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 1px solid #10b981;
+    color: #065f46;
+}
+
+.ocr-message-error {
+    background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+    border: 1px solid #ef4444;
+    color: #991b1b;
+}
+
+.ocr-message-warning {
+    background: linear-gradient(135deg, #fffbeb 0%, #fed7aa 100%);
+    border: 1px solid #f59e0b;
+    color: #92400e;
+}
+
+.ocr-message-info {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 1px solid #3b82f6;
+    color: #1e40af;
+}
+
+.ocr-message-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.ocr-message-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    animation: iconPulse 2s infinite;
+}
+
+@keyframes iconPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.ocr-message-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+.ocr-message-close {
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 2px 6px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    color: currentColor;
+}
+
+.ocr-message-close:hover {
+    background: rgba(0, 0, 0, 0.2);
+    transform: scale(1.1);
+}
+
+/* Enhanced NIK field styling ketika OCR berhasil */
+#nik.ocr-filled {
+    background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%);
+    border-color: #10b981;
+    font-weight: 600;
+    color: #065f46;
+    animation: successFill 0.5s ease;
+}
+
+@keyframes successFill {
+    0% {
+        background-color: #ecfdf5;
+        transform: scale(1);
+    }
+    50% {
+        background-color: #d1fae5;
+        transform: scale(1.02);
+    }
+    100% {
+        background-color: #ecfdf5;
+        transform: scale(1);
+    }
+}
+
+/* Processing states untuk upload area */
+.ocr-upload-area.processing {
+    pointer-events: none;
+    opacity: 0.7;
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    animation: processingPulse 2s infinite;
+}
+
+@keyframes processingPulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 0.9; }
+}
+
+.ocr-upload-area.processing .ocr-camera-icon {
+    animation: processingIcon 2s infinite;
+    color: #3b82f6;
+}
+
+@keyframes processingIcon {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.1) rotate(5deg); }
+    75% { transform: scale(1.1) rotate(-5deg); }
+}
+
+/* Success state untuk upload area */
+.ocr-upload-area.success {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    animation: successBounce 0.6s ease;
+}
+
+@keyframes successBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.ocr-upload-area.success .ocr-camera-icon {
+    color: #10b981;
+    animation: successIcon 0.6s ease;
+}
+
+@keyframes successIcon {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+/* Error state untuk upload area */
+.ocr-upload-area.error {
+    border-color: #ef4444;
+    background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+    animation: errorShake 0.5s ease;
+}
+
+@keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.ocr-upload-area.error .ocr-camera-icon {
+    color: #ef4444;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .ocr-upload-container {
+        padding: 8px;
+    }
+    
+    .ocr-upload-area {
+        padding: 12px;
+    }
+    
+    .ocr-camera-icon {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .ocr-upload-text strong {
+        font-size: 13px;
+    }
+    
+    .ocr-upload-text small {
+        font-size: 11px;
+    }
+    
+    .ocr-tips {
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+    
+    .ocr-controls {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    #ocr-try-again-btn {
+        font-size: 11px;
+        padding: 6px 12px;
+    }
+    
+    .ocr-progress-container {
+        padding: 12px;
+    }
+    
+    .ocr-progress-text {
+        font-size: 13px;
+    }
+    
+    .ocr-message {
+        padding: 10px;
+    }
+    
+    .ocr-message-text {
+        font-size: 13px;
+    }
+    
+    .ocr-message-icon {
+        font-size: 16px;
+    }
+}
+
+/* Tablet Responsive */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .ocr-upload-area {
+        padding: 14px;
+    }
+    
+    .ocr-upload-text strong {
+        font-size: 13.5px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .ocr-upload-area {
+        border-width: 3px;
+        border-color: #000;
+    }
+    
+    .ocr-upload-area:hover {
+        border-color: #0066cc;
+    }
+    
+    .ocr-message {
+        border-width: 2px;
+    }
+    
+    #ocr-try-again-btn {
+        border: 2px solid #fff;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .ocr-upload-area,
+    .ocr-camera-icon,
+    .ocr-progress-spinner,
+    .ocr-message,
+    .ocr-message-icon,
+    #nik.ocr-filled {
+        animation: none;
+        transition: none;
+    }
+    
+    .ocr-upload-area:hover {
+        transform: none;
+    }
+    
+    #ocr-try-again-btn:hover {
+        transform: none;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .ocr-upload-container {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        border-color: #4b5563;
+    }
+    
+    .ocr-upload-area {
+        background-color: #1f2937;
+        border-color: #4b5563;
+    }
+    
+    .ocr-upload-area:hover {
+        background-color: #111827;
+        border-color: #3b82f6;
+    }
+    
+    .ocr-upload-label {
+        color: #d1d5db;
+    }
+    
+    .ocr-upload-text strong {
+        color: #f9fafb;
+    }
+    
+    .ocr-tips {
+        background: linear-gradient(135deg, #451a03 0%, #92400e 100%);
+        border-color: #92400e;
+        color: #fbbf24;
+    }
+    
+    .ocr-progress-container {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        border-color: #3b82f6;
+    }
+    
+    .ocr-progress-text {
+        color: #bfdbfe;
+    }
+    
+    .ocr-controls {
+        border-color: #4b5563;
+    }
+}
+
+/* Print styles */
+@media print {
+    .ocr-upload-container,
+    .ocr-progress-container,
+    .ocr-message {
+        display: none;
+    }
+}
+
+/* Focus management untuk accessibility */
+.ocr-upload-label:focus-within {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+.ocr-message-close:focus {
+    outline: 2px solid currentColor;
+    outline-offset: 1px;
+}
+
+#ocr-try-again-btn:focus {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* Loading state dengan shimmer effect */
+.ocr-upload-area.loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.ocr-upload-area.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Enhanced button styles */
+.btn-secondary {
+    background: #6b7280;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Additional utility classes */
+.text-gray-500 {
+    color: #6b7280;
+}
+
+/* Enhanced tooltips for better UX */
+.ocr-upload-area[title] {
+    position: relative;
+}
+
+.ocr-upload-area[title]:hover::before {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 8px;
+}
+
+.ocr-upload-area[title]:hover::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1f2937;
+    margin-bottom: 2px;
+}
+
+/* Improved transitions */
+* {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced focus indicators */
+.ocr-file-input:focus + .ocr-upload-label {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+}
+
+/* Status indicators */
+.ocr-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.ocr-status-indicator.processing {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.ocr-status-indicator.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.ocr-status-indicator.error {
+    background: #fecaca;
+    color: #991b1b;
+}
+
+/* Scrollbar styling for progress elements */
+.ocr-progress-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ocr-progress-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.ocr-progress-container::-webkit-scrollbar-thumb {
+    background: #3b82f6;
+    border-radius: 2px;
+}
+
+/* Enhanced visibility for important elements */
+.ocr-upload-container {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.ocr-upload-container:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Animation delays for better UX */
+.ocr-message:nth-child(1) { animation-delay: 0ms; }
+.ocr-message:nth-child(2) { animation-delay: 100ms; }
+.ocr-message:nth-child(3) { animation-delay: 200ms; }
+
+/* Improved touch targets for mobile */
+@media (max-width: 768px) {
+    .ocr-upload-label {
+        min-height: 44px;
+        padding: 8px;
+    }
+    
+    #ocr-try-again-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    .ocr-message-close {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+/* Performance optimizations */
+.ocr-upload-area,
+.ocr-progress-container,
+.ocr-message {
+    will-change: transform, opacity;
+}
+
+/* Ensure proper stacking */
+.ocr-upload-container {
+    position: relative;
+    z-index: 1;
+}
+
+.ocr-progress-container {
+    z-index: 2;
+}
+
+.ocr-message {
+    z-index: 3;
+}

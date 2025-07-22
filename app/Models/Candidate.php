@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 
 class Candidate extends Model
 {
@@ -75,6 +78,70 @@ class Candidate extends Model
     const VACCINE_3 = 'Vaksin 3';
     const VACCINE_BOOSTER = 'Booster';
 
+    // Boot method untuk auto-generating candidate code dan cleanup file
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Auto-generate candidate code saat create
+        static::creating(function ($candidate) {
+            if (empty($candidate->candidate_code)) {
+                $candidate->candidate_code = self::generateCandidateCode();
+            }
+        });
+
+        // Cleanup file storage saat force delete
+        static::forceDeleting(function ($candidate) {
+            try {
+                // Load document uploads sebelum model di-delete
+                $candidate->load('documentUploads');
+                
+                // Hapus semua file documents
+                foreach ($candidate->documentUploads as $document) {
+                    if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
+                        Storage::disk('public')->delete($document->file_path);
+                        Log::info('Document file deleted during forceDelete', [
+                            'file_path' => $document->file_path,
+                            'document_id' => $document->id,
+                            'candidate_id' => $candidate->id
+                        ]);
+                    }
+                }
+                
+                // Hapus folder kandidat
+                if ($candidate->candidate_code) {
+                    $folderPath = "documents/{$candidate->candidate_code}";
+                    
+                    // Hapus menggunakan Storage facade
+                    if (Storage::disk('public')->exists($folderPath)) {
+                        Storage::disk('public')->deleteDirectory($folderPath);
+                        Log::info('Candidate folder deleted during forceDelete', [
+                            'folder_path' => $folderPath,
+                            'candidate_code' => $candidate->candidate_code
+                        ]);
+                    }
+                    
+                    // Juga hapus dari file system langsung sebagai backup
+                    $fullPath = storage_path("app/public/{$folderPath}");
+                    if (File::exists($fullPath)) {
+                        File::deleteDirectory($fullPath);
+                        Log::info('Candidate folder deleted from file system during forceDelete', [
+                            'full_path' => $fullPath,
+                            'candidate_code' => $candidate->candidate_code
+                        ]);
+                    }
+                }
+                
+            } catch (\Exception $e) {
+                Log::error('Error during file cleanup in forceDeleting event', [
+                    'candidate_id' => $candidate->id,
+                    'candidate_code' => $candidate->candidate_code,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        });
+    }
+
     // Relationships
     public function position(): BelongsTo
     {
@@ -86,6 +153,32 @@ class Candidate extends Model
         return $this->hasMany(FamilyMember::class);
     }
 
+    /**
+     * ✅ UPDATED: Education relationships for split tables
+     */
+    public function formalEducation(): HasMany
+    {
+        return $this->hasMany(FormalEducation::class)->orderByRaw("FIELD(education_level, 'S3', 'S2', 'S1', 'Diploma', 'SMA/SMK')");
+    }
+
+    public function nonFormalEducation(): HasMany
+    {
+        return $this->hasMany(NonFormalEducation::class)->orderBy('date', 'desc');
+    }
+
+    public function highestEducation(): HasOne
+    {
+        return $this->hasOne(FormalEducation::class)->orderByRaw("FIELD(education_level, 'S3', 'S2', 'S1', 'Diploma', 'SMA/SMK')");
+    }
+
+    public function latestEducation(): HasOne
+    {
+        return $this->hasOne(FormalEducation::class)->orderBy('end_year', 'desc');
+    }
+
+    /**
+     * ⚠️ DEPRECATED: Keep for backward compatibility until migration is complete
+     */
     public function education(): HasMany
     {
         return $this->hasMany(Education::class);
@@ -169,16 +262,6 @@ class Candidate extends Model
     public function socialActivities(): HasMany
     {
         return $this->activities()->where('activity_type', 'social_activity');
-    }
-
-    public function formalEducation(): HasMany
-    {
-        return $this->education()->where('education_type', 'formal');
-    }
-
-    public function nonFormalEducation(): HasMany
-    {
-        return $this->education()->where('education_type', 'non_formal');
     }
 
     // Document relationships
@@ -319,11 +402,66 @@ class Candidate extends Model
         return $this->vaccination_status ?: '-';
     }
 
+    /**
+     * ✅ NEW: Education-related accessors for split tables
+     */
+    public function getAllEducationAttribute()
+    {
+        $formal = $this->formalEducation->map(function($edu) {
+            return [
+                'type' => 'formal',
+                'title' => $edu->education_title,
+                'institution' => $edu->institution_name,
+                'period' => $edu->formatted_duration,
+                'details' => $edu->major . ($edu->gpa ? ' (GPA: ' . $edu->formatted_gpa . ')' : ''),
+                'sort_date' => $edu->end_year . '-12-31'
+            ];
+        });
+
+        $nonFormal = $this->nonFormalEducation->map(function($edu) {
+            return [
+                'type' => 'non_formal',
+                'title' => $edu->course_name,
+                'institution' => $edu->organizer,
+                'period' => $edu->formatted_date,
+                'details' => $edu->description,
+                'sort_date' => $edu->date ? $edu->date->format('Y-m-d') : '1970-01-01'
+            ];
+        });
+
+        return $formal->concat($nonFormal)->sortByDesc('sort_date')->values();
+    }
+
+    public function getEducationSummaryAttribute()
+    {
+        $highest = $this->highestEducation;
+        $certCount = $this->nonFormalEducation->count();
+        
+        if (!$highest) {
+            return $certCount > 0 ? $certCount . ' certifications' : 'No education data';
+        }
+        
+        $summary = $highest->education_level . ' ' . $highest->major;
+        
+        if ($certCount > 0) {
+            $summary .= ' + ' . $certCount . ' certification' . ($certCount > 1 ? 's' : '');
+        }
+        
+        return $summary;
+    }
+
+    public function getRecentCertificationsAttribute()
+    {
+        return $this->nonFormalEducation->filter(function($cert) {
+            return $cert->is_recent;
+        });
+    }
+
     // Check completeness
     public function hasCompleteMinimalRecords()
     {
         return $this->familyMembers()->exists() &&
-               $this->education()->exists() &&
+               ($this->formalEducation()->exists() || $this->nonFormalEducation()->exists()) &&
                $this->languageSkills()->exists() &&
                $this->workExperiences()->exists() &&
                $this->activities()->exists() &&
@@ -342,8 +480,8 @@ class Candidate extends Model
         // Family members
         if ($this->familyMembers()->exists()) $completed++;
 
-        // Education
-        if ($this->education()->exists()) $completed++;
+        // Education (check both tables)
+        if ($this->formalEducation()->exists() || $this->nonFormalEducation()->exists()) $completed++;
 
         // Language skills
         if ($this->languageSkills()->exists()) $completed++;
@@ -363,6 +501,21 @@ class Candidate extends Model
         return round(($completed / $total) * 100);
     }
 
+    /**
+     * ✅ NEW: Education helper methods
+     */
+    public function hasEducationLevel($level)
+    {
+        return $this->formalEducation()->where('education_level', $level)->exists();
+    }
+
+    public function hasTechnicalCertifications()
+    {
+        return $this->nonFormalEducation->contains(function($cert) {
+            return $cert->isTechnicalCertification();
+        });
+    }
+
     // Mutators
     public function setNikAttribute($value)
     {
@@ -377,18 +530,6 @@ class Candidate extends Model
     public function setPhoneAlternativeAttribute($value)
     {
         $this->attributes['phone_alternative'] = preg_replace('/[^0-9+]/', '', $value);
-    }
-
-    // Boot method for auto-generating candidate code
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($candidate) {
-            if (empty($candidate->candidate_code)) {
-                $candidate->candidate_code = self::generateCandidateCode();
-            }
-        });
     }
 
     public static function generateCandidateCode()
@@ -520,7 +661,7 @@ class Candidate extends Model
     }
 
     /**
-     * ✅ FIXED: KRAEPLIN TEST HELPER METHODS
+     * KRAEPLIN TEST HELPER METHODS
      */
     public function hasCompletedKraeplinTest()
     {
@@ -529,7 +670,6 @@ class Candidate extends Model
             ->exists();
     }
 
-    // ✅ FIXED: Ubah menjadi method bukan property  
     public function canStartKraeplinTest()
     {
         // Bisa mulai KRAEPLIN jika belum ada test yang completed atau in progress
@@ -560,5 +700,80 @@ class Candidate extends Model
         }
         
         return $latestSession->status;
+    }
+
+    /**
+     * HELPER METHODS UNTUK FILE CLEANUP
+     */
+    public function cleanupFiles()
+    {
+        try {
+            // Hapus semua file documents
+            foreach ($this->documentUploads as $document) {
+                if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
+                    Storage::disk('public')->delete($document->file_path);
+                }
+            }
+            
+            // Hapus folder kandidat
+            if ($this->candidate_code) {
+                $folderPath = "documents/{$this->candidate_code}";
+                
+                if (Storage::disk('public')->exists($folderPath)) {
+                    Storage::disk('public')->deleteDirectory($folderPath);
+                }
+                
+                // Backup cleanup dengan File facade
+                $fullPath = storage_path("app/public/{$folderPath}");
+                if (File::exists($fullPath)) {
+                    File::deleteDirectory($fullPath);
+                }
+            }
+            
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error cleaning up candidate files', [
+                'candidate_id' => $this->id,
+                'candidate_code' => $this->candidate_code,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Get total file size untuk kandidat ini
+     */
+    public function getTotalFileSizeAttribute()
+    {
+        $totalSize = 0;
+        
+        if ($this->candidate_code) {
+            $folderPath = storage_path("app/public/documents/{$this->candidate_code}");
+            
+            if (File::exists($folderPath)) {
+                $files = File::allFiles($folderPath);
+                foreach ($files as $file) {
+                    $totalSize += $file->getSize();
+                }
+            }
+        }
+        
+        return $totalSize;
+    }
+
+    /**
+     * Get formatted file size
+     */
+    public function getFormattedFileSizeAttribute()
+    {
+        $bytes = $this->total_file_size;
+        $units = array('B', 'KB', 'MB', 'GB', 'TB');
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        
+        return round($bytes, 2) . ' ' . $units[$i];
     }
 }

@@ -253,26 +253,32 @@ class Position extends Model
         try {
             \DB::beginTransaction();
 
+            $newPosition = Position::findOrFail($newPositionId);
+            $candidates = $this->candidates()->get();
+            
             // Update all candidates to new position
             $transferCount = $this->candidates()->update([
                 'position_id' => $newPositionId,
+                'position_applied' => $newPosition->position_name, // Update applied position name
                 'updated_at' => now()
             ]);
 
-            // Log the transfer if ApplicationLog model exists
-            if (class_exists(\App\Models\ApplicationLog::class)) {
-                foreach ($this->candidates as $candidate) {
+            // Log the transfer for each candidate
+            foreach ($candidates as $candidate) {
+                if (class_exists(\App\Models\ApplicationLog::class)) {
                     \App\Models\ApplicationLog::create([
                         'candidate_id' => $candidate->id,
                         'user_id' => auth()->id(),
                         'action_type' => 'data_update',
-                        'action_description' => "Position transferred from '{$this->position_name}' to new position due to position deletion" . 
-                                              ($reason ? ": {$reason}" : "")
+                        'action_description' => "Candidate transferred from position '{$this->position_name}' to '{$newPosition->position_name}'" . 
+                                              ($reason ? " - Reason: {$reason}" : "") .
+                                              " due to position deletion."
                     ]);
                 }
             }
 
             // Now safely delete the position
+            $positionName = $this->position_name;
             $this->delete();
 
             \DB::commit();
@@ -280,7 +286,8 @@ class Position extends Model
             return [
                 'success' => true,
                 'transferred_count' => $transferCount,
-                'message' => "Position deleted successfully. {$transferCount} candidates transferred to new position."
+                'message' => "Position '{$positionName}' deleted successfully. {$transferCount} candidates transferred to '{$newPosition->position_name}'.",
+                'new_position' => $newPosition
             ];
 
         } catch (\Exception $e) {

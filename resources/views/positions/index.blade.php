@@ -917,10 +917,13 @@
                                                 </button>
                                             @endif
                                             <div class="dropdown-divider"></div>
-                                            <button class="dropdown-item" 
-                                                    onclick="deletePosition({{ $position->id }}, '{{ addslashes($position->position_name) }}', {{ $position->total_applications_count }}, {{ $position->active_applications_count }})">
-                                                <i class="fas fa-trash"></i>
-                                                Hapus
+                                            <!-- Enhanced Delete Button -->
+                                            <button type="button" 
+                                                    class="btn btn-outline-danger btn-sm btn-delete-position dropdown-item" 
+                                                    data-position-id="{{ $position->id }}"
+                                                    data-position-name="{{ $position->position_name }}"
+                                                    title="Hapus Posisi">
+                                                <i class="fas fa-trash-alt"></i> Hapus
                                             </button>
                                         </div>
                                     </div>
@@ -1337,5 +1340,7 @@
         `;
         document.head.appendChild(style);
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ asset('js/position-transfer.js') }}"></script>
 </body>
 </html>
