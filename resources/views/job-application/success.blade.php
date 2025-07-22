@@ -123,7 +123,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <h3 class="font-medium text-gray-900 mb-2">Email</h3>
-                    <p class="text-blue-600">hr@pawindo.com</p>
+                    <p class="text-blue-600">hr4@pawindo.com</p>
                 </div>
                 <div>
                     <h3 class="font-medium text-gray-900 mb-2">Telepon</h3>
