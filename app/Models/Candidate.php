@@ -177,12 +177,10 @@ class Candidate extends Model
     }
 
     /**
-     * ⚠️ DEPRECATED: Keep for backward compatibility until migration is complete
+     * ❌ REMOVED: Legacy education relationship (causing the error)
+     * This method has been removed because Education model no longer exists.
+     * Use formalEducation() and nonFormalEducation() instead.
      */
-    public function education(): HasMany
-    {
-        return $this->hasMany(Education::class);
-    }
 
     public function languageSkills(): HasMany
     {
@@ -283,6 +281,11 @@ class Candidate extends Model
     public function transcriptDocuments(): HasMany
     {
         return $this->documentUploads()->where('document_type', 'transcript');
+    }
+
+    public function ktpDocuments(): HasMany
+    {
+        return $this->documentUploads()->where('document_type', 'ktp');
     }
 
     // Scopes
@@ -403,7 +406,7 @@ class Candidate extends Model
     }
 
     /**
-     * ✅ NEW: Education-related accessors for split tables
+     * ✅ UPDATED: Education-related accessors for split tables
      */
     public function getAllEducationAttribute()
     {
@@ -502,7 +505,7 @@ class Candidate extends Model
     }
 
     /**
-     * ✅ NEW: Education helper methods
+     * ✅ UPDATED: Education helper methods for split tables
      */
     public function hasEducationLevel($level)
     {
@@ -514,6 +517,17 @@ class Candidate extends Model
         return $this->nonFormalEducation->contains(function($cert) {
             return $cert->isTechnicalCertification();
         });
+    }
+
+    public function hasHigherEducation()
+    {
+        return $this->formalEducation()->whereIn('education_level', ['S1', 'S2', 'S3'])->exists();
+    }
+
+    public function getHighestEducationLevelAttribute()
+    {
+        $highest = $this->highestEducation;
+        return $highest ? $highest->education_level : null;
     }
 
     // Mutators

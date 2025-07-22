@@ -350,7 +350,6 @@
                     @endif
                 </section>
 
-                {{-- Education Section --}}
                 <section id="education-section" class="content-section">
                     <h2 class="section-title">
                         <i class="fas fa-graduation-cap"></i>
@@ -358,8 +357,9 @@
                     </h2>
 
                     @php
-                        $formalEducation = $candidate->education->where('education_type', 'formal');
-                        $nonFormalEducation = $candidate->education->where('education_type', 'non_formal');
+                        // ✅ UPDATED: Use separate education relationships
+                        $formalEducation = $candidate->formalEducation;
+                        $nonFormalEducation = $candidate->nonFormalEducation;
                     @endphp
 
                     @if($formalEducation->count() > 0)
