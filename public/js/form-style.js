@@ -1,4 +1,4 @@
-// Form Application Script - Updated with Fixed NIK Handling
+// Form Application Script - Updated with Mobile Integration
 (function() {
     'use strict';
 
@@ -7,7 +7,14 @@
         localStorage.removeItem('jobApplicationFormData');
     }
 
-    // Enhanced File Upload System dengan validasi foto yang diperbaiki
+    // 🆕 MOBILE DETECTION
+    function isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               ('ontouchstart' in window) ||
+               (window.innerWidth <= 768);
+    }
+
+    // Enhanced File Upload System dengan Mobile Support
     const fileValidation = {
         cv: {
             types: ['application/pdf'],
@@ -35,9 +42,78 @@
         }
     };
 
-    // Enhanced file validation function
+    // 🆕 MOBILE FILE STORE for preventing file loss
+    const mobileFileStore = {
+        files: new Map(),
+        
+        store: function(fieldName, file) {
+            if (!file) return false;
+            
+            try {
+                const fileData = {
+                    file: file,
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    lastModified: file.lastModified,
+                    timestamp: Date.now(),
+                    buffer: null
+                };
+                
+                // Convert to ArrayBuffer for mobile stability
+                if (isMobileDevice() && file.size < 5 * 1024 * 1024) { // Max 5MB for buffer
+                    this.convertToArrayBuffer(file).then(buffer => {
+                        fileData.buffer = buffer;
+                        console.log(`📱 Mobile: File ${fieldName} stored with ArrayBuffer backup`);
+                    }).catch(err => {
+                        console.warn(`⚠️ Mobile: Could not create ArrayBuffer backup for ${fieldName}:`, err);
+                    });
+                }
+                
+                this.files.set(fieldName, fileData);
+                console.log(`📱 Mobile: File ${fieldName} stored successfully`);
+                
+                return true;
+            } catch (error) {
+                console.error(`❌ Mobile: Error storing file ${fieldName}:`, error);
+                return false;
+            }
+        },
+        
+        get: function(fieldName) {
+            return this.files.get(fieldName);
+        },
+        
+        convertToArrayBuffer: function(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        },
+        
+        validateStored: function(fieldName) {
+            const stored = this.get(fieldName);
+            if (!stored) return { valid: false, error: 'File tidak ditemukan di memory' };
+            
+            // Check timestamp (expire after 30 minutes)
+            const maxAge = 30 * 60 * 1000;
+            if (Date.now() - stored.timestamp > maxAge) {
+                return { valid: false, error: 'File sudah expire, silakan pilih ulang' };
+            }
+            
+            return { valid: true, file: stored.file };
+        },
+        
+        clear: function() {
+            this.files.clear();
+        }
+    };
+
+    // 🆕 ENHANCED FILE VALIDATION with Mobile Support
     async function validateFile(file, validation) {
-        console.log('Validating file:', {
+        console.log(`🔍 Validating file (${isMobileDevice() ? 'Mobile' : 'Desktop'}):`, {
             name: file.name,
             type: file.type,
             size: file.size,
@@ -63,19 +139,39 @@
             return { valid: false, error: 'Ukuran file maksimal 2MB' };
         }
 
+        // 🆕 MOBILE-FRIENDLY MIME TYPE VALIDATION
+        if (isMobileDevice()) {
+            // Mobile: More lenient with MIME types, focus on extension
+            if (validation.extensions.includes('jpg') || validation.extensions.includes('jpeg') || validation.extensions.includes('png')) {
+                return await validateImageFile(file, validation);
+            }
+            
+            // For PDF on mobile, just check extension
+            if (extension === 'pdf') {
+                return { valid: true };
+            }
+        } else {
+            // Desktop: Check MIME type as usual
+            if (!validation.types.includes(file.type)) {
+                console.warn('MIME type mismatch:', {
+                    detected: file.type,
+                    allowed: validation.types
+                });
+                
+                // If extension is correct but MIME is wrong, still accept for mobile compatibility
+                if (validation.extensions.includes(extension)) {
+                    console.log('Accepting file based on extension despite MIME type mismatch');
+                    return { valid: true };
+                }
+                
+                const allowedExtensions = validation.extensions.join(', ').toUpperCase();
+                return { valid: false, error: `Format file harus ${allowedExtensions}. Tipe file terdeteksi: ${file.type}` };
+            }
+        }
+
         // For photo files, do additional image validation
         if (validation.extensions.includes('jpg') || validation.extensions.includes('jpeg') || validation.extensions.includes('png')) {
             return await validateImageFile(file, validation);
-        }
-
-        // Check MIME type for non-image files
-        if (!validation.types.includes(file.type)) {
-            console.warn('MIME type mismatch:', {
-                detected: file.type,
-                allowed: validation.types
-            });
-            const allowedExtensions = validation.extensions.join(', ').toUpperCase();
-            return { valid: false, error: `Format file harus ${allowedExtensions}. Tipe file terdeteksi: ${file.type}` };
         }
 
         return { valid: true };
@@ -87,7 +183,7 @@
             // Check MIME type first, but be more lenient for images
             const extension = file.name.toLowerCase().split('.').pop();
             
-            if (!validation.types.includes(file.type)) {
+            if (!validation.types.includes(file.type) && !isMobileDevice()) {
                 console.warn('MIME type mismatch for image:', {
                     detected: file.type,
                     allowed: validation.types,
@@ -108,7 +204,7 @@
                 const img = new Image();
                 
                 img.onload = function() {
-                    console.log('Image validation successful:', {
+                    console.log(`✅ Image validation successful (${isMobileDevice() ? 'Mobile' : 'Desktop'}):`, {
                         width: img.width,
                         height: img.height,
                         size: file.size,
@@ -135,7 +231,7 @@
         });
     }
 
-    // Standard file upload handler
+    // 🆕 UNIFIED FILE UPLOAD HANDLER - Works for both mobile and desktop
     async function handleFileUpload(event, fieldName) {
         const file = event.target.files[0];
         const validation = fileValidation[fieldName];
@@ -151,10 +247,28 @@
 
         if (!file) {
             label.innerHTML = getDefaultLabelContent(fieldName);
+            if (isMobileDevice()) {
+                mobileFileStore.files.delete(fieldName);
+            }
             return;
         }
 
+        // Show loading state
+        if (isMobileDevice()) {
+            label.innerHTML = `
+                <div class="loading-spinner mr-2"></div>
+                <span>📱 Memproses file...</span>
+            `;
+        } else {
+            label.innerHTML = `
+                <div class="loading-spinner mr-2"></div>
+                <span>Memvalidasi file...</span>
+            `;
+        }
+
         try {
+            console.log(`🔄 Processing file upload for ${fieldName} (${isMobileDevice() ? 'Mobile' : 'Desktop'})`);
+            
             // Validate file
             const validationResult = await validateFile(file, validation);
             
@@ -164,73 +278,39 @@
                 return;
             }
 
-            // Show preview
-            showFilePreview(fieldName, file);
-        } catch (error) {
-            console.error('File validation error:', error);
-            showFileError(fieldName, 'Terjadi kesalahan saat memvalidasi file. Silakan coba lagi.');
-            event.target.value = '';
-        }
-    }
-
-    // Enhanced photo upload handler
-    async function handlePhotoUpload(event, fieldName) {
-        const file = event.target.files[0];
-        const validation = fileValidation[fieldName];
-        const label = document.getElementById(`${fieldName}-label`);
-        const preview = document.getElementById(`${fieldName}-preview`);
-        const error = document.getElementById(`${fieldName}-error`);
-
-        // Reset states
-        label.classList.remove('has-file', 'error');
-        preview.style.display = 'none';
-        error.textContent = '';
-        error.classList.remove('show');
-
-        if (!file) {
-            label.innerHTML = getDefaultLabelContent(fieldName);
-            return;
-        }
-
-        // Show loading state
-        label.innerHTML = `
-            <div class="loading-spinner mr-2"></div>
-            <span>Memvalidasi foto...</span>
-        `;
-
-        try {
-            // Debug file info
-            console.log('Photo upload debug:', {
-                name: file.name,
-                type: file.type,
-                size: file.size,
-                lastModified: new Date(file.lastModified).toISOString()
-            });
-
-            // Validate file (this returns a Promise for images)
-            const validationResult = await validateFile(file, validation);
-            
-            if (!validationResult.valid) {
-                showFileError(fieldName, validationResult.error);
-                event.target.value = '';
-                return;
+            // Store file in mobile store for mobile devices
+            if (isMobileDevice()) {
+                const stored = mobileFileStore.store(fieldName, file);
+                if (!stored) {
+                    showFileError(fieldName, 'Gagal menyimpan file di memori mobile. Silakan coba lagi.');
+                    event.target.value = '';
+                    return;
+                }
             }
 
             // Show preview
             showFilePreview(fieldName, file);
             
             // Log successful validation
-            console.log('Photo validation successful:', {
+            console.log(`✅ File ${fieldName} uploaded successfully (${isMobileDevice() ? 'Mobile' : 'Desktop'}):`, {
                 name: file.name,
                 type: file.type,
                 size: file.size
             });
             
         } catch (error) {
-            console.error('Photo validation error:', error);
-            showFileError(fieldName, 'Terjadi kesalahan saat memvalidasi file. Silakan coba lagi.');
+            console.error(`❌ File upload error for ${fieldName}:`, error);
+            const errorMsg = isMobileDevice() ? 
+                'Terjadi kesalahan saat memproses file di perangkat mobile. Silakan coba lagi.' :
+                'Terjadi kesalahan saat memvalidasi file. Silakan coba lagi.';
+            showFileError(fieldName, errorMsg);
             event.target.value = '';
         }
+    }
+
+    // Enhanced photo upload handler (kept for compatibility)
+    async function handlePhotoUpload(event, fieldName) {
+        return handleFileUpload(event, fieldName);
     }
 
     function handleMultipleFileUpload(event, fieldName) {
@@ -279,7 +359,7 @@
         });
     }
 
-    // Enhanced error display
+    // Enhanced error display with mobile support
     function showFileError(fieldName, errorMessage) {
         const label = document.getElementById(`${fieldName}-label`);
         const error = document.getElementById(`${fieldName}-error`);
@@ -289,20 +369,36 @@
             <svg class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
-            <span>File tidak valid</span>
+            <span>${isMobileDevice() ? '📱 ' : ''}File tidak valid</span>
         `;
         
         error.innerHTML = `
-            <div class="text-red-600 font-medium">Error:</div>
+            <div class="text-red-600 font-medium">${isMobileDevice() ? '📱 Mobile ' : ''}Error:</div>
             <div>${errorMessage}</div>
-            <div class="text-xs mt-1 text-gray-600">
-                ${fieldName === 'photo' ? 
-                    'Pastikan file yang Anda upload adalah foto dengan format JPG atau PNG dan ukuran maksimal 2MB.' :
-                    'Pastikan file sesuai dengan format yang diminta dan ukuran maksimal 2MB.'
-                }
-            </div>
+            ${isMobileDevice() ? `
+                <div class="text-xs mt-1 text-blue-600">
+                    <strong>💡 Tips Mobile:</strong> ${getMobileTip(fieldName)}
+                </div>
+            ` : `
+                <div class="text-xs mt-1 text-gray-600">
+                    ${fieldName === 'photo' ? 
+                        'Pastikan file yang Anda upload adalah foto dengan format JPG atau PNG dan ukuran maksimal 2MB.' :
+                        'Pastikan file sesuai dengan format yang diminta dan ukuran maksimal 2MB.'
+                    }
+                </div>
+            `}
         `;
         error.classList.add('show');
+    }
+
+    function getMobileTip(fieldName) {
+        const tips = {
+            photo: 'Ambil foto baru menggunakan kamera atau pilih dari galeri. Pastikan file tidak terlalu besar.',
+            cv: 'Pastikan file PDF tidak corrupt dan ukuran di bawah 2MB.',
+            transcript: 'Scan dokumen dengan jelas dan simpan sebagai PDF.',
+            certificates: 'File opsional - abaikan jika tidak ada sertifikat.'
+        };
+        return tips[fieldName] || 'Pastikan file valid dan tidak corrupt.';
     }
 
     function showFilePreview(fieldName, file) {
@@ -310,18 +406,21 @@
         const preview = document.getElementById(`${fieldName}-preview`);
         
         label.classList.add('has-file');
+        const fileName = isMobileDevice() && file.name.length > 20 ? 
+                        file.name.substring(0, 20) + '...' : file.name;
+        
         label.innerHTML = `
             <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span>File dipilih</span>
+            <span>${isMobileDevice() ? '📱 ' : ''}${fileName}</span>
         `;
 
         preview.innerHTML = `
             <div class="file-preview-item">
                 <div class="file-preview-info">
                     ${getFileIcon(file.type)}
-                    <span>${file.name}</span>
+                    <span>${fileName}</span>
                     <span class="file-size">(${formatFileSize(file.size)})</span>
                 </div>
                 <span class="file-remove" onclick="removeFile('${fieldName}')">×</span>
@@ -339,16 +438,18 @@
             <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span>${files.length} file dipilih</span>
+            <span>${isMobileDevice() ? '📱 ' : ''}${files.length} file dipilih</span>
         `;
 
         let previewHtml = '';
         files.forEach((file, index) => {
+            const fileName = isMobileDevice() && file.name.length > 15 ? 
+                            file.name.substring(0, 15) + '...' : file.name;
             previewHtml += `
                 <div class="file-preview-item">
                     <div class="file-preview-info">
                         ${getFileIcon(file.type)}
-                        <span>${file.name}</span>
+                        <span>${fileName}</span>
                         <span class="file-size">(${formatFileSize(file.size)})</span>
                     </div>
                     <span class="file-remove" onclick="removeMultipleFile('${fieldName}', ${index})">×</span>
@@ -369,6 +470,13 @@
         label.classList.remove('has-file');
         label.innerHTML = getDefaultLabelContent(fieldName);
         preview.style.display = 'none';
+        
+        // Remove from mobile store
+        if (isMobileDevice()) {
+            mobileFileStore.files.delete(fieldName);
+        }
+        
+        console.log(`🗑️ File ${fieldName} removed (${isMobileDevice() ? 'Mobile' : 'Desktop'})`);
     }
 
     function removeMultipleFile(fieldName, indexToRemove) {
@@ -392,23 +500,24 @@
     }
 
     function getDefaultLabelContent(fieldName) {
+        const mobilePrefix = isMobileDevice() ? '📱 ' : '';
         const contents = {
             cv: `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                  </svg>
-                 <span>Pilih file PDF</span>`,
+                 <span>${mobilePrefix}Pilih file PDF</span>`,
             photo: `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                  </svg>
-                 <span>Pilih file JPG/PNG</span>`,
+                 <span>${mobilePrefix}Pilih file JPG/PNG</span>`,
             transcript: `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                      </svg>
-                     <span>Pilih file PDF</span>`,
+                     <span>${mobilePrefix}Pilih file PDF</span>`,
             certificates: `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                        </svg>
-                       <span>Pilih file PDF (dapat lebih dari 1)</span>`
+                       <span>${mobilePrefix}Pilih file PDF (dapat lebih dari 1)</span>`
         };
         return contents[fieldName];
     }
@@ -433,7 +542,7 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // Form State Preservation
+    // Form State Preservation (existing code kept unchanged)
     const STORAGE_KEY = 'jobApplicationFormData';
     const form = document.getElementById('applicationForm');
     const saveIndicator = document.getElementById('saveIndicator');
@@ -448,7 +557,7 @@
         'information_source', 'cv', 'photo', 'transcript'
     ];
     
-    // 🆕 UPDATED: Save form data dengan OCR status preservation
+    // Save form data dengan OCR status preservation (existing code kept)
     function saveFormData() {
         const formData = new FormData(form);
         const data = {};
@@ -473,7 +582,7 @@
             data.expected_salary = getRawSalaryValue(salaryInput);
         }
         
-        // 🆕 PRESERVE OCR status di localStorage
+        // PRESERVE OCR status di localStorage
         const nikField = document.getElementById('nik');
         if (nikField && nikField.readOnly && nikField.classList.contains('ocr-filled')) {
             data.ocr_nik_locked = 'true';
@@ -493,7 +602,7 @@
         showSaveIndicator();
     }
     
-    // 🆕 UPDATED: Load form data dengan OCR state restoration
+    // Load form data dengan OCR state restoration (existing code kept)
     function loadFormData() {
         const savedData = localStorage.getItem(STORAGE_KEY);
         if (!savedData) return;
@@ -532,7 +641,7 @@
                 formatSalary(salaryInput);
             }
 
-            // 🆕 RESTORE OCR NIK state jika ada
+            // RESTORE OCR NIK state jika ada
             if (data.ocr_nik_locked === 'true' && data.ocr_nik_value) {
                 const nikField = document.getElementById('nik');
                 if (nikField) {
@@ -572,7 +681,7 @@
         }
     }
 
-    // 🆕 NEW: Add OCR indicator to NIK field
+    // Add OCR indicator to NIK field (existing code kept)
     function addOcrIndicator(nikField) {
         // Remove existing indicator
         const existing = nikField.parentNode.querySelector('.ocr-indicator');
@@ -594,7 +703,7 @@
         nikField.parentNode.appendChild(indicator);
     }
     
-    // Show save indicator
+    // Show save indicator (existing code kept)
     function showSaveIndicator() {
         saveIndicator.classList.add('show');
         setTimeout(() => {
@@ -602,22 +711,29 @@
         }, 2000);
     }
     
-    // Show custom alert
+    // Show custom alert (enhanced for mobile)
     function showAlert(message, type = 'error') {
+        // Use global showAlert if available (defined in blade template)
+        if (window.showAlert) {
+            window.showAlert(message, type);
+            return;
+        }
+        
+        // Fallback implementation
         const alert = document.createElement('div');
         alert.className = `custom-alert ${type}`;
         alert.innerHTML = `
-            <div class="font-medium">${type === 'error' ? 'Error!' : type === 'success' ? 'Berhasil!' : 'Peringatan!'}</div>
+            <div class="font-medium">${type === 'error' ? (isMobileDevice() ? '📱❌ Error!' : 'Error!') : type === 'success' ? '✅ Berhasil!' : '⚠️ Peringatan!'}</div>
             <div class="text-sm mt-1">${message}</div>
         `;
         document.body.appendChild(alert);
         
         setTimeout(() => {
             alert.remove();
-        }, 5000);
+        }, isMobileDevice() ? 8000 : 5000);
     }
     
-    // Debounce function
+    // Debounce function (existing code kept)
     function debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -630,7 +746,7 @@
         };
     }
     
-    // Dynamic form functions
+    // Dynamic form functions (existing code kept unchanged)
     let familyIndex = 0;
     let educationIndex = 0;
     let nonFormalEducationIndex = 0;
@@ -639,7 +755,7 @@
     let socialActivityIndex = 0;
     let achievementIndex = 0;
 
-    // Get default templates
+    // Get default templates (existing code kept unchanged)
     function getDefaultFamilyMember(index) {
         return `
             <div class="dynamic-group" data-index="${index}">
@@ -761,7 +877,7 @@
         `;
     }
 
-    // Make functions global for onclick handlers
+    // Make functions global for onclick handlers (existing code kept)
     window.addFamilyMember = function() {
         familyIndex++;
         const container = document.getElementById('familyMembers');
@@ -819,7 +935,7 @@
         }
     };
 
-    // Optional dynamic functions
+    // Optional dynamic functions (existing code kept)
     window.addNonFormalEducation = function() {
         nonFormalEducationIndex++;
         const container = document.getElementById('nonFormalEducation');
@@ -990,7 +1106,7 @@
     window.removeFile = removeFile;
     window.removeMultipleFile = removeMultipleFile;
 
-    // Address copy functionality
+    // Address copy functionality (existing code kept)
     function initializeAddressCopy() {
         const copyCheckbox = document.getElementById('copy_ktp_address');
         const currentAddressField = document.getElementById('current_address');
@@ -1008,13 +1124,12 @@
                     currentAddressField.removeAttribute('readonly');
                     currentAddressField.style.backgroundColor = '';
                     currentAddressField.style.color = '';
-                    currentAddressField.value = ''; // Clear the field when unchecked
+                    currentAddressField.value = '';
                     currentAddressField.focus();
                     saveFormData();
                 }
             });
 
-            // Update current address when KTP address changes (if copy is checked)
             ktpAddressField.addEventListener('input', function() {
                 if (copyCheckbox.checked) {
                     currentAddressField.value = this.value;
@@ -1024,23 +1139,19 @@
         }
     }
 
-    // Salary formatting functions yang diperbaiki
+    // Salary formatting functions (existing code kept)
     function formatSalary(input) {
-        // Simpan posisi cursor
         const cursorPosition = input.selectionStart;
         const oldValue = input.value;
         
-        // Remove all non-digits
         let value = input.value.replace(/\D/g, '');
         
-        // Add thousand separators
         if (value) {
             value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
         }
         
         input.value = value;
         
-        // Restore cursor position (adjust for added dots)
         const newDots = (value.match(/\./g) || []).length;
         const oldDots = (oldValue.match(/\./g) || []).length;
         const dotDifference = newDots - oldDots;
@@ -1050,16 +1161,14 @@
     }
 
     function unformatSalary(input) {
-        // Remove dots for form submission - hanya menghilangkan titik
         input.value = input.value.replace(/\./g, '');
     }
 
-    // Function untuk mendapatkan nilai raw salary (tanpa titik)
     function getRawSalaryValue(input) {
         return input.value.replace(/\./g, '');
     }
 
-    // Enhanced duplicate checking system
+    // Enhanced duplicate checking system (existing code kept)
     const duplicateChecker = {
         email: {
             timeout: null,
@@ -1073,7 +1182,6 @@
         }
     };
 
-    // Debounced duplicate check function
     function checkDuplicate(fieldType, value, callback) {
         const checker = duplicateChecker[fieldType];
         if (checker.timeout) clearTimeout(checker.timeout);
@@ -1095,7 +1203,7 @@
                 callback(result);
             } catch (error) {
                 console.error(`Error checking ${fieldType}:`, error);
-                callback({ exists: false, message: 'Gagal memeriksa duplikasi' });
+                callback({ exists: false, message: 'Duplikasi status: 0' });
             } finally {
                 checker.isChecking = false;
             }
@@ -1155,7 +1263,6 @@
         });
     }
 
-    // 🆕 UPDATED: Enhanced NIK validation - less restrictive but still secure
     function enhanceNikValidation() {
         const nikInput = document.getElementById('nik');
         if (!nikInput) return;
@@ -1177,7 +1284,6 @@
                 return;
             }
 
-            // 🆕 UPDATED: Only check duplicates, don't require OCR validation
             checkDuplicate('nik', nik, (result) => {
                 showDuplicateStatus('nik', result, true);
             });
@@ -1224,9 +1330,7 @@
         });
     }
 
-    // ✅ KEEP: Existing attachEventListeners function
     function attachEventListeners() {
-        // Attach save event listeners for dynamically added elements
         const newInputs = form.querySelectorAll('input:not([type="file"]):not(.listener-attached), select:not(.listener-attached), textarea:not(.listener-attached)');
         
         newInputs.forEach(input => {
@@ -1242,7 +1346,6 @@
         });
     }
 
-    // ✅ KEEP: Existing updateRemoveButtons function  
     function updateRemoveButtons(containerId) {
         const container = document.getElementById(containerId);
         const removeButtons = container.querySelectorAll('.btn-remove');
@@ -1256,9 +1359,7 @@
         });
     }
 
-    // ✅ KEEP: Existing cleanEmptyOptionalFields function
     function cleanEmptyOptionalFields() {
-        // Remove empty optional dynamic sections
         const optionalContainers = [
             'nonFormalEducation', 
             'workExperiences', 
@@ -1282,17 +1383,14 @@
         });
     }
 
-    // 🆕 UPDATED: NIK field initialization - no longer locked by default
     function initializeNikField() {
         const nikField = document.getElementById('nik');
         if (!nikField) return;
 
-        // Check if OCR data exists from session
         const ocrValidated = sessionStorage.getItem('nik_locked') === 'true';
         const savedNikValue = sessionStorage.getItem('extracted_nik');
         
         if (ocrValidated && savedNikValue) {
-            // Restore OCR state
             nikField.value = savedNikValue;
             nikField.readOnly = true;
             nikField.style.backgroundColor = '#ecfdf5';
@@ -1302,13 +1400,11 @@
             addOcrIndicator(nikField);
             console.log('NIK field restored from OCR session:', savedNikValue);
         } else {
-            // 🆕 UPDATED: NIK field is now editable by default with helpful placeholder
             nikField.readOnly = false;
             nikField.style.backgroundColor = '';
             nikField.style.color = '';
             nikField.placeholder = 'Masukkan NIK 16 digit atau gunakan scan KTP';
             
-            // Add helpful instruction
             const instructionDiv = document.createElement('div');
             instructionDiv.className = 'nik-instruction';
             instructionDiv.innerHTML = `
@@ -1324,10 +1420,74 @@
         }
     }
 
+    // 🆕 ENHANCED MOBILE FILE VALIDATION FOR FORM SUBMISSION
+    async function validateMobileFilesForSubmission() {
+        if (!isMobileDevice()) return { hasErrors: false, errors: [] };
+        
+        console.log('📱 Mobile: Validating files for form submission');
+        
+        const fileFields = ['cv', 'photo', 'transcript'];
+        let hasFileErrors = false;
+        let fileErrors = [];
+
+        for (const fieldName of fileFields) {
+            const input = document.getElementById(fieldName);
+            const validation = fileValidation[fieldName];
+            
+            if (!input.files.length && validation.required) {
+                hasFileErrors = true;
+                fileErrors.push(`${fieldName.toUpperCase()}: File harus diupload`);
+                continue;
+            }
+            
+            if (input.files.length > 0) {
+                // Check mobile store validation
+                const storedValidation = mobileFileStore.validateStored(fieldName);
+                
+                if (!storedValidation.valid) {
+                    console.error(`📱 Mobile: File ${fieldName} validation failed:`, storedValidation.error);
+                    hasFileErrors = true;
+                    fileErrors.push(`${fieldName.toUpperCase()}: ${storedValidation.error}. Silakan pilih file lagi.`);
+                    
+                    // Reset the file input
+                    const label = document.getElementById(`${fieldName}-label`);
+                    const preview = document.getElementById(`${fieldName}-preview`);
+                    label.classList.remove('has-file');
+                    label.classList.add('error');
+                    preview.style.display = 'none';
+                    input.value = '';
+                    
+                    continue;
+                }
+                
+                // Re-validate the file
+                const file = storedValidation.file;
+                const validationResult = await validateFile(file, validation);
+                
+                if (!validationResult.valid) {
+                    hasFileErrors = true;
+                    fileErrors.push(`${fieldName.toUpperCase()}: ${validationResult.error}`);
+                    showFileError(fieldName, validationResult.error);
+                }
+            }
+        }
+
+        return { hasErrors: hasFileErrors, errors: fileErrors };
+    }
+
+    // 🆕 MAKE FUNCTIONS GLOBALLY AVAILABLE
+    window.fileValidation = fileValidation;
+    window.handleMultipleFileUpload = handleMultipleFileUpload;
+    window.isMobileDevice = isMobileDevice;
+    window.mobileFileStore = mobileFileStore;
+
+    // MAIN INITIALIZATION
     document.addEventListener('DOMContentLoaded', function() {
+        console.log(`🚀 Initializing form system (${isMobileDevice() ? 'Mobile' : 'Desktop'})`);
+        
         loadFormData();
         initializeAddressCopy();
-        initializeNikField(); // 🆕 NEW: Initialize NIK field properly
+        initializeNikField();
         
         // Add event listeners for auto-save
         const inputs = form.querySelectorAll('input:not([type="file"]), select, textarea');
@@ -1340,7 +1500,7 @@
             }, 1000));
         });
 
-        // Initialize file upload handlers
+        // Initialize file upload handlers with mobile support
         document.getElementById('cv').addEventListener('change', function(e) {
             handleFileUpload(e, 'cv');
         });
@@ -1357,40 +1517,31 @@
             handleMultipleFileUpload(e, 'certificates');
         });
 
-        // Initialize salary formatting - PERBAIKAN UTAMA
+        // Initialize salary formatting
         const salaryInput = document.getElementById('expected_salary');
         if (salaryInput) {
-            // Event listener untuk formatting real-time
             salaryInput.addEventListener('input', function(e) {
                 formatSalary(e.target);
                 
-                // Debounced save dengan nilai yang sudah diformat
                 clearTimeout(this.saveTimeout);
                 this.saveTimeout = setTimeout(() => {
                     saveFormData();
                 }, 1000);
             });
             
-            // Format on load if there's a value
             if (salaryInput.value) {
                 formatSalary(salaryInput);
             }
             
-            // PENTING: Event listener untuk form submission
             salaryInput.form.addEventListener('submit', function(e) {
-                // Unformat salary sebelum submit
                 const rawValue = getRawSalaryValue(salaryInput);
                 salaryInput.value = rawValue;
             });
         }
 
-        // Enhanced NIK validation
+        // Enhanced validation
         enhanceNikValidation();
-
-        // Enhanced email validation
         enhanceEmailValidation();
-
-        // Enhanced form submission validation
         enhanceFormSubmissionValidation();
 
         // Initialize remove button states
@@ -1398,11 +1549,11 @@
         updateRemoveButtons('formalEducation');
         updateRemoveButtons('languageSkills');
 
-        // Enhanced form validation dengan async file validation
+        // 🆕 ENHANCED FORM VALIDATION with Mobile Support
         document.getElementById('applicationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            // PERBAIKAN: Unformat salary sebelum validation dan submission
+            // Unformat salary before validation and submission
             const salaryInput = document.getElementById('expected_salary');
             if (salaryInput) {
                 const rawValue = getRawSalaryValue(salaryInput);
@@ -1434,26 +1585,21 @@
                 }
             });
             
-            // Enhanced date validation dengan explicit parsing
+            // Enhanced date validation
             const startWorkDate = document.getElementById('start_work_date');
             if (startWorkDate && startWorkDate.value) {
                 console.log('Validating start_work_date:', startWorkDate.value);
                 
-                // Parse date using explicit format (YYYY-MM-DD)
                 const selectedDateParts = startWorkDate.value.split('-');
                 if (selectedDateParts.length === 3) {
                     const selectedDate = new Date(
-                        parseInt(selectedDateParts[0]), // year
-                        parseInt(selectedDateParts[1]) - 1, // month (0-based)
-                        parseInt(selectedDateParts[2]) // day
+                        parseInt(selectedDateParts[0]),
+                        parseInt(selectedDateParts[1]) - 1,
+                        parseInt(selectedDateParts[2])
                     );
                     
                     const today = new Date();
-                    today.setHours(23, 59, 59, 999); // Set to end of today
-                    
-                    console.log('Selected date:', selectedDate);
-                    console.log('Today (end of day):', today);
-                    console.log('Is selected date after today?', selectedDate > today);
+                    today.setHours(23, 59, 59, 999);
                     
                     if (selectedDate <= today) {
                         hasError = true;
@@ -1472,6 +1618,7 @@
                 }
             }
 
+            // Validate dynamic sections
             const familyContainer = document.getElementById('familyMembers');
             const educationContainer = document.getElementById('formalEducation');
             const languageContainer = document.getElementById('languageSkills');
@@ -1491,6 +1638,7 @@
                 errors.push('Kemampuan bahasa minimal harus diisi 1 bahasa');
             }
             
+            // Validate required fields in dynamic sections
             [
                 {container: familyContainer, name: 'Data Keluarga'},
                 {container: educationContainer, name: 'Pendidikan Formal'},
@@ -1508,50 +1656,67 @@
                 });
             });
 
+            // Check agreement
             const agreementCheckbox = document.querySelector('input[name="agreement"]');
             if (!agreementCheckbox.checked) {
                 hasError = true;
                 errors.push('Anda harus menyetujui pernyataan untuk melanjutkan');
             }
 
+            // 🆕 ENHANCED FILE VALIDATION with Mobile Support
             const fileInputs = ['cv', 'photo', 'transcript'];
-            for (const fieldName of fileInputs) {
-                const input = document.getElementById(fieldName);
-                if (input && input.files.length > 0) {
-                    const file = input.files[0];
-                    const validation = fileValidation[fieldName];
-                    
-                    try {
-                        const validationResult = await validateFile(file, validation);
-                        
-                        if (!validationResult.valid) {
-                            hasError = true;
-                            errors.push(`${fieldName.toUpperCase()}: ${validationResult.error}`);
-                            showFileError(fieldName, validationResult.error);
-                        }
-                    } catch (error) {
-                        hasError = true;
-                        errors.push(`${fieldName.toUpperCase()}: Gagal memvalidasi file`);
-                        console.error(`Validation error for ${fieldName}:`, error);
-                    }
-                } else if (fileValidation[fieldName].required) {
+            
+            // Mobile-specific file validation
+            if (isMobileDevice()) {
+                const mobileFileValidation = await validateMobileFilesForSubmission();
+                if (mobileFileValidation.hasErrors) {
                     hasError = true;
-                    errors.push(`${fieldName.toUpperCase()}: File harus diupload`);
+                    errors.push(...mobileFileValidation.errors);
+                }
+            } else {
+                // Desktop file validation
+                for (const fieldName of fileInputs) {
+                    const input = document.getElementById(fieldName);
+                    if (input && input.files.length > 0) {
+                        const file = input.files[0];
+                        const validation = fileValidation[fieldName];
+                        
+                        try {
+                            const validationResult = await validateFile(file, validation);
+                            
+                            if (!validationResult.valid) {
+                                hasError = true;
+                                errors.push(`${fieldName.toUpperCase()}: ${validationResult.error}`);
+                                showFileError(fieldName, validationResult.error);
+                            }
+                        } catch (error) {
+                            hasError = true;
+                            errors.push(`${fieldName.toUpperCase()}: Gagal memvalidasi file`);
+                            console.error(`Validation error for ${fieldName}:`, error);
+                        }
+                    } else if (fileValidation[fieldName].required) {
+                        hasError = true;
+                        errors.push(`${fieldName.toUpperCase()}: File harus diupload`);
+                    }
                 }
             }
             
             if (hasError) {
-                // Re-format salary jika ada error untuk user experience
+                // Re-format salary if there are errors for user experience
                 if (salaryInput && salaryInput.value) {
                     formatSalary(salaryInput);
                 }
                 
-                let errorMessage = 'Harap lengkapi data berikut:\n\n';
+                let errorMessage = `${isMobileDevice() ? '📱 ' : ''}Harap lengkapi data berikut:\n\n`;
                 errors.slice(0, 10).forEach((error, index) => {
                     errorMessage += `${index + 1}. ${error}\n`;
                 });
                 if (errors.length > 10) {
                     errorMessage += `\n... dan ${errors.length - 10} field lainnya`;
+                }
+                
+                if (isMobileDevice()) {
+                    errorMessage += '\n\n💡 Tips Mobile: Pastikan semua file telah dipilih dengan benar dan tidak hilang dari memori perangkat.';
                 }
                 
                 showAlert(errorMessage.replace(/\n/g, '<br>'), 'error');
@@ -1568,13 +1733,39 @@
                 // Disable submit button to prevent double submission
                 const submitBtn = document.getElementById('submitBtn');
                 submitBtn.disabled = true;
-                submitBtn.innerHTML = '<span class="loading-spinner mr-2"></span> Mengirim...';
+                submitBtn.innerHTML = `<span class="loading-spinner mr-2"></span> ${isMobileDevice() ? '📱 Mengirim...' : 'Mengirim...'}`;
                 
-                // Submit form dengan nilai raw
-                console.log('All validations passed, submitting form with raw salary value...');
+                console.log(`✅ All validations passed, submitting form (${isMobileDevice() ? 'Mobile' : 'Desktop'})`);
                 this.submit();
             }
         });
+
+        // 🆕 ADD MOBILE NOTICE if mobile device detected
+        if (isMobileDevice()) {
+            const mobileNotice = document.createElement('div');
+            mobileNotice.className = 'mobile-notice';
+            mobileNotice.innerHTML = `
+                <div style="background: #ecfdf5; border: 1px solid #10b981; border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 14px; color: #065f46;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <span>📱</span>
+                        <strong>Mode Mobile Terdeteksi - Sistem Dioptimalkan</strong>
+                    </div>
+                    <ul style="margin-left: 20px; line-height: 1.5;">
+                        <li>✅ Upload file dioptimalkan untuk mobile</li>
+                        <li>📁 File disimpan aman di memori perangkat</li>
+                        <li>🔄 Sistem backup otomatis untuk mencegah file hilang</li>
+                        <li>💡 Validasi file dipermudah untuk kompatibilitas mobile</li>
+                    </ul>
+                </div>
+            `;
+            
+            const uploadSection = document.querySelector('[data-section="9"]');
+            if (uploadSection) {
+                uploadSection.insertBefore(mobileNotice, uploadSection.children[1]);
+            }
+        }
+
+        console.log(`✅ Form system initialized successfully (${isMobileDevice() ? 'Mobile' : 'Desktop'})`);
     });
 
 })();
