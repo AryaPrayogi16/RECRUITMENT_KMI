@@ -1095,7 +1095,7 @@
                 callback(result);
             } catch (error) {
                 console.error(`Error checking ${fieldType}:`, error);
-                callback({ exists: false, message: 'Gagal memeriksa duplikasi' });
+                callback({ exists: false, message: 'Debug result:0' });
             } finally {
                 checker.isChecking = false;
             }

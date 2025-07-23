@@ -208,27 +208,18 @@
     <div class="container">
         <div class="logo">📋</div>
         
-        <p class="subtitle">
-            Silakan pilih jenis tes.
-        </p>
+
 
         <div id="errorMessage" class="error-message" style="display: none;"></div>
 
         <form id="resumeTestForm">
             <div class="form-group">
-                <label>Pilih Jenis Tes:</label>
+                <label>Klik tombol dibawah:</label>
                 <div class="test-selector">
-                    <div class="test-option">
-                        <input type="radio" id="disc" name="testType" value="disc3d" required>
-                        <label for="disc">
-                            <div class="test-name">TEST 2</div>
-                           
-                        </label>
-                    </div>
                     <div class="test-option">
                         <input type="radio" id="kraeplin" name="testType" value="kraeplin" required>
                         <label for="kraeplin">
-                            <div class="test-name">TEST 1</div>
+                            <div class="test-name">Ready</div>
                             
                         </label>
                     </div>
