@@ -192,7 +192,13 @@ class JobApplicationRequest extends FormRequest
                     }
                 },
             ],
-            'formal_education.*.gpa' => 'required|numeric|min:0|max:100',
+
+            'formal_education.*.gpa' => [    'required','numeric', function ($attribute, $value, $fail) {
+        if (!($value >= 1 && $value <= 4 || $value >= 1 && $value <= 100)) {
+            $fail('Nilai harus antara 1.00–4.00 atau 1–100.');
+                        }
+                    },
+                ],
             
             // Non-Formal Education - Optional
             'non_formal_education' => 'nullable|array',

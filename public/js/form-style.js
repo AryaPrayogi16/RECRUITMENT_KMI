@@ -1,4 +1,4 @@
-// Form Application Script - Updated with Mobile File Upload Fixes
+// Form Application Script - Updated with Fixed NIK Handling
 (function() {
     'use strict';
 
@@ -35,16 +35,13 @@
         }
     };
 
-    // Enhanced file validation function with mobile support
+    // Enhanced file validation function
     async function validateFile(file, validation) {
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        console.log(`${isMobile ? '📱 Mobile' : '💻 Desktop'} validating file:`, {
+        console.log('Validating file:', {
             name: file.name,
             type: file.type,
             size: file.size,
-            lastModified: file.lastModified,
-            userAgent: navigator.userAgent.substring(0, 100)
+            lastModified: file.lastModified
         });
 
         // Check if file is valid
@@ -68,11 +65,11 @@
 
         // For photo files, do additional image validation
         if (validation.extensions.includes('jpg') || validation.extensions.includes('jpeg') || validation.extensions.includes('png')) {
-            return await validateImageFileForMobile(file, validation);
+            return await validateImageFile(file, validation);
         }
 
-        // For non-image files, check MIME type but be more lenient on mobile
-        if (!isMobile && !validation.types.includes(file.type)) {
+        // Check MIME type for non-image files
+        if (!validation.types.includes(file.type)) {
             console.warn('MIME type mismatch:', {
                 detected: file.type,
                 allowed: validation.types
@@ -84,86 +81,57 @@
         return { valid: true };
     }
 
-    // Enhanced mobile-specific image validation function
-    function validateImageFileForMobile(file, validation) {
+    // Enhanced image validation function
+    function validateImageFile(file, validation) {
         return new Promise((resolve) => {
+            // Check MIME type first, but be more lenient for images
             const extension = file.name.toLowerCase().split('.').pop();
             
-            // Mobile browser often has inconsistent MIME types
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            
-            // For mobile, be more lenient with MIME types but strict with extensions
-            if (!validation.extensions.includes(extension)) {
-                resolve({ valid: false, error: `Format file harus JPG atau PNG. File Anda: ${extension.toUpperCase()}` });
-                return;
-            }
-
-            // Skip MIME type checking for mobile if extension is correct
-            if (isMobile && validation.extensions.includes(extension)) {
-                // Try to create image object to verify it's actually a valid image
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        console.log('📱 Mobile image validation successful:', {
-                            width: img.width,
-                            height: img.height,
-                            size: file.size,
-                            type: file.type
-                        });
-                        resolve({ valid: true });
-                    };
-                    img.onerror = function() {
-                        console.error('📱 Mobile image validation failed');
-                        resolve({ valid: false, error: 'File bukan gambar yang valid atau file rusak' });
-                    };
-                    img.src = e.target.result;
-                };
-                reader.onerror = function() {
-                    resolve({ valid: false, error: 'Tidak dapat membaca file. File mungkin rusak.' });
-                };
-                reader.readAsDataURL(file);
-            } else {
-                // Desktop validation (existing logic)
-                if (!validation.types.includes(file.type)) {
-                    console.warn('MIME type mismatch for image:', {
-                        detected: file.type,
-                        allowed: validation.types,
-                        extension: extension
-                    });
-                    
-                    // If extension is correct but MIME type is wrong, try to validate as image anyway
-                    if (!validation.extensions.includes(extension)) {
-                        resolve({ valid: false, error: `Format file harus JPG atau PNG. Tipe file terdeteksi: ${file.type}` });
-                        return;
-                    }
+            if (!validation.types.includes(file.type)) {
+                console.warn('MIME type mismatch for image:', {
+                    detected: file.type,
+                    allowed: validation.types,
+                    extension: extension
+                });
+                
+                // If extension is correct but MIME type is wrong, try to validate as image anyway
+                if (!validation.extensions.includes(extension)) {
+                    resolve({ valid: false, error: `Format file harus JPG atau PNG. Tipe file terdeteksi: ${file.type}` });
+                    return;
                 }
-
-                // Try to load as image to verify it's actually a valid image
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        console.log('Image validation successful:', {
-                            width: img.width,
-                            height: img.height,
-                            size: file.size,
-                            type: file.type
-                        });
-                        resolve({ valid: true });
-                    };
-                    img.onerror = function() {
-                        console.error('Image validation failed - not a valid image');
-                        resolve({ valid: false, error: 'File bukan gambar yang valid atau file rusak' });
-                    };
-                    img.src = e.target.result;
-                };
-                reader.onerror = function() {
-                    console.error('FileReader error');
-                    resolve({ valid: false, error: 'Tidak dapat membaca file. File mungkin rusak.' });
-                };
-                reader.readAsDataURL(file);
             }
+
+            // Try to load as image to verify it's actually a valid image
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const img = new Image();
+                
+                img.onload = function() {
+                    console.log('Image validation successful:', {
+                        width: img.width,
+                        height: img.height,
+                        size: file.size,
+                        type: file.type
+                    });
+                    resolve({ valid: true });
+                };
+                
+                img.onerror = function() {
+                    console.error('Image validation failed - not a valid image');
+                    resolve({ valid: false, error: 'File bukan gambar yang valid atau file rusak' });
+                };
+                
+                img.src = e.target.result;
+            };
+            
+            reader.onerror = function() {
+                console.error('FileReader error');
+                resolve({ valid: false, error: 'Tidak dapat membaca file. File mungkin rusak.' });
+            };
+            
+            // Read as data URL to validate image
+            reader.readAsDataURL(file);
         });
     }
 
@@ -205,7 +173,7 @@
         }
     }
 
-    // Enhanced photo upload handler with mobile support
+    // Enhanced photo upload handler
     async function handlePhotoUpload(event, fieldName) {
         const file = event.target.files[0];
         const validation = fileValidation[fieldName];
@@ -224,22 +192,19 @@
             return;
         }
 
-        // Show loading state with mobile detection
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
+        // Show loading state
         label.innerHTML = `
             <div class="loading-spinner mr-2"></div>
-            <span>${isMobile ? '📱 Memvalidasi foto mobile...' : 'Memvalidasi foto...'}</span>
+            <span>Memvalidasi foto...</span>
         `;
 
         try {
             // Debug file info
-            console.log(`${isMobile ? '📱 Mobile' : '💻 Desktop'} photo upload debug:`, {
+            console.log('Photo upload debug:', {
                 name: file.name,
                 type: file.type,
                 size: file.size,
-                lastModified: new Date(file.lastModified).toISOString(),
-                userAgent: navigator.userAgent.substring(0, 100)
+                lastModified: new Date(file.lastModified).toISOString()
             });
 
             // Validate file (this returns a Promise for images)
@@ -255,15 +220,15 @@
             showFilePreview(fieldName, file);
             
             // Log successful validation
-            console.log(`✅ ${isMobile ? 'Mobile' : 'Desktop'} photo validation successful:`, {
+            console.log('Photo validation successful:', {
                 name: file.name,
                 type: file.type,
                 size: file.size
             });
             
         } catch (error) {
-            console.error(`❌ ${isMobile ? 'Mobile' : 'Desktop'} photo validation error:`, error);
-            showFileError(fieldName, `Terjadi kesalahan saat memvalidasi file${isMobile ? ' di perangkat mobile' : ''}. Silakan coba lagi.`);
+            console.error('Photo validation error:', error);
+            showFileError(fieldName, 'Terjadi kesalahan saat memvalidasi file. Silakan coba lagi.');
             event.target.value = '';
         }
     }
@@ -314,45 +279,30 @@
         });
     }
 
-    // Enhanced error display with mobile support
+    // Enhanced error display
     function showFileError(fieldName, errorMessage) {
         const label = document.getElementById(`${fieldName}-label`);
         const error = document.getElementById(`${fieldName}-error`);
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
         label.classList.add('error');
         label.innerHTML = `
             <svg class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
-            <span>${isMobile ? '📱 File error' : 'File tidak valid'}</span>
+            <span>File tidak valid</span>
         `;
         
         error.innerHTML = `
-            <div class="text-red-600 font-medium">${isMobile ? '📱 Mobile ' : ''}Error:</div>
+            <div class="text-red-600 font-medium">Error:</div>
             <div>${errorMessage}</div>
             <div class="text-xs mt-1 text-gray-600">
-                ${getMobileSpecificTip(fieldName, isMobile)}
+                ${fieldName === 'photo' ? 
+                    'Pastikan file yang Anda upload adalah foto dengan format JPG atau PNG dan ukuran maksimal 2MB.' :
+                    'Pastikan file sesuai dengan format yang diminta dan ukuran maksimal 2MB.'
+                }
             </div>
         `;
         error.classList.add('show');
-    }
-
-    function getMobileSpecificTip(fieldName, isMobile) {
-        if (!isMobile) {
-            return fieldName === 'photo' ? 
-                'Pastikan file yang Anda upload adalah foto dengan format JPG atau PNG dan ukuran maksimal 2MB.' :
-                'Pastikan file sesuai dengan format yang diminta dan ukuran maksimal 2MB.';
-        }
-        
-        const mobileTips = {
-            photo: '📱 Tips Mobile: Ambil foto baru dengan kamera atau pilih dari galeri. Pastikan ukuran file di bawah 2MB dan format JPG/PNG.',
-            cv: '📱 Tips Mobile: Pastikan file PDF tidak corrupt. Coba gunakan aplikasi PDF reader untuk memverifikasi file.',
-            transcript: '📱 Tips Mobile: Scan dokumen dengan jelas dan simpan sebagai PDF dengan ukuran optimal.',
-            certificates: '📱 Tips Mobile: File opsional - lewati jika mengalami masalah upload.'
-        };
-        
-        return mobileTips[fieldName] || '📱 Tips Mobile: Pastikan file valid dan koneksi internet stabil.';
     }
 
     function showFilePreview(fieldName, file) {
@@ -498,12 +448,12 @@
         'information_source', 'cv', 'photo', 'transcript'
     ];
     
-    // Save form data dengan OCR status preservation
+    // 🆕 UPDATED: Save form data dengan OCR status preservation
     function saveFormData() {
         const formData = new FormData(form);
         const data = {};
         
-        // Handle regular inputs
+        // Handle regular inputs (existing code tetap sama)
         for (let [key, value] of formData.entries()) {
             if (!key.includes('cv') && !key.includes('photo') && !key.includes('transcript') && !key.includes('certificates')) {
                 if (data[key]) {
@@ -517,13 +467,13 @@
             }
         }
 
-        // Handle salary formatting
+        // Handle salary formatting (existing code tetap sama)
         const salaryInput = document.getElementById('expected_salary');
         if (salaryInput && data.expected_salary) {
             data.expected_salary = getRawSalaryValue(salaryInput);
         }
         
-        // PRESERVE OCR status di localStorage
+        // 🆕 PRESERVE OCR status di localStorage
         const nikField = document.getElementById('nik');
         if (nikField && nikField.readOnly && nikField.classList.contains('ocr-filled')) {
             data.ocr_nik_locked = 'true';
@@ -531,7 +481,7 @@
             console.log('Preserving OCR NIK status in localStorage');
         }
 
-        // Handle checkboxes
+        // Handle checkboxes (existing code tetap sama)
         const checkboxes = form.querySelectorAll('input[type="checkbox"]');
         checkboxes.forEach(checkbox => {
             if (!checkbox.name.includes('[]')) {
@@ -543,7 +493,7 @@
         showSaveIndicator();
     }
     
-    // Load form data dengan OCR state restoration
+    // 🆕 UPDATED: Load form data dengan OCR state restoration
     function loadFormData() {
         const savedData = localStorage.getItem(STORAGE_KEY);
         if (!savedData) return;
@@ -551,7 +501,7 @@
         try {
             const data = JSON.parse(savedData);
             
-            // Restore regular inputs
+            // Restore regular inputs (existing code tetap sama)
             Object.keys(data).forEach(key => {
                 const elements = form.querySelectorAll(`[name="${key}"]`);
                 
@@ -574,7 +524,7 @@
                 });
             });
 
-            // Handle salary formatting
+            // Handle salary formatting (existing code tetap sama)
             const salaryInput = document.getElementById('expected_salary');
             if (salaryInput && salaryInput.value) {
                 const rawValue = salaryInput.value.replace(/\./g, '');
@@ -582,7 +532,7 @@
                 formatSalary(salaryInput);
             }
 
-            // RESTORE OCR NIK state jika ada
+            // 🆕 RESTORE OCR NIK state jika ada
             if (data.ocr_nik_locked === 'true' && data.ocr_nik_value) {
                 const nikField = document.getElementById('nik');
                 if (nikField) {
@@ -606,7 +556,7 @@
                 }
             }
 
-            // Handle checkbox arrays
+            // Handle checkbox arrays (existing code tetap sama)
             const checkboxArrays = ['driving_licenses'];
             checkboxArrays.forEach(name => {
                 if (data[name + '[]'] && Array.isArray(data[name + '[]'])) {
@@ -622,7 +572,7 @@
         }
     }
 
-    // Add OCR indicator to NIK field
+    // 🆕 NEW: Add OCR indicator to NIK field
     function addOcrIndicator(nikField) {
         // Remove existing indicator
         const existing = nikField.parentNode.querySelector('.ocr-indicator');
@@ -1205,7 +1155,7 @@
         });
     }
 
-    // Enhanced NIK validation - less restrictive but still secure
+    // 🆕 UPDATED: Enhanced NIK validation - less restrictive but still secure
     function enhanceNikValidation() {
         const nikInput = document.getElementById('nik');
         if (!nikInput) return;
@@ -1227,7 +1177,7 @@
                 return;
             }
 
-            // Only check duplicates, don't require OCR validation
+            // 🆕 UPDATED: Only check duplicates, don't require OCR validation
             checkDuplicate('nik', nik, (result) => {
                 showDuplicateStatus('nik', result, true);
             });
@@ -1274,6 +1224,7 @@
         });
     }
 
+    // ✅ KEEP: Existing attachEventListeners function
     function attachEventListeners() {
         // Attach save event listeners for dynamically added elements
         const newInputs = form.querySelectorAll('input:not([type="file"]):not(.listener-attached), select:not(.listener-attached), textarea:not(.listener-attached)');
@@ -1291,6 +1242,7 @@
         });
     }
 
+    // ✅ KEEP: Existing updateRemoveButtons function  
     function updateRemoveButtons(containerId) {
         const container = document.getElementById(containerId);
         const removeButtons = container.querySelectorAll('.btn-remove');
@@ -1304,6 +1256,7 @@
         });
     }
 
+    // ✅ KEEP: Existing cleanEmptyOptionalFields function
     function cleanEmptyOptionalFields() {
         // Remove empty optional dynamic sections
         const optionalContainers = [
@@ -1322,345 +1275,306 @@
                     const isEmpty = Array.from(inputs).every(input => !input.value || input.value.trim() === '');
                     
                     if (isEmpty) {
-                       group.remove();
-                   }
-               });
-           }
-       });
-   }
+                        group.remove();
+                    }
+                });
+            }
+        });
+    }
 
-   // NIK field initialization - no longer locked by default
-   function initializeNikField() {
-       const nikField = document.getElementById('nik');
-       if (!nikField) return;
+    // 🆕 UPDATED: NIK field initialization - no longer locked by default
+    function initializeNikField() {
+        const nikField = document.getElementById('nik');
+        if (!nikField) return;
 
-       // Check if OCR data exists from session
-       const ocrValidated = sessionStorage.getItem('nik_locked') === 'true';
-       const savedNikValue = sessionStorage.getItem('extracted_nik');
-       
-       if (ocrValidated && savedNikValue) {
-           // Restore OCR state
-           nikField.value = savedNikValue;
-           nikField.readOnly = true;
-           nikField.style.backgroundColor = '#ecfdf5';
-           nikField.style.borderColor = '#10b981';
-           nikField.style.color = '#065f46';
-           nikField.classList.add('ocr-filled');
-           addOcrIndicator(nikField);
-           console.log('NIK field restored from OCR session:', savedNikValue);
-       } else {
-           // NIK field is now editable by default with helpful placeholder
-           nikField.readOnly = false;
-           nikField.style.backgroundColor = '';
-           nikField.style.color = '';
-           nikField.placeholder = 'Masukkan NIK 16 digit atau gunakan scan KTP';
-           
-           // Add helpful instruction
-           const instructionDiv = document.createElement('div');
-           instructionDiv.className = 'nik-instruction';
-           instructionDiv.innerHTML = `
-               <div style="margin-top: 4px; padding: 6px 8px; background: #eff6ff; border: 1px solid #3b82f6; 
-                           border-radius: 4px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
-                   <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                       <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                   </svg>
-                   <span>💡 <strong>Tips:</strong> Gunakan fitur scan KTP untuk pengisian NIK otomatis yang lebih mudah dan akurat</span>
-               </div>
-           `;
-           nikField.parentNode.appendChild(instructionDiv);
-       }
-   }
+        // Check if OCR data exists from session
+        const ocrValidated = sessionStorage.getItem('nik_locked') === 'true';
+        const savedNikValue = sessionStorage.getItem('extracted_nik');
+        
+        if (ocrValidated && savedNikValue) {
+            // Restore OCR state
+            nikField.value = savedNikValue;
+            nikField.readOnly = true;
+            nikField.style.backgroundColor = '#ecfdf5';
+            nikField.style.borderColor = '#10b981';
+            nikField.style.color = '#065f46';
+            nikField.classList.add('ocr-filled');
+            addOcrIndicator(nikField);
+            console.log('NIK field restored from OCR session:', savedNikValue);
+        } else {
+            // 🆕 UPDATED: NIK field is now editable by default with helpful placeholder
+            nikField.readOnly = false;
+            nikField.style.backgroundColor = '';
+            nikField.style.color = '';
+            nikField.placeholder = 'Masukkan NIK 16 digit atau gunakan scan KTP';
+            
+            // Add helpful instruction
+            const instructionDiv = document.createElement('div');
+            instructionDiv.className = 'nik-instruction';
+            instructionDiv.innerHTML = `
+                <div style="margin-top: 4px; padding: 6px 8px; background: #eff6ff; border: 1px solid #3b82f6; 
+                            border-radius: 4px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>💡 <strong>Tips:</strong> Gunakan fitur scan KTP untuk pengisian NIK otomatis yang lebih mudah dan akurat</span>
+                </div>
+            `;
+            nikField.parentNode.appendChild(instructionDiv);
+        }
+    }
 
-   document.addEventListener('DOMContentLoaded', function() {
-       // Detect mobile device and add mobile-specific features
-       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-       
-       if (isMobile) {
-           console.log('📱 Mobile device detected, applying mobile-specific file upload handling');
-           
-           // Add mobile-specific notice
-           const uploadSection = document.querySelector('[data-section="9"]');
-           if (uploadSection && !document.querySelector('.mobile-upload-notice')) {
-               const mobileNotice = document.createElement('div');
-               mobileNotice.className = 'mobile-upload-notice';
-               mobileNotice.innerHTML = `
-                   <div style="background: #eff6ff; border: 1px solid #3b82f6; border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 14px; color: #1e40af;">
-                       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                           <span>📱</span>
-                           <strong>Tips untuk Pengguna Mobile:</strong>
-                       </div>
-                       <ul style="margin-left: 20px; line-height: 1.5; font-size: 13px;">
-                           <li>Pastikan koneksi internet stabil sebelum upload</li>
-                           <li>Gunakan file dengan ukuran di bawah 2MB</li>
-                           <li>Ambil foto baru atau pilih dari galeri untuk hasil terbaik</li>
-                           <li>Jangan menutup browser saat upload berlangsung</li>
-                       </ul>
-                   </div>
-               `;
-               uploadSection.insertBefore(mobileNotice, uploadSection.children[1]);
-           }
-       }
+    document.addEventListener('DOMContentLoaded', function() {
+        loadFormData();
+        initializeAddressCopy();
+        initializeNikField(); // 🆕 NEW: Initialize NIK field properly
+        
+        // Add event listeners for auto-save
+        const inputs = form.querySelectorAll('input:not([type="file"]), select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('change', function() {
+                saveFormData();
+            });
+            input.addEventListener('input', debounce(function() {
+                saveFormData();
+            }, 1000));
+        });
 
-       // Initialize form functions
-       loadFormData();
-       initializeAddressCopy();
-       initializeNikField();
-       
-       // Add event listeners for auto-save
-       const inputs = form.querySelectorAll('input:not([type="file"]), select, textarea');
-       inputs.forEach(input => {
-           input.addEventListener('change', function() {
-               saveFormData();
-           });
-           input.addEventListener('input', debounce(function() {
-               saveFormData();
-           }, 1000));
-       });
+        // Initialize file upload handlers
+        document.getElementById('cv').addEventListener('change', function(e) {
+            handleFileUpload(e, 'cv');
+        });
 
-       // Initialize file upload handlers with mobile support
-       document.getElementById('cv').addEventListener('change', function(e) {
-           handleFileUpload(e, 'cv');
-       });
+        document.getElementById('photo').addEventListener('change', function(e) {
+            handlePhotoUpload(e, 'photo');
+        });
 
-       document.getElementById('photo').addEventListener('change', function(e) {
-           handlePhotoUpload(e, 'photo'); // This now handles mobile automatically
-       });
+        document.getElementById('transcript').addEventListener('change', function(e) {
+            handleFileUpload(e, 'transcript');
+        });
 
-       document.getElementById('transcript').addEventListener('change', function(e) {
-           handleFileUpload(e, 'transcript');
-       });
+        document.getElementById('certificates').addEventListener('change', function(e) {
+            handleMultipleFileUpload(e, 'certificates');
+        });
 
-       document.getElementById('certificates').addEventListener('change', function(e) {
-           handleMultipleFileUpload(e, 'certificates');
-       });
+        // Initialize salary formatting - PERBAIKAN UTAMA
+        const salaryInput = document.getElementById('expected_salary');
+        if (salaryInput) {
+            // Event listener untuk formatting real-time
+            salaryInput.addEventListener('input', function(e) {
+                formatSalary(e.target);
+                
+                // Debounced save dengan nilai yang sudah diformat
+                clearTimeout(this.saveTimeout);
+                this.saveTimeout = setTimeout(() => {
+                    saveFormData();
+                }, 1000);
+            });
+            
+            // Format on load if there's a value
+            if (salaryInput.value) {
+                formatSalary(salaryInput);
+            }
+            
+            // PENTING: Event listener untuk form submission
+            salaryInput.form.addEventListener('submit', function(e) {
+                // Unformat salary sebelum submit
+                const rawValue = getRawSalaryValue(salaryInput);
+                salaryInput.value = rawValue;
+            });
+        }
 
-       // Initialize salary formatting - PERBAIKAN UTAMA
-       const salaryInput = document.getElementById('expected_salary');
-       if (salaryInput) {
-           // Event listener untuk formatting real-time
-           salaryInput.addEventListener('input', function(e) {
-               formatSalary(e.target);
-               
-               // Debounced save dengan nilai yang sudah diformat
-               clearTimeout(this.saveTimeout);
-               this.saveTimeout = setTimeout(() => {
-                   saveFormData();
-               }, 1000);
-           });
-           
-           // Format on load if there's a value
-           if (salaryInput.value) {
-               formatSalary(salaryInput);
-           }
-           
-           // PENTING: Event listener untuk form submission
-           salaryInput.form.addEventListener('submit', function(e) {
-               // Unformat salary sebelum submit
-               const rawValue = getRawSalaryValue(salaryInput);
-               salaryInput.value = rawValue;
-           });
-       }
+        // Enhanced NIK validation
+        enhanceNikValidation();
 
-       // Enhanced NIK validation
-       enhanceNikValidation();
+        // Enhanced email validation
+        enhanceEmailValidation();
 
-       // Enhanced email validation
-       enhanceEmailValidation();
+        // Enhanced form submission validation
+        enhanceFormSubmissionValidation();
 
-       // Enhanced form submission validation
-       enhanceFormSubmissionValidation();
+        // Initialize remove button states
+        updateRemoveButtons('familyMembers');
+        updateRemoveButtons('formalEducation');
+        updateRemoveButtons('languageSkills');
 
-       // Initialize remove button states
-       updateRemoveButtons('familyMembers');
-       updateRemoveButtons('formalEducation');
-       updateRemoveButtons('languageSkills');
+        // Enhanced form validation dengan async file validation
+        document.getElementById('applicationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
 
-       // Enhanced form validation dengan async file validation and mobile support
-       document.getElementById('applicationForm').addEventListener('submit', async function(e) {
-           e.preventDefault();
+            // PERBAIKAN: Unformat salary sebelum validation dan submission
+            const salaryInput = document.getElementById('expected_salary');
+            if (salaryInput) {
+                const rawValue = getRawSalaryValue(salaryInput);
+                salaryInput.value = rawValue;
+                console.log('Raw salary value for submission:', rawValue);
+            }
 
-           const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            let errors = [];
+            let hasError = false;
 
-           // PERBAIKAN: Unformat salary sebelum validation dan submission
-           const salaryInput = document.getElementById('expected_salary');
-           if (salaryInput) {
-               const rawValue = getRawSalaryValue(salaryInput);
-               salaryInput.value = rawValue;
-               console.log('Raw salary value for submission:', rawValue);
-           }
+            // Clean empty optional fields first
+            cleanEmptyOptionalFields();
 
-           let errors = [];
-           let hasError = false;
+            // Reset all field styles
+            form.querySelectorAll('.form-input').forEach(input => {
+                input.classList.remove('error');
+            });
+            
+            // Check required basic fields
+            requiredFields.forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                if (input && (!input.value || input.value.trim() === '')) {
+                    hasError = true;
+                    input.classList.add('error');
+                    if (input.type === 'file') {
+                        document.getElementById(`${fieldId}-label`).classList.add('error');
+                    }
+                    errors.push(`${input.previousElementSibling.textContent.replace(' *', '')} harus diisi`);
+                }
+            });
+            
+            // Enhanced date validation dengan explicit parsing
+            const startWorkDate = document.getElementById('start_work_date');
+            if (startWorkDate && startWorkDate.value) {
+                console.log('Validating start_work_date:', startWorkDate.value);
+                
+                // Parse date using explicit format (YYYY-MM-DD)
+                const selectedDateParts = startWorkDate.value.split('-');
+                if (selectedDateParts.length === 3) {
+                    const selectedDate = new Date(
+                        parseInt(selectedDateParts[0]), // year
+                        parseInt(selectedDateParts[1]) - 1, // month (0-based)
+                        parseInt(selectedDateParts[2]) // day
+                    );
+                    
+                    const today = new Date();
+                    today.setHours(23, 59, 59, 999); // Set to end of today
+                    
+                    console.log('Selected date:', selectedDate);
+                    console.log('Today (end of day):', today);
+                    console.log('Is selected date after today?', selectedDate > today);
+                    
+                    if (selectedDate <= today) {
+                        hasError = true;
+                        startWorkDate.classList.add('error');
+                        const todayStr = new Date().toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: '2-digit', 
+                            year: 'numeric'
+                        });
+                        errors.push(`Tanggal mulai kerja harus setelah ${todayStr}`);
+                    }
+                } else {
+                    hasError = true;
+                    startWorkDate.classList.add('error');
+                    errors.push('Format tanggal mulai kerja tidak valid');
+                }
+            }
 
-           // Clean empty optional fields first
-           cleanEmptyOptionalFields();
+            const familyContainer = document.getElementById('familyMembers');
+            const educationContainer = document.getElementById('formalEducation');
+            const languageContainer = document.getElementById('languageSkills');
+            
+            if (familyContainer.children.length === 0) {
+                hasError = true;
+                errors.push('Data keluarga minimal harus diisi 1 anggota');
+            }
+            
+            if (educationContainer.children.length === 0) {
+                hasError = true;
+                errors.push('Pendidikan formal minimal harus diisi 1 pendidikan');
+            }
+            
+            if (languageContainer.children.length === 0) {
+                hasError = true;
+                errors.push('Kemampuan bahasa minimal harus diisi 1 bahasa');
+            }
+            
+            [
+                {container: familyContainer, name: 'Data Keluarga'},
+                {container: educationContainer, name: 'Pendidikan Formal'},
+                {container: languageContainer, name: 'Kemampuan Bahasa'}
+            ].forEach(section => {
+                Array.from(section.container.children).forEach((group, index) => {
+                    const requiredInputs = group.querySelectorAll('input[required], select[required]');
+                    requiredInputs.forEach(input => {
+                        if (!input.value || input.value.trim() === '') {
+                            hasError = true;
+                            input.classList.add('error');
+                            errors.push(`${section.name} #${index + 1}: ${input.previousElementSibling.textContent.replace(' *', '')} harus diisi`);
+                        }
+                    });
+                });
+            });
 
-           // Reset all field styles
-           form.querySelectorAll('.form-input').forEach(input => {
-               input.classList.remove('error');
-           });
-           
-           // Check required basic fields
-           requiredFields.forEach(fieldId => {
-               const input = document.getElementById(fieldId);
-               if (input && (!input.value || input.value.trim() === '')) {
-                   hasError = true;
-                   input.classList.add('error');
-                   if (input.type === 'file') {
-                       document.getElementById(`${fieldId}-label`).classList.add('error');
-                   }
-                   errors.push(`${input.previousElementSibling.textContent.replace(' *', '')} harus diisi`);
-               }
-           });
-           
-           // Enhanced date validation dengan explicit parsing
-           const startWorkDate = document.getElementById('start_work_date');
-           if (startWorkDate && startWorkDate.value) {
-               console.log('Validating start_work_date:', startWorkDate.value);
-               
-               // Parse date using explicit format (YYYY-MM-DD)
-               const selectedDateParts = startWorkDate.value.split('-');
-               if (selectedDateParts.length === 3) {
-                   const selectedDate = new Date(
-                       parseInt(selectedDateParts[0]), // year
-                       parseInt(selectedDateParts[1]) - 1, // month (0-based)
-                       parseInt(selectedDateParts[2]) // day
-                   );
-                   
-                   const today = new Date();
-                   today.setHours(23, 59, 59, 999); // Set to end of today
-                   
-                   console.log('Selected date:', selectedDate);
-                   console.log('Today (end of day):', today);
-                   console.log('Is selected date after today?', selectedDate > today);
-                   
-                   if (selectedDate <= today) {
-                       hasError = true;
-                       startWorkDate.classList.add('error');
-                       const todayStr = new Date().toLocaleDateString('id-ID', {
-                           day: '2-digit',
-                           month: '2-digit', 
-                           year: 'numeric'
-                       });
-                       errors.push(`Tanggal mulai kerja harus setelah ${todayStr}`);
-                   }
-               } else {
-                   hasError = true;
-                   startWorkDate.classList.add('error');
-                   errors.push('Format tanggal mulai kerja tidak valid');
-               }
-           }
+            const agreementCheckbox = document.querySelector('input[name="agreement"]');
+            if (!agreementCheckbox.checked) {
+                hasError = true;
+                errors.push('Anda harus menyetujui pernyataan untuk melanjutkan');
+            }
 
-           const familyContainer = document.getElementById('familyMembers');
-           const educationContainer = document.getElementById('formalEducation');
-           const languageContainer = document.getElementById('languageSkills');
-           
-           if (familyContainer.children.length === 0) {
-               hasError = true;
-               errors.push('Data keluarga minimal harus diisi 1 anggota');
-           }
-           
-           if (educationContainer.children.length === 0) {
-               hasError = true;
-               errors.push('Pendidikan formal minimal harus diisi 1 pendidikan');
-           }
-           
-           if (languageContainer.children.length === 0) {
-               hasError = true;
-               errors.push('Kemampuan bahasa minimal harus diisi 1 bahasa');
-           }
-           
-           [
-               {container: familyContainer, name: 'Data Keluarga'},
-               {container: educationContainer, name: 'Pendidikan Formal'},
-               {container: languageContainer, name: 'Kemampuan Bahasa'}
-           ].forEach(section => {
-               Array.from(section.container.children).forEach((group, index) => {
-                   const requiredInputs = group.querySelectorAll('input[required], select[required]');
-                   requiredInputs.forEach(input => {
-                       if (!input.value || input.value.trim() === '') {
-                           hasError = true;
-                           input.classList.add('error');
-                           errors.push(`${section.name} #${index + 1}: ${input.previousElementSibling.textContent.replace(' *', '')} harus diisi`);
-                       }
-                   });
-               });
-           });
-
-           const agreementCheckbox = document.querySelector('input[name="agreement"]');
-           if (!agreementCheckbox.checked) {
-               hasError = true;
-               errors.push('Anda harus menyetujui pernyataan untuk melanjutkan');
-           }
-
-           // Enhanced file validation for mobile
-           const fileInputs = ['cv', 'photo', 'transcript'];
-           for (const fieldName of fileInputs) {
-               const input = document.getElementById(fieldName);
-               if (input && input.files.length > 0) {
-                   const file = input.files[0];
-                   const validation = fileValidation[fieldName];
-                   
-                   try {
-                       // Use the same validation function that handles mobile
-                       const validationResult = await validateFile(file, validation);
-                       
-                       if (!validationResult.valid) {
-                           hasError = true;
-                           errors.push(`${fieldName.toUpperCase()}: ${validationResult.error}`);
-                           showFileError(fieldName, validationResult.error);
-                       }
-                   } catch (error) {
-                       hasError = true;
-                       errors.push(`${fieldName.toUpperCase()}: ${isMobile ? 'Gagal memvalidasi file di mobile' : 'Gagal memvalidasi file'}`);
-                       console.error(`Validation error for ${fieldName}:`, error);
-                   }
-               } else if (fileValidation[fieldName].required) {
-                   hasError = true;
-                   errors.push(`${fieldName.toUpperCase()}: File harus diupload`);
-               }
-           }
-           
-           if (hasError) {
-               // Re-format salary jika ada error untuk user experience
-               if (salaryInput && salaryInput.value) {
-                   formatSalary(salaryInput);
-               }
-               
-               // Show mobile-specific error message
-               let errorMessage = `${isMobile ? '📱 Mobile - ' : ''}Harap lengkapi data berikut:\n\n`;
-               errors.slice(0, 10).forEach((error, index) => {
-                   errorMessage += `${index + 1}. ${error}\n`;
-               });
-               if (errors.length > 10) {
-                   errorMessage += `\n... dan ${errors.length - 10} field lainnya`;
-               }
-               
-               if (isMobile) {
-                   errorMessage += '\n\n💡 Jika masalah berlanjut di mobile, coba gunakan browser lain atau perangkat desktop.';
-               }
-               
-               showAlert(errorMessage.replace(/\n/g, '<br>'), 'error');
-               
-               // Scroll to first error
-               const firstError = form.querySelector('.form-input.error, .file-upload-label.error');
-               if (firstError) {
-                   firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                   if (firstError.classList.contains('form-input')) {
-                       firstError.focus();
-                   }
-               }
-           } else {
-               // Disable submit button to prevent double submission
-               const submitBtn = document.getElementById('submitBtn');
-               submitBtn.disabled = true;
-               submitBtn.innerHTML = '<span class="loading-spinner mr-2"></span> Mengirim...';
-               
-               // Submit form dengan nilai raw
-               console.log('All validations passed, submitting form with raw salary value...');
-               this.submit();
-           }
-       });
-   });
+            const fileInputs = ['cv', 'photo', 'transcript'];
+            for (const fieldName of fileInputs) {
+                const input = document.getElementById(fieldName);
+                if (input && input.files.length > 0) {
+                    const file = input.files[0];
+                    const validation = fileValidation[fieldName];
+                    
+                    try {
+                        const validationResult = await validateFile(file, validation);
+                        
+                        if (!validationResult.valid) {
+                            hasError = true;
+                            errors.push(`${fieldName.toUpperCase()}: ${validationResult.error}`);
+                            showFileError(fieldName, validationResult.error);
+                        }
+                    } catch (error) {
+                        hasError = true;
+                        errors.push(`${fieldName.toUpperCase()}: Gagal memvalidasi file`);
+                        console.error(`Validation error for ${fieldName}:`, error);
+                    }
+                } else if (fileValidation[fieldName].required) {
+                    hasError = true;
+                    errors.push(`${fieldName.toUpperCase()}: File harus diupload`);
+                }
+            }
+            
+            if (hasError) {
+                // Re-format salary jika ada error untuk user experience
+                if (salaryInput && salaryInput.value) {
+                    formatSalary(salaryInput);
+                }
+                
+                let errorMessage = 'Harap lengkapi data berikut:\n\n';
+                errors.slice(0, 10).forEach((error, index) => {
+                    errorMessage += `${index + 1}. ${error}\n`;
+                });
+                if (errors.length > 10) {
+                    errorMessage += `\n... dan ${errors.length - 10} field lainnya`;
+                }
+                
+                showAlert(errorMessage.replace(/\n/g, '<br>'), 'error');
+                
+                // Scroll to first error
+                const firstError = form.querySelector('.form-input.error, .file-upload-label.error');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (firstError.classList.contains('form-input')) {
+                        firstError.focus();
+                    }
+                }
+            } else {
+                // Disable submit button to prevent double submission
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="loading-spinner mr-2"></span> Mengirim...';
+                
+                // Submit form dengan nilai raw
+                console.log('All validations passed, submitting form with raw salary value...');
+                this.submit();
+            }
+        });
+    });
 
 })();
