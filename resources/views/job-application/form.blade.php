@@ -289,8 +289,21 @@
                                 <input type="number" name="formal_education[0][end_year]" class="form-input" min="1950" max="2030" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">IPK/Nilai <span class="required-star">*</span></label>
-                                <input type="number" name="formal_education[0][gpa]" class="form-input"  min="0" max="100" required>
+                                <label class="form-label">
+                                    IPK / Nilai Sekolah <span class="required-star">*</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    name="formal_education[0][gpa]"
+                                    class="form-input"
+                                    min="1"
+                                    max="100"
+                                    step="0.01"
+                                    required
+                                >
+                                <small class="text-muted">
+                                    Masukkan IPK (1.00–4.00) atau Nilai Sekolah (1–100)
+                                </small>
                             </div>
                         </div>
                         <div class="mt-4">
