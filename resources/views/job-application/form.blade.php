@@ -10,120 +10,6 @@
     <link href="{{ asset('css/form-style.css') }}" rel="stylesheet">
     <link href="{{ asset('css/ktp-ocr.css') }}" rel="stylesheet">
 
-    <!-- 🆕 Mobile-specific optimizations -->
-    <style>
-        /* Enhanced mobile file upload styles */
-        @media (max-width: 768px) {
-            .file-upload-wrapper {
-                margin-bottom: 16px;
-            }
-            
-            .file-upload-label {
-                padding: 16px 12px;
-                font-size: 14px;
-                min-height: 60px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-            }
-            
-            .file-preview-item {
-                padding: 8px;
-                font-size: 12px;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 4px;
-            }
-            
-            .mobile-notice {
-                position: sticky;
-                top: 10px;
-                z-index: 10;
-            }
-            
-            .loading-spinner {
-                width: 16px;
-                height: 16px;
-                border: 2px solid #e5e7eb;
-                border-top: 2px solid #3b82f6;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-            }
-            
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        }
-        
-        /* Enhanced error display for mobile */
-        .validation-message.show {
-            display: block;
-            animation: slideDown 0.3s ease-out;
-        }
-        
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* Mobile-specific custom alert styling */
-        .custom-alert {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            z-index: 9999;
-            padding: 16px;
-            border-radius: 8px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            animation: alertSlideIn 0.3s ease-out;
-        }
-        
-        @media (max-width: 768px) {
-            .custom-alert {
-                left: 10px;
-                right: 10px;
-                font-size: 14px;
-            }
-        }
-        
-        @keyframes alertSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .custom-alert.error {
-            background-color: #fef2f2;
-            border: 1px solid #fca5a5;
-            color: #991b1b;
-        }
-        
-        .custom-alert.success {
-            background-color: #ecfdf5;
-            border: 1px solid #86efac;
-            color: #166534;
-        }
-        
-        .custom-alert.warning {
-            background-color: #fffbeb;
-            border: 1px solid #fed7aa;
-            color: #92400e;
-        }
-    </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <div class="max-w-4xl mx-auto py-8 px-4">
@@ -660,8 +546,6 @@
                 <h2 class="section-title">Upload Dokumen & Pernyataan</h2>
                 <p class="text-sm text-gray-600 mb-4">Format yang diterima: PDF, JPG, PNG (Maksimal 2MB per file)</p>
                 
-                <!-- 🆕 Mobile Notice will be injected here by JavaScript -->
-                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- CV Upload -->
                     <div class="form-group">
@@ -766,7 +650,7 @@
         <span>Data tersimpan otomatis</span>
     </div>
 
-    <!-- 🆕 ENHANCED JavaScript Integration Order -->
+    <!-- Include External JavaScript menggunakan CDN yang sama dengan index.html -->
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <script>
         // Pass Laravel session data to JavaScript
@@ -774,7 +658,7 @@
             var formSubmitted = true;
         @endif
         
-        // Test Tesseract availability
+        // Test Tesseract availability seperti index.html
         window.addEventListener('load', function() {
             console.log('✅ Tesseract loaded:', typeof Tesseract !== 'undefined');
             if (typeof Tesseract !== 'undefined') {
@@ -783,27 +667,8 @@
                 console.error('❌ Tesseract failed to load');
             }
         });
-
-        // 🆕 GLOBAL ALERT FUNCTION for mobile integration
-        window.showAlert = function(message, type = 'error') {
-            const alert = document.createElement('div');
-            alert.className = `custom-alert ${type}`;
-            alert.innerHTML = `
-                <div class="font-medium">${type === 'error' ? '❌ Error!' : type === 'success' ? '✅ Berhasil!' : '⚠️ Peringatan!'}</div>
-                <div class="text-sm mt-1">${message}</div>
-            `;
-            document.body.appendChild(alert);
-            
-            setTimeout(() => {
-                alert.remove();
-            }, /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 8000 : 5000);
-        };
     </script>
-    
-    <!-- 🆕 INTEGRATED SCRIPT LOADING ORDER -->
     <script src="{{ asset('js/form-style.js') }}"></script>
     <script src="{{ asset('js/ktp-ocr.js') }}"></script>
-    <!-- 🆕 NEW: Load mobile integration after base scripts -->
-    <script src="{{ asset('js/mobile-file-upload-integrated.js') }}"></script>
 </body>
 </html>
