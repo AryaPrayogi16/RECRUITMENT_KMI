@@ -81,12 +81,48 @@
         return { valid: true };
     }
 
-    // Enhanced image validation function
+    // Enhanced image validation function dengan Chrome Mobile support
     function validateImageFile(file, validation) {
         return new Promise((resolve) => {
-            // Check MIME type first, but be more lenient for images
             const extension = file.name.toLowerCase().split('.').pop();
+            const isChromeMobile = /Chrome/.test(navigator.userAgent) && /Mobile/.test(navigator.userAgent);
             
+            console.log('Image validation started:', {
+                fileName: file.name,
+                fileType: file.type,
+                fileSize: file.size,
+                extension: extension,
+                isChromeMobile: isChromeMobile
+            });
+            
+            // Chrome Mobile: Use simplified validation to avoid FileReader issues
+            if (isChromeMobile) {
+                console.log('🔧 Chrome Mobile detected: Using simplified validation');
+                
+                // Check extension first
+                if (!validation.extensions.includes(extension)) {
+                    resolve({ valid: false, error: `Format file harus JPG atau PNG. File Anda: ${extension.toUpperCase()}` });
+                    return;
+                }
+                
+                // Basic file checks
+                if (file.size === 0) {
+                    resolve({ valid: false, error: 'File kosong atau corrupt' });
+                    return;
+                }
+                
+                if (file.size > validation.maxSize) {
+                    resolve({ valid: false, error: 'Ukuran file terlalu besar (maksimal 2MB)' });
+                    return;
+                }
+                
+                // Accept file based on extension for Chrome Mobile
+                console.log('✅ Chrome Mobile: File accepted based on extension and basic checks');
+                resolve({ valid: true });
+                return;
+            }
+            
+            // Standard validation for desktop and other mobile browsers
             if (!validation.types.includes(file.type)) {
                 console.warn('MIME type mismatch for image:', {
                     detected: file.type,
@@ -94,7 +130,6 @@
                     extension: extension
                 });
                 
-                // If extension is correct but MIME type is wrong, try to validate as image anyway
                 if (!validation.extensions.includes(extension)) {
                     resolve({ valid: false, error: `Format file harus JPG atau PNG. Tipe file terdeteksi: ${file.type}` });
                     return;
@@ -108,7 +143,7 @@
                 const img = new Image();
                 
                 img.onload = function() {
-                    console.log('Image validation successful:', {
+                    console.log('✅ Image validation successful:', {
                         width: img.width,
                         height: img.height,
                         size: file.size,
@@ -118,7 +153,7 @@
                 };
                 
                 img.onerror = function() {
-                    console.error('Image validation failed - not a valid image');
+                    console.error('❌ Image validation failed - not a valid image');
                     resolve({ valid: false, error: 'File bukan gambar yang valid atau file rusak' });
                 };
                 
@@ -126,11 +161,10 @@
             };
             
             reader.onerror = function() {
-                console.error('FileReader error');
+                console.error('❌ FileReader error during image validation');
                 resolve({ valid: false, error: 'Tidak dapat membaca file. File mungkin rusak.' });
             };
             
-            // Read as data URL to validate image
             reader.readAsDataURL(file);
         });
     }
@@ -173,7 +207,7 @@
         }
     }
 
-    // Enhanced photo upload handler
+    // Enhanced photo upload handler dengan Chrome Mobile support
     async function handlePhotoUpload(event, fieldName) {
         const file = event.target.files[0];
         const validation = fileValidation[fieldName];
@@ -192,22 +226,33 @@
             return;
         }
 
-        // Show loading state
-        label.innerHTML = `
-            <div class="loading-spinner mr-2"></div>
-            <span>Memvalidasi foto...</span>
-        `;
+        // Detect Chrome Mobile
+        const isChromeMobile = /Chrome/.test(navigator.userAgent) && /Mobile/.test(navigator.userAgent);
+        
+        // Show loading state dengan pesan khusus untuk Chrome Mobile
+        if (isChromeMobile) {
+            label.innerHTML = `
+                <div class="loading-spinner mr-2"></div>
+                <span>📱 Memproses foto Chrome Mobile...</span>
+            `;
+        } else {
+            label.innerHTML = `
+                <div class="loading-spinner mr-2"></div>
+                <span>Memvalidasi foto...</span>
+            `;
+        }
 
         try {
-            // Debug file info
-            console.log('Photo upload debug:', {
+            // Debug file info dengan lebih detail untuk Chrome Mobile
+            console.log(`Photo upload debug (Chrome Mobile: ${isChromeMobile}):`, {
                 name: file.name,
                 type: file.type,
                 size: file.size,
-                lastModified: new Date(file.lastModified).toISOString()
+                lastModified: new Date(file.lastModified).toISOString(),
+                userAgent: navigator.userAgent
             });
 
-            // Validate file (this returns a Promise for images)
+            // Validate file menggunakan validasi yang sudah diupdate
             const validationResult = await validateFile(file, validation);
             
             if (!validationResult.valid) {
@@ -220,15 +265,21 @@
             showFilePreview(fieldName, file);
             
             // Log successful validation
-            console.log('Photo validation successful:', {
+            console.log(`✅ Photo validation successful (Chrome Mobile: ${isChromeMobile}):`, {
                 name: file.name,
                 type: file.type,
                 size: file.size
             });
             
         } catch (error) {
-            console.error('Photo validation error:', error);
-            showFileError(fieldName, 'Terjadi kesalahan saat memvalidasi file. Silakan coba lagi.');
+            console.error(`❌ Photo validation error (Chrome Mobile: ${isChromeMobile}):`, error);
+            
+            // Chrome Mobile specific error message
+            if (isChromeMobile) {
+                showFileError(fieldName, 'Terjadi kesalahan saat memproses foto di Chrome Mobile. Coba gunakan foto dengan ukuran lebih kecil atau browser lain.');
+            } else {
+                showFileError(fieldName, 'Terjadi kesalahan saat memvalidasi file. Silakan coba lagi.');
+            }
             event.target.value = '';
         }
     }
