@@ -20,7 +20,9 @@ use App\Models\{
     KraeplinTestResult,
     KraeplinAnswer,
     Disc3DTestSession,
-    Disc3DResult
+    Disc3DResult,
+    Disc3DPatternCombination,  // ✅ NEW: Added pattern combination model
+    Disc3DProfileInterpretation
 };
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -34,7 +36,7 @@ use Illuminate\Support\Facades\Log;
 class CandidateController extends Controller
 {
     /**
-     * ✅ FIXED: Display a listing of candidates with test results using correct column names
+     * ✅ UPDATED: Display a listing of candidates with pattern combination filter support
      */
     public function index(Request $request)
     {
@@ -42,12 +44,12 @@ class CandidateController extends Controller
         
         $query = Candidate::with([
             'position',
-            // ✅ FIXED: Include test results relationships with correct column selections
+            // ✅ FIXED: Include test results relationships with correct column names
             'kraeplinTestResult' => function($query) {
                 $query->select('candidate_id', 'overall_score', 'performance_category'); // ← FIXED: overall_score instead of total_score
             },
             'disc3DResult' => function($query) {
-                $query->select('candidate_id', 'primary_type', 'primary_percentage');
+                $query->select('candidate_id', 'primary_type', 'primary_percentage', 'most_pattern', 'least_pattern');
             }
         ])->latest();
         
@@ -105,6 +107,14 @@ class CandidateController extends Controller
             });
         }
         
+        // ✅ NEW: Filter by pattern combination
+        if ($request->filled('pattern_combination')) {
+            $query->whereHas('disc3DResult', function($q) use ($request) {
+                $q->where('most_pattern', $request->pattern_combination)
+                  ->orWhere('least_pattern', $request->pattern_combination);
+            });
+        }
+        
         $candidates = $query->paginate(15)->withQueryString();
         
         // Get all active positions for filter dropdown
@@ -127,6 +137,11 @@ class CandidateController extends Controller
             ->sort()
             ->values();
         
+        // ✅ NEW: Get available pattern combinations for filter
+        $patternCombinations = Disc3DPatternCombination::select('pattern_code', 'pattern_name')
+            ->orderBy('pattern_name')
+            ->get();
+        
         // Count new applications for notification badge
         $newApplicationsCount = Candidate::where('application_status', 'submitted')
             ->whereDate('created_at', today())
@@ -137,7 +152,8 @@ class CandidateController extends Controller
             'positions', 
             'newApplicationsCount',
             'kraeplinCategories',
-            'discTypes'
+            'discTypes',
+            'patternCombinations'
         ));
     }
 
@@ -244,32 +260,59 @@ class CandidateController extends Controller
     }
 
     /**
-     * ✅ FIXED: Ensure disc3dResult method exists
+     * ✅ UPDATED: DISC 3D result method without eager loading pattern combination
      */
     public function disc3dResult($id)
     {
-        Gate::authorize('hr-access');
+    Gate::authorize('hr-access');
+    
+    $candidate = Candidate::with([
+        'disc3DTestSessions' => function($query) {
+            $query->where('status', 'completed')->latest('completed_at');
+        },
+        'disc3DResult'  // Pattern combination will be queried separately when needed
+    ])->findOrFail($id);
+    
+    $disc3dSession = $candidate->disc3DTestSessions->first();
+    $disc3dResult = $candidate->disc3DResult;
+    
+    if (!$disc3dSession) {
+        return redirect()->route('candidates.show', $id)
+            ->with('error', 'Kandidat belum menyelesaikan test DISC 3D');
+    }
+    
+    // ✅ NEW: Get dominant dimension interpretation
+    $dominantInterpretation = null;
+    if ($disc3dResult) {
+        // Determine dominant dimension from MOST segments
+        $segments = [
+            'D' => $disc3dResult->most_d_segment ?? 1,
+            'I' => $disc3dResult->most_i_segment ?? 1,  
+            'S' => $disc3dResult->most_s_segment ?? 1,
+            'C' => $disc3dResult->most_c_segment ?? 1
+        ];
         
-        $candidate = Candidate::with([
-            'disc3DTestSessions' => function($query) {
-                $query->where('status', 'completed')->latest('completed_at');
-            },
-            'disc3DResult'
-        ])->findOrFail($id);
+        $dominantDimension = array_keys($segments, max($segments))[0];
+        $dominantLevel = max($segments);
         
-        $disc3dSession = $candidate->disc3DTestSessions->first();
-        $disc3dResult = $candidate->disc3DResult;
-        
-        if (!$disc3dSession) {
-            return redirect()->route('candidates.show', $id)
-                ->with('error', 'Kandidat belum menyelesaikan test DISC 3D');
-        }
-        
-        return view('candidates.test-results.disc3d', compact('candidate', 'disc3dSession', 'disc3dResult'));
+        // Get interpretation for dominant dimension
+        $dominantInterpretation = Disc3DProfileInterpretation::where('dimension', $dominantDimension)
+            ->where('graph_type', 'MOST')
+            ->where('segment_level', $dominantLevel)
+            ->first();
+    }
+
+    // Update compact() yang sudah ada - tambahkan 'dominantInterpretation'
+    return view('candidates.test-results.disc3d', compact(
+        'candidate', 
+        'disc3dSession', 
+        'disc3dResult',
+        'dominantInterpretation'  // ← TAMBAH INI SAJA
+    ));
     }
 
     /**
-     * ✅ FIXED: Ensure exportDisc3dResult method exists
+     * ✅ UPDATED: Export DISC 3D result method
      */
     public function exportDisc3dResult($id)
     {
@@ -314,6 +357,64 @@ class CandidateController extends Controller
         
         // Redirect to new disc3dResult method
         return $this->disc3dResult($id);
+    }
+
+    /**
+     * ✅ NEW: Get pattern combination details via AJAX
+     */
+    public function getPatternCombination(Request $request)
+    {
+        Gate::authorize('hr-access');
+        
+        $patternCode = $request->input('pattern_code');
+        
+        if (!$patternCode) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pattern code is required'
+            ], 400);
+        }
+        
+        $pattern = Disc3DPatternCombination::where('pattern_code', $patternCode)->first();
+        
+        if (!$pattern) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pattern combination not found'
+            ], 404);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'pattern_code' => $pattern->pattern_code,
+                'pattern_name' => $pattern->pattern_name,
+                'description' => $pattern->description,
+                'strengths' => $pattern->strengths ?? [],
+                'weaknesses' => $pattern->weaknesses ?? [],
+                'ideal_environment' => $pattern->ideal_environment ?? [],
+                'communication_tips' => $pattern->communication_tips ?? [],
+                'career_matches' => $pattern->career_matches ?? []
+            ]
+        ]);
+    }
+
+    /**
+     * ✅ NEW: Get all pattern combinations for management
+     */
+    public function getPatternCombinations()
+    {
+        Gate::authorize('hr-access');
+        
+        $patterns = Disc3DPatternCombination::select([
+            'id', 'pattern_code', 'pattern_name', 'description', 'created_at'
+        ])->orderBy('pattern_code')->get();
+        
+        return response()->json([
+            'success' => true,
+            'data' => $patterns,
+            'total' => $patterns->count()
+        ]);
     }
 
     /**
@@ -369,8 +470,6 @@ class CandidateController extends Controller
         
         return view('candidates.show', compact('candidate'));
     }
-
-    // ... rest of the methods remain the same as they don't involve the problematic column ...
 
     /**
      * ✅ UPDATED: Edit form with correct education relationships
@@ -1000,346 +1099,6 @@ class CandidateController extends Controller
     }
 
     /**
-     * 🆕 NEW: Identifikasi dan Perbaiki Duplikasi Storage
-     */
-    public function fixStorageDuplication()
-    {
-        Gate::authorize('hr-access');
-        
-        try {
-            $results = [
-                'checked_candidates' => 0,
-                'duplicates_found' => 0,
-                'duplicates_cleaned' => 0,
-                'errors' => [],
-                'orphaned_folders' => 0
-            ];
-            
-            // 1. Cek semua kandidat dan folder mereka
-            $candidates = Candidate::withTrashed()->get();
-            
-            foreach ($candidates as $candidate) {
-                $results['checked_candidates']++;
-                $candidateCode = $candidate->candidate_code;
-                
-                // Path yang benar (storage/app/public)
-                $correctPath = "documents/{$candidateCode}";
-                $correctFullPath = storage_path("app/public/{$correctPath}");
-                
-                // Path duplikasi (public/storage) 
-                $duplicatePath = public_path("storage/documents/{$candidateCode}");
-                
-                // Cek jika ada duplikasi
-                if (File::exists($duplicatePath)) {
-                    $results['duplicates_found']++;
-                    
-                    Log::info('Storage duplication found', [
-                        'candidate_code' => $candidateCode,
-                        'correct_path' => $correctFullPath,
-                        'duplicate_path' => $duplicatePath,
-                        'correct_exists' => File::exists($correctFullPath),
-                        'duplicate_exists' => File::exists($duplicatePath)
-                    ]);
-                    
-                    // Jika folder yang benar tidak ada, pindahkan dari duplikasi
-                    if (!File::exists($correctFullPath) && File::exists($duplicatePath)) {
-                        // Buat direktori parent jika belum ada
-                        if (!File::exists(dirname($correctFullPath))) {
-                            File::makeDirectory(dirname($correctFullPath), 0755, true);
-                        }
-                        
-                        // Pindahkan folder dari duplikasi ke lokasi yang benar
-                        if (File::moveDirectory($duplicatePath, $correctFullPath)) {
-                            $results['duplicates_cleaned']++;
-                            Log::info('Moved duplicated folder to correct location', [
-                                'from' => $duplicatePath,
-                                'to' => $correctFullPath,
-                                'candidate_code' => $candidateCode
-                            ]);
-                        } else {
-                            $results['errors'][] = "Gagal memindahkan folder {$candidateCode}";
-                        }
-                    } else {
-                        // Kedua folder ada, hapus yang di public/storage
-                        if (File::deleteDirectory($duplicatePath)) {
-                            $results['duplicates_cleaned']++;
-                            Log::info('Deleted duplicate folder', [
-                                'path' => $duplicatePath,
-                                'candidate_code' => $candidateCode
-                            ]);
-                        } else {
-                            $results['errors'][] = "Gagal menghapus folder duplikasi {$candidateCode}";
-                        }
-                    }
-                }
-            }
-            
-            // 2. Bersihkan folder orphan di public/storage/documents
-            $publicDocumentsPath = public_path('storage/documents');
-            if (File::exists($publicDocumentsPath)) {
-                $orphanedFolders = File::directories($publicDocumentsPath);
-                
-                foreach ($orphanedFolders as $folder) {
-                    $folderName = basename($folder);
-                    
-                    // Cek apakah ada kandidat dengan kode ini
-                    $candidateExists = Candidate::withTrashed()
-                        ->where('candidate_code', $folderName)
-                        ->exists();
-                    
-                    if (!$candidateExists) {
-                        // Folder orphan, hapus
-                        if (File::deleteDirectory($folder)) {
-                            $results['orphaned_folders']++;
-                            Log::info('Deleted orphaned folder', [
-                                'folder' => $folderName,
-                                'path' => $folder
-                            ]);
-                        }
-                    }
-                }
-            }
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Perbaikan duplikasi storage selesai',
-                'results' => $results
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error fixing storage duplication', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => Auth::id()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memperbaiki duplikasi storage: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * 🆕 NEW: Analisis kondisi storage saat ini
-     */
-    public function analyzeStorageCondition()
-    {
-        Gate::authorize('hr-access');
-        
-        try {
-            $analysis = [
-                'storage_location' => [
-                    'path' => storage_path('app/public/documents'),
-                    'exists' => File::exists(storage_path('app/public/documents')),
-                    'folder_count' => 0,
-                    'total_size' => 0
-                ],
-                'public_location' => [
-                    'path' => public_path('storage/documents'),
-                    'exists' => File::exists(public_path('storage/documents')),
-                    'folder_count' => 0,
-                    'total_size' => 0
-                ],
-                'candidates' => [
-                    'total' => 0,
-                    'with_storage_folder' => 0,
-                    'with_public_folder' => 0,
-                    'with_duplicates' => 0,
-                    'missing_folders' => 0
-                ],
-                'duplicated_folders' => [],
-                'orphaned_folders' => [],
-                'missing_folders' => []
-            ];
-            
-            // Analisis storage location (yang benar)
-            $storagePath = storage_path('app/public/documents');
-            if (File::exists($storagePath)) {
-                $storageFolders = File::directories($storagePath);
-                $analysis['storage_location']['folder_count'] = count($storageFolders);
-                
-                foreach ($storageFolders as $folder) {
-                    $files = File::allFiles($folder);
-                    foreach ($files as $file) {
-                        $analysis['storage_location']['total_size'] += $file->getSize();
-                    }
-                }
-            }
-            
-            // Analisis public location (duplikasi)
-            $publicPath = public_path('storage/documents');
-            if (File::exists($publicPath)) {
-                $publicFolders = File::directories($publicPath);
-                $analysis['public_location']['folder_count'] = count($publicFolders);
-                
-                foreach ($publicFolders as $folder) {
-                    $files = File::allFiles($folder);
-                    foreach ($files as $file) {
-                        $analysis['public_location']['total_size'] += $file->getSize();
-                    }
-                }
-            }
-            
-            // Analisis per kandidat
-            $candidates = Candidate::withTrashed()->get();
-            $analysis['candidates']['total'] = $candidates->count();
-            
-            foreach ($candidates as $candidate) {
-                $candidateCode = $candidate->candidate_code;
-                
-                $hasStorageFolder = File::exists(storage_path("app/public/documents/{$candidateCode}"));
-                $hasPublicFolder = File::exists(public_path("storage/documents/{$candidateCode}"));
-                
-                if ($hasStorageFolder) {
-                    $analysis['candidates']['with_storage_folder']++;
-                }
-                
-                if ($hasPublicFolder) {
-                    $analysis['candidates']['with_public_folder']++;
-                }
-                
-                if ($hasStorageFolder && $hasPublicFolder) {
-                    $analysis['candidates']['with_duplicates']++;
-                    $analysis['duplicated_folders'][] = $candidateCode;
-                }
-                
-                if (!$hasStorageFolder && !$hasPublicFolder) {
-                    $analysis['candidates']['missing_folders']++;
-                    $analysis['missing_folders'][] = $candidateCode;
-                }
-            }
-            
-            // Format file size
-            $analysis['storage_location']['total_size_formatted'] = $this->formatBytes($analysis['storage_location']['total_size']);
-            $analysis['public_location']['total_size_formatted'] = $this->formatBytes($analysis['public_location']['total_size']);
-            
-            // Summary
-            $analysis['summary'] = [
-                'has_duplication_issue' => $analysis['candidates']['with_duplicates'] > 0,
-                'total_duplicated_size' => $analysis['public_location']['total_size'],
-                'space_can_be_freed' => $this->formatBytes($analysis['public_location']['total_size']),
-                'recommendation' => $this->getStorageRecommendation($analysis)
-            ];
-            
-            return response()->json([
-                'success' => true,
-                'analysis' => $analysis
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error analyzing storage condition', [
-                'error' => $e->getMessage(),
-                'user_id' => Auth::id()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menganalisis kondisi storage: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * 🆕 HELPER: Generate storage recommendations
-     */
-    private function getStorageRecommendation($analysis)
-    {
-        $recommendations = [];
-        
-        if ($analysis['candidates']['with_duplicates'] > 0) {
-            $recommendations[] = "Ditemukan {$analysis['candidates']['with_duplicates']} folder duplikasi. Jalankan fixStorageDuplication() untuk membersihkan.";
-        }
-        
-        if ($analysis['public_location']['total_size'] > 0) {
-            $recommendations[] = "Folder public/storage/documents menggunakan {$analysis['public_location']['total_size_formatted']} yang dapat dibebaskan.";
-        }
-        
-        if ($analysis['candidates']['missing_folders'] > 0) {
-            $recommendations[] = "{$analysis['candidates']['missing_folders']} kandidat tidak memiliki folder dokumen.";
-        }
-        
-        if (empty($recommendations)) {
-            $recommendations[] = "Storage dalam kondisi baik, tidak ada duplikasi ditemukan.";
-        }
-        
-        return $recommendations;
-    }
-
-    /**
-     * 🆕 NEW: Verifikasi file integritas setelah perbaikan
-     */
-    public function verifyStorageIntegrity()
-    {
-        Gate::authorize('hr-access');
-        
-        try {
-            $verification = [
-                'total_candidates' => 0,
-                'candidates_with_documents' => 0,
-                'files_verified' => 0,
-                'files_missing' => 0,
-                'database_inconsistencies' => 0,
-                'missing_files' => [],
-                'inconsistent_records' => []
-            ];
-            
-            $candidates = Candidate::with('documentUploads')->get();
-            $verification['total_candidates'] = $candidates->count();
-            
-            foreach ($candidates as $candidate) {
-                if ($candidate->documentUploads->count() > 0) {
-                    $verification['candidates_with_documents']++;
-                    
-                    foreach ($candidate->documentUploads as $document) {
-                        if (Storage::disk('public')->exists($document->file_path)) {
-                            $verification['files_verified']++;
-                            
-                            // Verifikasi ukuran file
-                            $actualSize = Storage::disk('public')->size($document->file_path);
-                            if ($actualSize != $document->file_size) {
-                                $verification['database_inconsistencies']++;
-                                $verification['inconsistent_records'][] = [
-                                    'candidate_code' => $candidate->candidate_code,
-                                    'document_type' => $document->document_type,
-                                    'file_path' => $document->file_path,
-                                    'database_size' => $document->file_size,
-                                    'actual_size' => $actualSize
-                                ];
-                            }
-                        } else {
-                            $verification['files_missing']++;
-                            $verification['missing_files'][] = [
-                                'candidate_code' => $candidate->candidate_code,
-                                'document_type' => $document->document_type,
-                                'file_path' => $document->file_path,
-                                'original_filename' => $document->original_filename
-                            ];
-                        }
-                    }
-                }
-            }
-            
-            return response()->json([
-                'success' => true,
-                'verification' => $verification,
-                'integrity_status' => $verification['files_missing'] === 0 && $verification['database_inconsistencies'] === 0 ? 'GOOD' : 'ISSUES_FOUND'
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error verifying storage integrity', [
-                'error' => $e->getMessage(),
-                'user_id' => Auth::id()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memverifikasi integritas storage: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
      * Soft delete candidate
      */
     public function destroy($id)
@@ -1638,117 +1397,127 @@ class CandidateController extends Controller
     }
 
     /**
-     * Hapus folder kandidat dari storage
+     * ✅ UPDATED: Hapus folder kandidat dari storage dengan struktur baru
      */
     private function deleteCandidateFolder($candidateCode)
-        {
-            try {
-                if (!$candidateCode) {
-                    return;
-                }
-                
-                // ✅ UPDATED: Sesuaikan dengan struktur folder baru
-                $folderPath = "documents/candidates/{$candidateCode}"; // ← CHANGED
-                
-                // Hapus menggunakan Storage facade
-                if (Storage::disk('public')->exists($folderPath)) {
-                    Storage::disk('public')->deleteDirectory($folderPath);
-                    Log::info('Candidate folder deleted from storage', [
-                        'folder_path' => $folderPath,
-                        'candidate_code' => $candidateCode
-                    ]);
-                }
-                
-                // Juga hapus dari file system langsung sebagai backup
-                $fullPath = storage_path("app/public/{$folderPath}");
-                if (File::exists($fullPath)) {
-                    File::deleteDirectory($fullPath);
-                    Log::info('Candidate folder deleted from file system', [
-                        'full_path' => $fullPath,
-                        'candidate_code' => $candidateCode
-                    ]);
-                }
-                
-            } catch (\Exception $e) {
-                Log::warning('Error deleting candidate folder', [
-                    'candidate_code' => $candidateCode,
-                    'error' => $e->getMessage()
+    {
+        try {
+            if (!$candidateCode) {
+                return;
+            }
+            
+            // ✅ UPDATED: Sesuaikan dengan struktur folder baru
+            $folderPath = "documents/candidates/{$candidateCode}"; // ← UPDATED: New structure
+            
+            // Hapus menggunakan Storage facade
+            if (Storage::disk('public')->exists($folderPath)) {
+                Storage::disk('public')->deleteDirectory($folderPath);
+                Log::info('Candidate folder deleted from storage', [
+                    'folder_path' => $folderPath,
+                    'candidate_code' => $candidateCode
                 ]);
             }
+            
+            // ✅ BACKWARD COMPATIBILITY: Also check old structure
+            $oldFolderPath = "documents/{$candidateCode}";
+            if (Storage::disk('public')->exists($oldFolderPath)) {
+                Storage::disk('public')->deleteDirectory($oldFolderPath);
+                Log::info('Old candidate folder deleted from storage', [
+                    'folder_path' => $oldFolderPath,
+                    'candidate_code' => $candidateCode
+                ]);
+            }
+            
+            // Juga hapus dari file system langsung sebagai backup
+            $fullPath = storage_path("app/public/{$folderPath}");
+            if (File::exists($fullPath)) {
+                File::deleteDirectory($fullPath);
+                Log::info('Candidate folder deleted from file system', [
+                    'full_path' => $fullPath,
+                    'candidate_code' => $candidateCode
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            Log::warning('Error deleting candidate folder', [
+                'candidate_code' => $candidateCode,
+                'error' => $e->getMessage()
+            ]);
         }
+    }
 
     /**
-     * Cleanup orphaned folders - utility method untuk membersihkan folder yatim
+     * ✅ UPDATED: Cleanup orphaned folders with new structure support
      */
     public function cleanupOrphanedFolders()
-        {
-            Gate::authorize('hr-access');
+    {
+        Gate::authorize('hr-access');
+        
+        try {
+            // ✅ UPDATED: Cek di kedua lokasi (backward compatibility)
+            $paths = [
+                'documents/candidates',  // ← Struktur baru
+                'documents'              // ← Struktur lama (untuk cleanup)
+            ];
             
-            try {
-                // ✅ UPDATED: Cek di kedua lokasi (backward compatibility)
-                $paths = [
-                    'documents/candidates',  // ← Struktur baru
-                    'documents'              // ← Struktur lama (untuk cleanup)
-                ];
+            $deletedFolders = [];
+            
+            foreach ($paths as $basePath) {
+                $documentsPath = storage_path("app/public/{$basePath}");
                 
-                $deletedFolders = [];
+                if (!File::exists($documentsPath)) {
+                    continue;
+                }
                 
-                foreach ($paths as $basePath) {
-                    $documentsPath = storage_path("app/public/{$basePath}");
+                $folders = File::directories($documentsPath);
+                
+                foreach ($folders as $folder) {
+                    $folderName = basename($folder);
                     
-                    if (!File::exists($documentsPath)) {
+                    // Skip jika folder adalah 'candidates' di level documents/
+                    if ($basePath === 'documents' && $folderName === 'candidates') {
                         continue;
                     }
                     
-                    $folders = File::directories($documentsPath);
+                    // Cek apakah kandidat dengan kode ini masih ada
+                    $candidateExists = Candidate::withTrashed()
+                        ->where('candidate_code', $folderName)
+                        ->exists();
                     
-                    foreach ($folders as $folder) {
-                        $folderName = basename($folder);
+                    if (!$candidateExists) {
+                        // Folder yatim, hapus
+                        File::deleteDirectory($folder);
+                        $deletedFolders[] = $folderName;
                         
-                        // Skip jika folder adalah 'candidates' di level documents/
-                        if ($basePath === 'documents' && $folderName === 'candidates') {
-                            continue;
-                        }
-                        
-                        // Cek apakah kandidat dengan kode ini masih ada
-                        $candidateExists = Candidate::withTrashed()
-                            ->where('candidate_code', $folderName)
-                            ->exists();
-                        
-                        if (!$candidateExists) {
-                            // Folder yatim, hapus
-                            File::deleteDirectory($folder);
-                            $deletedFolders[] = $folderName;
-                            
-                            Log::info('Orphaned folder deleted', [
-                                'folder_name' => $folderName,
-                                'folder_path' => $folder,
-                                'base_path' => $basePath,
-                                'user_id' => Auth::id()
-                            ]);
-                        }
+                        Log::info('Orphaned folder deleted', [
+                            'folder_name' => $folderName,
+                            'folder_path' => $folder,
+                            'base_path' => $basePath,
+                            'user_id' => Auth::id()
+                        ]);
                     }
                 }
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => count($deletedFolders) > 0 
-                        ? 'Berhasil menghapus ' . count($deletedFolders) . ' folder yatim: ' . implode(', ', $deletedFolders)
-                        : 'Tidak ada folder yatim yang ditemukan'
-                ]);
-                
-            } catch (\Exception $e) {
-                Log::error('Error cleaning up orphaned folders', [
-                    'error' => $e->getMessage(),
-                    'user_id' => Auth::id()
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Gagal membersihkan folder yatim: ' . $e->getMessage()
-                ], 500);
             }
+            
+            return response()->json([
+                'success' => true,
+                'message' => count($deletedFolders) > 0 
+                    ? 'Berhasil menghapus ' . count($deletedFolders) . ' folder yatim: ' . implode(', ', $deletedFolders)
+                    : 'Tidak ada folder yatim yang ditemukan'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error cleaning up orphaned folders', [
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membersihkan folder yatim: ' . $e->getMessage()
+            ], 500);
         }
+    }
 
     /**
      * Get storage usage statistics
@@ -1771,7 +1540,35 @@ class CandidateController extends Controller
                 foreach ($folders as $folder) {
                     $folderName = basename($folder);
                     
-                    // Cek apakah kandidat dengan kode ini masih ada
+                    // Skip 'candidates' subfolder for counting
+                    if ($folderName === 'candidates') {
+                        // Count subfolders in candidates/
+                        $candidateFolders = File::directories($folder);
+                        $totalFolders += count($candidateFolders);
+                        
+                        foreach ($candidateFolders as $candidateFolder) {
+                            $candidateCode = basename($candidateFolder);
+                            
+                            // Check if candidate exists
+                            $candidateExists = Candidate::withTrashed()
+                                ->where('candidate_code', $candidateCode)
+                                ->exists();
+                            
+                            if (!$candidateExists) {
+                                $orphanedFolders++;
+                            }
+                            
+                            // Count files and size
+                            $files = File::allFiles($candidateFolder);
+                            foreach ($files as $file) {
+                                $totalSize += $file->getSize();
+                                $totalFiles++;
+                            }
+                        }
+                        continue;
+                    }
+                    
+                    // Cek apakah kandidat dengan kode ini masih ada (old structure)
                     $candidateExists = Candidate::withTrashed()
                         ->where('candidate_code', $folderName)
                         ->exists();
