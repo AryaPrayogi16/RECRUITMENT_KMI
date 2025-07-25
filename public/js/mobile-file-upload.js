@@ -117,7 +117,7 @@
         }
     };
 
-    // 🆕 ENHANCED: Mobile-optimized file validation
+    // 🆕 ENHANCED: Mobile-optimized file validation - UPDATED FOR CHROME MOBILE
     async function validateFileForMobile(file, validation, fieldName) {
         console.log(`📱 Mobile: Validating file for ${fieldName}:`, {
             name: file.name,
@@ -142,9 +142,14 @@
             return { valid: false, error: 'Ukuran file maksimal 2MB' };
         }
 
-        // For mobile, do lighter MIME type checking
-        if (isMobileDevice()) {
-            // Don't rely heavily on MIME type in mobile, focus on extension and basic validation
+        // Enhanced mobile device detection
+        const isChromeMobile = /Chrome/.test(navigator.userAgent) && /Mobile/.test(navigator.userAgent);
+        const isMobile = isMobileDevice() || isChromeMobile;
+        
+        if (isMobile) {
+            console.log(`📱 Mobile device detected (Chrome Mobile: ${isChromeMobile})`);
+            
+            // For image files, use mobile-optimized validation
             if (validation.extensions.includes('jpg') || validation.extensions.includes('jpeg') || validation.extensions.includes('png')) {
                 return await validateImageFileForMobile(file, validation);
             }
@@ -163,36 +168,79 @@
         return { valid: true };
     }
 
-    // 🆕 NEW: Mobile-optimized image validation
+    // 🆕 ENHANCED: Chrome Mobile-optimized image validation dengan error handling yang lebih baik
     function validateImageFileForMobile(file, validation) {
         return new Promise((resolve) => {
             const extension = file.name.toLowerCase().split('.').pop();
+            const isChromeMobile = /Chrome/.test(navigator.userAgent) && /Mobile/.test(navigator.userAgent);
             
-            // For mobile, be more lenient with MIME types but strict with extensions
+            console.log(`📱 Validating image for Chrome Mobile:`, {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                extension: extension,
+                isChromeMobile: isChromeMobile
+            });
+            
+            // Prioritize extension validation for Chrome Mobile
             if (!validation.extensions.includes(extension)) {
                 resolve({ valid: false, error: `Format file harus JPG atau PNG. File Anda: ${extension.toUpperCase()}` });
                 return;
             }
 
-            // Try to create image object to verify it's a valid image
+            // Chrome Mobile: Skip FileReader validation if file seems problematic
+            if (isChromeMobile) {
+                // For Chrome Mobile, use basic validation to avoid FileReader issues
+                const maxSize = validation.maxSize || (2 * 1024 * 1024);
+                
+                if (file.size > maxSize) {
+                    resolve({ valid: false, error: 'Ukuran file terlalu besar (maksimal 2MB)' });
+                    return;
+                }
+                
+                if (file.size === 0) {
+                    resolve({ valid: false, error: 'File kosong atau corrupt' });
+                    return;
+                }
+                
+                // Allow common Chrome Mobile MIME types and empty MIME types
+                const allowedChromeMimeTypes = [
+                    'image/jpeg', 'image/jpg', 'image/png',
+                    'image/pjpeg', 'image/x-png',
+                    'application/octet-stream', // Chrome Mobile sometimes returns this
+                    '', // Chrome Mobile sometimes returns empty MIME type
+                    'image/webp', // Chrome Mobile camera
+                    undefined // Sometimes undefined
+                ];
+                
+                if (!allowedChromeMimeTypes.includes(file.type)) {
+                    console.warn('Chrome Mobile: Unexpected MIME type, but allowing based on extension:', file.type);
+                }
+                
+                console.log(`✅ Chrome Mobile: Accepting file based on extension and basic checks`);
+                resolve({ valid: true });
+                return;
+            }
+
+            // For non-Chrome Mobile browsers, use standard FileReader validation
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    console.log(`📱 Mobile: Image validation successful for ${file.name}:`, {
+                    console.log(`✅ Standard validation successful:`, {
                         width: img.width,
-                        height: img.height,
-                        size: file.size
+                        height: img.height
                     });
                     resolve({ valid: true });
                 };
                 img.onerror = function() {
-                    console.error(`📱 Mobile: Image validation failed for ${file.name}`);
+                    console.error(`❌ Image validation failed`);
                     resolve({ valid: false, error: 'File bukan gambar yang valid atau file rusak' });
                 };
                 img.src = e.target.result;
             };
             reader.onerror = function() {
+                console.error(`❌ FileReader error`);
                 resolve({ valid: false, error: 'Tidak dapat membaca file. File mungkin rusak.' });
             };
             reader.readAsDataURL(file);

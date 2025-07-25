@@ -216,6 +216,315 @@
             </div>
         </div>
 
+        {{-- ✅ EXISTING: PATTERN COMBINATION SECTION --}}
+        @if($patternData)
+        <div class="disc-pattern-combination">
+            <h3 class="disc-analysis-section-title">
+                <i class="fas fa-puzzle-piece" style="color: #8b5cf6;"></i>
+                Kombinasi Pola Kepribadian
+            </h3>
+            
+            <div class="disc-pattern-header">
+                <div class="disc-pattern-info">
+                    <h4 class="disc-pattern-name" id="discPatternName">
+                        {{ $patternData->pattern_name }}
+                    </h4>
+                    <p class="disc-pattern-code">
+                        Kode Pattern: <strong>{{ $patternData->pattern_code }}</strong>
+                    </p>
+                    <div class="disc-pattern-description" id="discPatternDescription">
+                        {{ $patternData->description }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="disc-pattern-analysis-grid">
+                {{-- Pattern Strengths --}}
+                @if($patternData->strengths && count($patternData->strengths) > 0)
+                <div class="disc-analysis-card">
+                    <h4 class="disc-analysis-title">
+                        <i class="fas fa-gem" style="color: #10b981;"></i>
+                        Kekuatan Pattern
+                    </h4>
+                    <div class="disc-trait-tags" id="discPatternStrengthTags">
+                        @foreach($patternData->strengths as $strength)
+                            <span class="disc-trait-tag pattern-strength">{{ $strength }}</span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Pattern Weaknesses --}}
+                @if($patternData->weaknesses && count($patternData->weaknesses) > 0)
+                <div class="disc-analysis-card">
+                    <h4 class="disc-analysis-title">
+                        <i class="fas fa-exclamation-circle" style="color: #f59e0b;"></i>
+                        Area Perhatian
+                    </h4>
+                    <div class="disc-trait-tags" id="discPatternWeaknessTags">
+                        @foreach($patternData->weaknesses as $weakness)
+                            <span class="disc-trait-tag pattern-weakness">{{ $weakness }}</span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Ideal Environment --}}
+                @if($patternData->ideal_environment && count($patternData->ideal_environment) > 0)
+                <div class="disc-analysis-card">
+                    <h4 class="disc-analysis-title">
+                        <i class="fas fa-seedling" style="color: #059669;"></i>
+                        Lingkungan Ideal
+                    </h4>
+                    <div class="disc-trait-tags" id="discPatternEnvironmentTags">
+                        @foreach($patternData->ideal_environment as $environment)
+                            <span class="disc-trait-tag pattern-environment">{{ $environment }}</span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Communication Tips --}}
+                @if($patternData->communication_tips && count($patternData->communication_tips) > 0)
+                <div class="disc-analysis-card">
+                    <h4 class="disc-analysis-title">
+                        <i class="fas fa-bullhorn" style="color: #0891b2;"></i>
+                        Tips Komunikasi
+                    </h4>
+                    <div class="disc-trait-tags" id="discPatternCommunicationTags">
+                        @foreach($patternData->communication_tips as $tip)
+                            <span class="disc-trait-tag pattern-communication">{{ $tip }}</span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Career Matches --}}
+                @if($patternData->career_matches && count($patternData->career_matches) > 0)
+                <div class="disc-analysis-card">
+                    <h4 class="disc-analysis-title">
+                        <i class="fas fa-briefcase" style="color: #7c3aed;"></i>
+                        Karir yang Cocok
+                    </h4>
+                    <div class="disc-trait-tags" id="discPatternCareerTags">
+                        @foreach($patternData->career_matches as $career)
+                            <span class="disc-trait-tag pattern-career">{{ $career }}</span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        {{-- ✅ NEW: CHARACTER ANALYSIS SECTION --}}
+        @if($patternData)
+        <div class="disc-character-analysis">
+            <h3 class="disc-analysis-section-title">
+                <i class="fas fa-user-circle" style="color: #8b5cf6;"></i>
+                Analisis Karakter DISC
+            </h3>
+            
+            {{-- Step 1: Karakter Utama --}}
+            <div class="disc-character-main">
+                <div class="disc-character-header">
+                    <h4 class="disc-character-title">
+                        <i class="fas fa-star"></i>
+                        Karakter Utama: {{ $patternData->pattern_name }}
+                    </h4>
+                    <p class="disc-character-description">
+                        {{ $patternData->description }}
+                    </p>
+                </div>
+                
+                <div class="disc-character-traits-grid">
+                    {{-- Kekuatan --}}
+                    @if($patternData->strengths && count($patternData->strengths) > 0)
+                    <div class="disc-character-trait-card strengths">
+                        <h5 class="disc-trait-card-title">
+                            <i class="fas fa-thumbs-up"></i>
+                            Kekuatan Utama
+                        </h5>
+                        <div class="disc-trait-list">
+                            @foreach(array_slice($patternData->strengths, 0, 4) as $strength)
+                                <span class="disc-trait-item strength">{{ $strength }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                    
+                    {{-- Kelemahan --}}
+                    @if($patternData->weaknesses && count($patternData->weaknesses) > 0)
+                    <div class="disc-character-trait-card weaknesses">
+                        <h5 class="disc-trait-card-title">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Area Perhatian
+                        </h5>
+                        <div class="disc-trait-list">
+                            @foreach(array_slice($patternData->weaknesses, 0, 4) as $weakness)
+                                <span class="disc-trait-item weakness">{{ $weakness }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                </div>
+                
+                {{-- Character Summary --}}
+                <div class="disc-character-summary">
+                    <h5 class="summary-title">
+                        <i class="fas fa-lightbulb"></i>
+                        Ringkasan Karakter
+                    </h5>
+                    <p class="summary-content">
+                        @php
+                            $primaryType = $candidate->disc3DTestResult->primary_type ?? 'D';
+                            $patternName = $patternData->pattern_name;
+                            $mainStrengths = $patternData->strengths ? implode(' dan ', array_slice($patternData->strengths, 0, 2)) : 'berbagai kekuatan';
+                        @endphp
+                        
+                        Kandidat menunjukkan karakter <strong>{{ $patternName }}</strong> dengan kecenderungan dimensi <strong>{{ $primaryType }}</strong>. 
+                        Memiliki {{ $mainStrengths }} sebagai kekuatan utama. 
+                        Cocok untuk peran yang membutuhkan {{ $patternData->ideal_environment ? strtolower($patternData->ideal_environment[0] ?? 'fleksibilitas') : 'adaptabilitas' }} dalam bekerja.
+                    </p>
+                </div>
+            </div>
+            
+            {{-- Step 2: Detail Dimensi Dominan --}}
+            @if(isset($dominantInterpretation))
+            @php
+                $dominantDim = $dominantInterpretation->dimension;
+                $dominantLevel = $dominantInterpretation->segment_level;
+                $dimensionLabels = ['D' => 'Dominance', 'I' => 'Influence', 'S' => 'Steadiness', 'C' => 'Conscientiousness'];
+            @endphp
+            
+            <div class="disc-dominant-dimension">
+                <h4 class="disc-character-title">
+                    <i class="fas fa-chart-line"></i>
+                    Dimensi Dominan: {{ $dimensionLabels[$dominantDim] ?? $dominantDim }} (Level {{ $dominantLevel }})
+                </h4>
+                
+                <div class="disc-dimension-details-grid">
+                    {{-- Karakteristik --}}
+                    @if($dominantInterpretation->characteristics && count($dominantInterpretation->characteristics) > 0)
+                    <div class="disc-dimension-detail-card">
+                        <h5 class="disc-detail-card-title">
+                            <i class="fas fa-user"></i>
+                            Karakteristik Utama
+                        </h5>
+                        <div class="disc-detail-list">
+                            @foreach(array_slice($dominantInterpretation->characteristics, 0, 3) as $characteristic)
+                                <span class="disc-detail-item">{{ $characteristic }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                    
+                    {{-- Gaya Kerja --}}
+                    @if($dominantInterpretation->work_style && count($dominantInterpretation->work_style) > 0)
+                    <div class="disc-dimension-detail-card">
+                        <h5 class="disc-detail-card-title">
+                            <i class="fas fa-briefcase"></i>
+                            Gaya Kerja
+                        </h5>
+                        <div class="disc-detail-list">
+                            @foreach(array_slice($dominantInterpretation->work_style, 0, 3) as $workStyle)
+                                <span class="disc-detail-item">{{ $workStyle }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                    
+                    {{-- Motivator --}}
+                    @if($dominantInterpretation->motivators && count($dominantInterpretation->motivators) > 0)
+                    <div class="disc-dimension-detail-card">
+                        <h5 class="disc-detail-card-title">
+                            <i class="fas fa-fire"></i>
+                            Motivator Utama
+                        </h5>
+                        <div class="disc-detail-list">
+                            @foreach(array_slice($dominantInterpretation->motivators, 0, 3) as $motivator)
+                                <span class="disc-detail-item">{{ $motivator }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                </div>
+                
+                <div class="disc-dimension-insight">
+                    <p class="insight-content">
+                        <i class="fas fa-info-circle"></i>
+                        Dimensi <strong>{{ $dimensionLabels[$dominantDim] ?? $dominantDim }}</strong> pada level {{ $dominantLevel }} menunjukkan bahwa kandidat memiliki 
+                        {{ $dominantInterpretation->characteristics[0] ?? 'karakteristik yang kuat' }} dalam perilaku kerja sehari-hari. 
+                        Hal ini mempengaruhi cara kandidat {{ $dominantInterpretation->work_style[0] ?? 'bekerja dan berinteraksi' }} dengan tim dan tugas.
+                    </p>
+                </div>
+            </div>
+            @endif
+            
+            {{-- Step 3: Insight Komunikasi & Management --}}
+            <div class="disc-practical-recommendations">
+                <h4 class="disc-character-title">
+                    <i class="fas fa-hands-helping"></i>
+                    Rekomendasi Praktis
+                </h4>
+                
+                <div class="disc-recommendations-grid">
+                    {{-- Tips Komunikasi --}}
+                    <div class="disc-recommendation-card communication">
+                        <h5 class="disc-recommendation-title">
+                            <i class="fas fa-comments"></i>
+                            Cara Berkomunikasi
+                        </h5>
+                        <div class="disc-recommendation-content">
+                            @if($patternData->communication_tips && count($patternData->communication_tips) > 0)
+                                @foreach(array_slice($patternData->communication_tips, 0, 2) as $tip)
+                                    <p class="recommendation-item">• {{ $tip }}</p>
+                                @endforeach
+                            @else
+                                <p class="recommendation-item">• Gunakan pendekatan yang sesuai dengan karakter {{ $patternData->pattern_name }}</p>
+                            @endif
+                        </div>
+                    </div>
+                    
+                    {{-- Cara Memotivasi --}}
+                    <div class="disc-recommendation-card motivation">
+                        <h5 class="disc-recommendation-title">
+                            <i class="fas fa-rocket"></i>
+                            Cara Memotivasi
+                        </h5>
+                        <div class="disc-recommendation-content">
+                            @if(isset($dominantInterpretation) && $dominantInterpretation->motivators && count($dominantInterpretation->motivators) > 0)
+                                @foreach(array_slice($dominantInterpretation->motivators, 0, 2) as $motivator)
+                                    <p class="recommendation-item">• {{ $motivator }}</p>
+                                @endforeach
+                            @else
+                                <p class="recommendation-item">• Berikan penghargaan sesuai dengan preferensi karakter</p>
+                                <p class="recommendation-item">• Fokus pada {{ $patternData->strengths[0] ?? 'kekuatan utama' }} kandidat</p>
+                            @endif
+                        </div>
+                    </div>
+                    
+                    {{-- Career Match --}}
+                    <div class="disc-recommendation-card career">
+                        <h5 class="disc-recommendation-title">
+                            <i class="fas fa-briefcase"></i>
+                            Role/Posisi Cocok
+                        </h5>
+                        <div class="disc-recommendation-content">
+                            @if($patternData->career_matches && count($patternData->career_matches) > 0)
+                                @foreach(array_slice($patternData->career_matches, 0, 3) as $career)
+                                    <p class="recommendation-item">• {{ $career }}</p>
+                                @endforeach
+                            @else
+                                <p class="recommendation-item">• Posisi yang sesuai dengan karakter {{ $patternData->pattern_name }}</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
         {{-- ✅ NEW: PATTERN COMBINATION SECTION - Data sudah didefinisikan di atas --}}
         @if($patternData)
         <div class="disc-pattern-combination">
@@ -420,75 +729,7 @@
             </div>
         </div>
 
-        {{-- COMPREHENSIVE PERSONALITY ANALYSIS - TETAP SAMA --}}
-        @php
-            // Safe array extraction with proper type checking
-            $behavioralInsights = $candidate->disc3DTestResult->behavioral_insights ?? [];
-            
-            // Extract arrays safely from various sources
-            $strengthsArray = [];
-            if (isset($behavioralInsights['strengths']) && is_array($behavioralInsights['strengths'])) {
-                $strengthsArray = $behavioralInsights['strengths'];
-            }
-            
-            $developmentArray = [];
-            if (isset($behavioralInsights['development_areas']) && is_array($behavioralInsights['development_areas'])) {
-                $developmentArray = $behavioralInsights['development_areas'];
-            }
-            
-            $tendenciesArray = [];
-            if (isset($behavioralInsights['tendencies']) && is_array($behavioralInsights['tendencies'])) {
-                $tendenciesArray = $behavioralInsights['tendencies'];
-            }
-            
-            $communicationArray = [];
-            if (isset($behavioralInsights['communication']) && is_array($behavioralInsights['communication'])) {
-                $communicationArray = $behavioralInsights['communication'];
-            } elseif (is_array($candidate->disc3DTestResult->communication_style_most ?? null)) {
-                $communicationArray = $candidate->disc3DTestResult->communication_style_most;
-            }
-            
-            $motivatorsArray = [];
-            if (is_array($candidate->disc3DTestResult->motivators_most ?? null)) {
-                $motivatorsArray = $candidate->disc3DTestResult->motivators_most;
-            } elseif (isset($behavioralInsights['motivators']) && is_array($behavioralInsights['motivators'])) {
-                $motivatorsArray = $behavioralInsights['motivators'];
-            }
-            
-            $stressArray = [];
-            if (is_array($candidate->disc3DTestResult->stress_indicators ?? null)) {
-                $stressArray = $candidate->disc3DTestResult->stress_indicators;
-            }
-            
-            $workEnvArray = [];
-            if (isset($behavioralInsights['work_environment']) && is_array($behavioralInsights['work_environment'])) {
-                $workEnvArray = $behavioralInsights['work_environment'];
-            } elseif (is_array($candidate->disc3DTestResult->work_style_most ?? null)) {
-                $workEnvArray = $candidate->disc3DTestResult->work_style_most;
-            }
-            
-            $decisionArray = [];
-            if (isset($behavioralInsights['decision_making']) && is_array($behavioralInsights['decision_making'])) {
-                $decisionArray = $behavioralInsights['decision_making'];
-            }
-            
-            $leadershipArray = [];
-            if (isset($behavioralInsights['leadership']) && is_array($behavioralInsights['leadership'])) {
-                $leadershipArray = $behavioralInsights['leadership'];
-            }
-            
-            $conflictArray = [];
-            if (isset($behavioralInsights['conflict_resolution']) && is_array($behavioralInsights['conflict_resolution'])) {
-                $conflictArray = $behavioralInsights['conflict_resolution'];
-            }
-            
-            // Check if any analysis data exists
-            $hasAnalysisData = !empty($strengthsArray) || !empty($developmentArray) || !empty($tendenciesArray) || 
-                              !empty($communicationArray) || !empty($motivatorsArray) || !empty($stressArray) || 
-                              !empty($workEnvArray) || !empty($decisionArray) || !empty($leadershipArray) || !empty($conflictArray);
-        @endphp
-
-        @if($hasAnalysisData)
+        {{-- COMPREHENSIVE PERSONALITY ANALYSIS --}}
         <div class="disc-comprehensive-analysis">
             <h3 class="disc-analysis-section-title">
                 <i class="fas fa-brain" style="color: #7c3aed;"></i>
@@ -650,21 +891,7 @@
         </div>
         @endif
 
-        {{-- DETAILED BEHAVIORAL ANALYSIS - TETAP SAMA --}}
-        @php
-            $workStyleSummary = $candidate->disc3DTestResult->work_style_summary;
-            $communicationSummary = $candidate->disc3DTestResult->communication_summary;
-            $publicSelfSummary = $candidate->disc3DTestResult->public_self_summary;
-            $privateSelfSummary = $candidate->disc3DTestResult->private_self_summary;
-            $adaptationSummary = $candidate->disc3DTestResult->adaptation_summary;
-            $overallProfile = $candidate->disc3DTestResult->overall_profile;
-            $personalityProfile = $candidate->disc3DTestResult->personality_profile;
-            
-            $hasDetailedAnalysis = $workStyleSummary || $communicationSummary || $publicSelfSummary || 
-                                  $privateSelfSummary || $adaptationSummary || $overallProfile || $personalityProfile;
-        @endphp
-
-        @if($hasDetailedAnalysis)
+        {{-- DETAILED BEHAVIORAL ANALYSIS --}}
         <div class="disc-detailed-analysis">
             <h3 class="disc-analysis-section-title">
                 <i class="fas fa-search" style="color: #1e40af;"></i>

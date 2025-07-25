@@ -20,8 +20,7 @@ use App\Models\{
     KraeplinTestResult,
     KraeplinAnswer,
     Disc3DTestSession,
-    Disc3DResult,
-    Disc3DPatternCombination  // ✅ NEW: Added pattern combination model
+    Disc3DResult
 };
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -269,7 +268,7 @@ class CandidateController extends Controller
             'disc3DTestSessions' => function($query) {
                 $query->where('status', 'completed')->latest('completed_at');
             },
-            'disc3DResult'  // Pattern combination will be queried separately when needed
+            'disc3DResult'
         ])->findOrFail($id);
         
         $disc3dSession = $candidate->disc3DTestSessions->first();
