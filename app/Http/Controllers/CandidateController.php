@@ -20,7 +20,9 @@ use App\Models\{
     KraeplinTestResult,
     KraeplinAnswer,
     Disc3DTestSession,
-    Disc3DResult
+    Disc3DResult,
+    Disc3DPatternCombination,  // ✅ NEW: Added pattern combination model
+    Disc3DProfileInterpretation
 };
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -262,24 +264,51 @@ class CandidateController extends Controller
      */
     public function disc3dResult($id)
     {
-        Gate::authorize('hr-access');
+    Gate::authorize('hr-access');
+    
+    $candidate = Candidate::with([
+        'disc3DTestSessions' => function($query) {
+            $query->where('status', 'completed')->latest('completed_at');
+        },
+        'disc3DResult'  // Pattern combination will be queried separately when needed
+    ])->findOrFail($id);
+    
+    $disc3dSession = $candidate->disc3DTestSessions->first();
+    $disc3dResult = $candidate->disc3DResult;
+    
+    if (!$disc3dSession) {
+        return redirect()->route('candidates.show', $id)
+            ->with('error', 'Kandidat belum menyelesaikan test DISC 3D');
+    }
+    
+    // ✅ NEW: Get dominant dimension interpretation
+    $dominantInterpretation = null;
+    if ($disc3dResult) {
+        // Determine dominant dimension from MOST segments
+        $segments = [
+            'D' => $disc3dResult->most_d_segment ?? 1,
+            'I' => $disc3dResult->most_i_segment ?? 1,  
+            'S' => $disc3dResult->most_s_segment ?? 1,
+            'C' => $disc3dResult->most_c_segment ?? 1
+        ];
         
-        $candidate = Candidate::with([
-            'disc3DTestSessions' => function($query) {
-                $query->where('status', 'completed')->latest('completed_at');
-            },
-            'disc3DResult'
-        ])->findOrFail($id);
+        $dominantDimension = array_keys($segments, max($segments))[0];
+        $dominantLevel = max($segments);
         
-        $disc3dSession = $candidate->disc3DTestSessions->first();
-        $disc3dResult = $candidate->disc3DResult;
-        
-        if (!$disc3dSession) {
-            return redirect()->route('candidates.show', $id)
-                ->with('error', 'Kandidat belum menyelesaikan test DISC 3D');
-        }
-        
-        return view('candidates.test-results.disc3d', compact('candidate', 'disc3dSession', 'disc3dResult'));
+        // Get interpretation for dominant dimension
+        $dominantInterpretation = Disc3DProfileInterpretation::where('dimension', $dominantDimension)
+            ->where('graph_type', 'MOST')
+            ->where('segment_level', $dominantLevel)
+            ->first();
+    }
+
+    // Update compact() yang sudah ada - tambahkan 'dominantInterpretation'
+    return view('candidates.test-results.disc3d', compact(
+        'candidate', 
+        'disc3dSession', 
+        'disc3dResult',
+        'dominantInterpretation'  // ← TAMBAH INI SAJA
+    ));
     }
 
     /**
