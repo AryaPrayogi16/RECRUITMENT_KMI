@@ -5,7 +5,15 @@
     </h2>
 
     @if($candidate->disc3DTestResult)
-        {{-- FIXED: Pass Enhanced DISC data using SEGMENTS to JavaScript --}}
+        {{-- ✅ FIXED: Define pattern data BEFORE using it in JavaScript --}}
+        @php
+            $patternData = null;
+            if ($candidate->disc3DTestResult && $candidate->disc3DTestResult->most_pattern) {
+                $patternData = \App\Models\Disc3DPatternCombination::where('pattern_code', $candidate->disc3DTestResult->most_pattern)->first();
+            }
+        @endphp
+
+        {{-- ✅ ENHANCED: Pass DISC data with pattern combination to JavaScript --}}
         <script>
             window.discData = {
                 // FIXED: Gunakan segment values (1-7) untuk MOST dan LEAST
@@ -52,75 +60,111 @@
                     summary: {!! json_encode($candidate->disc3DTestResult->summary ?? "Belum tersedia") !!}
                 },
                 analysis: {
-                    // Enhanced comprehensive analysis with all traits
-                    allStrengths: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['strengths'] ?? [
-                        'Kepemimpinan Natural', 'Pengambilan Keputusan Cepat', 'Orientasi Hasil Tinggi', 
-                        'Komunikasi Persuasif', 'Kemampuan Memotivasi', 'Keberanian Mengambil Risiko',
-                        'Inisiatif Tinggi', 'Fokus pada Pencapaian', 'Kemampuan Delegasi',
-                        'Daya Juang Tinggi', 'Visioner', 'Energi Tinggi'
-                    ]) !!},
+                    // Use real data from database with proper array handling
+                    allStrengths: {!! json_encode(
+                        is_array($candidate->disc3DTestResult->behavioral_insights['strengths'] ?? null) 
+                            ? $candidate->disc3DTestResult->behavioral_insights['strengths'] 
+                            : []
+                    ) !!},
                     
-                    allDevelopmentAreas: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['development_areas'] ?? [
-                        'Kesabaran dalam Proses', 'Perhatian pada Detail', 'Konsistensi Follow-up',
-                        'Mendengarkan Feedback', 'Fleksibilitas Metode', 'Empati yang Lebih Dalam',
-                        'Manajemen Stres', 'Kontrol Emosi', 'Delegasi yang Efektif'
-                    ]) !!},
+                    allDevelopmentAreas: {!! json_encode(
+                        is_array($candidate->disc3DTestResult->behavioral_insights['development_areas'] ?? null) 
+                            ? $candidate->disc3DTestResult->behavioral_insights['development_areas'] 
+                            : []
+                    ) !!},
 
-                    behavioralTendencies: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['tendencies'] ?? [
-                        'Mengambil Kendali Situasi', 'Berbicara Langsung pada Inti', 'Membuat Keputusan Cepat',
-                        'Fokus pada Hasil Akhir', 'Mendorong Perubahan', 'Berani Konfrontasi',
-                        'Multitasking Efektif', 'Networking Aktif', 'Kompetitif'
-                    ]) !!},
+                    behavioralTendencies: {!! json_encode(
+                        is_array($candidate->disc3DTestResult->behavioral_insights['tendencies'] ?? null) 
+                            ? $candidate->disc3DTestResult->behavioral_insights['tendencies'] 
+                            : []
+                    ) !!},
 
-                    communicationPreferences: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['communication'] ?? [
-                        'Komunikasi Langsung', 'Presentasi yang Dinamis', 'Diskusi Berorientasi Solusi',
-                        'Feedback yang Konstruktif', 'Meeting yang Efisien', 'Laporan Ringkas',
-                        'Brainstorming Aktif', 'Negosiasi Asertif'
-                    ]) !!},
+                    communicationPreferences: {!! json_encode(
+                        is_array($candidate->disc3DTestResult->behavioral_insights['communication'] ?? null) 
+                            ? $candidate->disc3DTestResult->behavioral_insights['communication'] 
+                            : (is_array($candidate->disc3DTestResult->communication_style_most ?? null) 
+                                ? $candidate->disc3DTestResult->communication_style_most 
+                                : []
+                            )
+                    ) !!},
 
-                    motivators: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['motivators'] ?? [
-                        'Pencapaian Target', 'Pengakuan Prestasi', 'Tantangan Baru',
-                        'Otoritas dan Tanggung Jawab', 'Kompetisi Sehat', 'Perubahan dan Inovasi',
-                        'Hasil yang Terukur', 'Pengaruh pada Keputusan'
-                    ]) !!},
+                    motivators: {!! json_encode(
+                        is_array($candidate->disc3DTestResult->motivators_most ?? null) 
+                            ? $candidate->disc3DTestResult->motivators_most 
+                            : (is_array($candidate->disc3DTestResult->behavioral_insights['motivators'] ?? null) 
+                                ? $candidate->disc3DTestResult->behavioral_insights['motivators'] 
+                                : []
+                            )
+                    ) !!},
 
-                    stressIndicators: {!! json_encode($candidate->disc3DTestResult->stress_indicators ?? [
-                        'Ketidakpastian Berkepanjangan', 'Proses yang Terlalu Lambat', 'Micromanagement',
-                        'Rutinitas yang Monoton', 'Konflik Interpersonal', 'Kekurangan Informasi',
-                        'Deadline yang Tidak Realistis', 'Perubahan Mendadak'
-                    ]) !!},
+                    stressIndicators: {!! json_encode(
+                        is_array($candidate->disc3DTestResult->stress_indicators ?? null) 
+                            ? $candidate->disc3DTestResult->stress_indicators 
+                            : []
+                    ) !!},
 
-                    workEnvironment: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['work_environment'] ?? [
-                        'Lingkungan Dinamis', 'Tim yang Responsif', 'Budaya Meritokrasi',
-                        'Struktur yang Fleksibel', 'Akses pada Manajemen Senior', 'Resource yang Memadai',
-                        'Teknologi Terkini', 'Ruang untuk Inovasi'
-                    ]) !!},
+                    workEnvironment: {!! json_encode(
+                        is_array($candidate->disc3DTestResult->behavioral_insights['work_environment'] ?? null) 
+                            ? $candidate->disc3DTestResult->behavioral_insights['work_environment'] 
+                            : (is_array($candidate->disc3DTestResult->work_style_most ?? null) 
+                                ? $candidate->disc3DTestResult->work_style_most 
+                                : []
+                            )
+                    ) !!},
 
-                    decisionMaking: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['decision_making'] ?? [
-                        'Berdasarkan Data dan Intuisi', 'Cepat dan Tegas', 'Mempertimbangkan Dampak',
-                        'Melibatkan Stakeholder Kunci', 'Fokus pada ROI', 'Berani Mengambil Risiko Terkalkulasi'
-                    ]) !!},
+                    decisionMaking: {!! json_encode(
+                        is_array($candidate->disc3DTestResult->behavioral_insights['decision_making'] ?? null) 
+                            ? $candidate->disc3DTestResult->behavioral_insights['decision_making'] 
+                            : []
+                    ) !!},
 
-                    leadershipStyle: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['leadership'] ?? [
-                        'Transformational Leadership', 'Delegasi Efektif', 'Coaching dan Mentoring',
-                        'Setting Ekspektasi Tinggi', 'Leading by Example', 'Inspirational Communication'
-                    ]) !!},
+                    leadershipStyle: {!! json_encode(
+                        is_array($candidate->disc3DTestResult->behavioral_insights['leadership'] ?? null) 
+                            ? $candidate->disc3DTestResult->behavioral_insights['leadership'] 
+                            : []
+                    ) !!},
 
-                    conflictResolution: {!! json_encode($candidate->disc3DTestResult->behavioral_insights['conflict_resolution'] ?? [
-                        'Pendekatan Langsung', 'Fokus pada Solusi', 'Win-Win Solution',
-                        'Mediasi Objektif', 'Komunikasi Terbuka', 'Escalation Jika Diperlukan'
-                    ]) !!},
+                    conflictResolution: {!! json_encode(
+                        is_array($candidate->disc3DTestResult->behavioral_insights['conflict_resolution'] ?? null) 
+                            ? $candidate->disc3DTestResult->behavioral_insights['conflict_resolution'] 
+                            : []
+                    ) !!},
 
-                    detailedWorkStyle: {!! json_encode($candidate->disc3DTestResult->overall_profile ?? "Bekerja dengan tempo tinggi dan fokus pada hasil. Menyukai lingkungan yang dinamis dengan kebebasan untuk mengambil keputusan.") !!},
+                    // Use real detailed summaries from database
+                    detailedWorkStyle: {!! json_encode($candidate->disc3DTestResult->work_style_summary ?? $candidate->disc3DTestResult->overall_profile ?? "Belum tersedia analisis gaya kerja") !!},
                     
-                    detailedCommunicationStyle: {!! json_encode($candidate->disc3DTestResult->personality_profile ?? "Komunikasi yang langsung, jelas, dan persuasif. Mampu menyampaikan visi dan memotivasi tim.") !!},
+                    detailedCommunicationStyle: {!! json_encode($candidate->disc3DTestResult->communication_summary ?? $candidate->disc3DTestResult->personality_profile ?? "Belum tersedia analisis gaya komunikasi") !!},
                     
-                    publicSelfAnalysis: {!! json_encode($candidate->disc3DTestResult->public_self_summary ?? "Di lingkungan publik, menampilkan sosok yang percaya diri, tegas, dan berorientasi pada hasil.") !!},
+                    publicSelfAnalysis: {!! json_encode($candidate->disc3DTestResult->public_self_summary ?? "Belum tersedia analisis diri publik") !!},
                     
-                    privateSelfAnalysis: {!! json_encode($candidate->disc3DTestResult->private_self_summary ?? "Secara pribadi, lebih reflektif dan mempertimbangkan berbagai aspek sebelum mengambil keputusan.") !!},
+                    privateSelfAnalysis: {!! json_encode($candidate->disc3DTestResult->private_self_summary ?? "Belum tersedia analisis diri pribadi") !!},
                     
-                    adaptationAnalysis: {!! json_encode($candidate->disc3DTestResult->adaptation_summary ?? "Mengalami tekanan untuk tampil lebih dominan dan ekspresif di lingkungan kerja.") !!}
+                    adaptationAnalysis: {!! json_encode($candidate->disc3DTestResult->adaptation_summary ?? "Belum tersedia analisis adaptasi") !!}
                 },
+                // ✅ NEW: Pattern combination data - ambil dari tabel pattern berdasarkan most_pattern code
+                patternCombination: @if($patternData)
+                    {!! json_encode([
+                        'pattern_code' => $patternData->pattern_code,
+                        'pattern_name' => $patternData->pattern_name,
+                        'description' => $patternData->description,
+                        'strengths' => $patternData->strengths ?? [],
+                        'weaknesses' => $patternData->weaknesses ?? [],
+                        'ideal_environment' => $patternData->ideal_environment ?? [],
+                        'communication_tips' => $patternData->communication_tips ?? [],
+                        'career_matches' => $patternData->career_matches ?? []
+                    ]) !!}
+                @else
+                    {
+                        'pattern_code' => null,
+                        'pattern_name' => 'Pattern tidak dikenal',
+                        'description' => 'Deskripsi tidak tersedia',
+                        'strengths' => [],
+                        'weaknesses' => [],
+                        'ideal_environment' => [],
+                        'communication_tips' => [],
+                        'career_matches' => []
+                    }
+                @endif,
                 session: {
                     testCode: '{{ $candidate->latestDisc3DTest->test_code ?? "N/A" }}',
                     completedDate: '{{ $candidate->latestDisc3DTest->completed_at ? $candidate->latestDisc3DTest->completed_at->format("d M Y") : "N/A" }}',
@@ -129,7 +173,7 @@
             };
         </script>
 
-        {{-- COMPACT HEADER SUMMARY --}}
+        {{-- COMPACT HEADER SUMMARY - TETAP SAMA --}}
         <div class="disc-header-summary">
             <div class="disc-profile-grid">
                 {{-- Profile Type --}}
@@ -172,7 +216,108 @@
             </div>
         </div>
 
-        {{-- ALL THREE GRAPHS DISPLAYED SIMULTANEOUSLY --}}
+        {{-- ✅ NEW: PATTERN COMBINATION SECTION - Data sudah didefinisikan di atas --}}
+        @if($patternData)
+        <div class="disc-pattern-combination">
+            <h3 class="disc-analysis-section-title">
+                <i class="fas fa-puzzle-piece" style="color: #8b5cf6;"></i>
+                Kombinasi Pola Kepribadian
+            </h3>
+            
+            <div class="disc-pattern-header">
+                <div class="disc-pattern-info">
+                    <h4 class="disc-pattern-name" id="discPatternName">
+                        {{ $patternData->pattern_name }}
+                    </h4>
+                    <p class="disc-pattern-code">
+                        Kode Pattern: <strong>{{ $patternData->pattern_code }}</strong>
+                    </p>
+                    <div class="disc-pattern-description" id="discPatternDescription">
+                        {{ $patternData->description }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="disc-pattern-analysis-grid">
+                {{-- Pattern Strengths --}}
+                @if($patternData->strengths && count($patternData->strengths) > 0)
+                <div class="disc-analysis-card">
+                    <h4 class="disc-analysis-title">
+                        <i class="fas fa-gem" style="color: #10b981;"></i>
+                        Kekuatan Pattern
+                    </h4>
+                    <div class="disc-trait-tags" id="discPatternStrengthTags">
+                        @foreach($patternData->strengths as $strength)
+                            <span class="disc-trait-tag pattern-strength">{{ $strength }}</span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Pattern Weaknesses --}}
+                @if($patternData->weaknesses && count($patternData->weaknesses) > 0)
+                <div class="disc-analysis-card">
+                    <h4 class="disc-analysis-title">
+                        <i class="fas fa-exclamation-circle" style="color: #f59e0b;"></i>
+                        Area Perhatian
+                    </h4>
+                    <div class="disc-trait-tags" id="discPatternWeaknessTags">
+                        @foreach($patternData->weaknesses as $weakness)
+                            <span class="disc-trait-tag pattern-weakness">{{ $weakness }}</span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Ideal Environment --}}
+                @if($patternData->ideal_environment && count($patternData->ideal_environment) > 0)
+                <div class="disc-analysis-card">
+                    <h4 class="disc-analysis-title">
+                        <i class="fas fa-seedling" style="color: #059669;"></i>
+                        Lingkungan Ideal
+                    </h4>
+                    <div class="disc-trait-tags" id="discPatternEnvironmentTags">
+                        @foreach($patternData->ideal_environment as $environment)
+                            <span class="disc-trait-tag pattern-environment">{{ $environment }}</span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Communication Tips --}}
+                @if($patternData->communication_tips && count($patternData->communication_tips) > 0)
+                <div class="disc-analysis-card">
+                    <h4 class="disc-analysis-title">
+                        <i class="fas fa-bullhorn" style="color: #0891b2;"></i>
+                        Tips Komunikasi
+                    </h4>
+                    <div class="disc-trait-tags" id="discPatternCommunicationTags">
+                        @foreach($patternData->communication_tips as $tip)
+                            <span class="disc-trait-tag pattern-communication">{{ $tip }}</span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Career Matches --}}
+                @if($patternData->career_matches && count($patternData->career_matches) > 0)
+                <div class="disc-analysis-card">
+                    <h4 class="disc-analysis-title">
+                        <i class="fas fa-briefcase" style="color: #7c3aed;"></i>
+                        Karir yang Cocok
+                    </h4>
+                    <div class="disc-trait-tags" id="discPatternCareerTags">
+                        @foreach($patternData->career_matches as $career)
+                            <span class="disc-trait-tag pattern-career">{{ $career }}</span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        {{-- ALL THREE GRAPHS DISPLAYED SIMULTANEOUSLY - TETAP SAMA --}}
         <div class="disc-comprehensive-graphs">
             <h3 class="disc-graph-section-title">
                 <i class="fas fa-chart-line" style="color: #4f46e5;"></i>
@@ -186,7 +331,7 @@
                     <div class="disc-graph-description">
                         <strong>MOST (Topeng/Publik):</strong> Menunjukkan bagaimana Anda berperilaku di depan umum atau dalam situasi kerja formal.
                     </div>
-                    {{-- FIXED: Score cards for MOST - Menampilkan segment values --}}
+                    {{-- Score cards for MOST - Menampilkan segment values --}}
                     <div class="disc-scores-mini-grid">
                         <div class="disc-score-mini dominance">
                             <span class="dim-label">D</span>
@@ -217,7 +362,7 @@
                     <div class="disc-graph-description">
                         <strong>LEAST (Inti/Pribadi):</strong> Menggambarkan kepribadian alami Anda yang sesungguhnya tanpa pengaruh eksternal.
                     </div>
-                    {{-- FIXED: Score cards for LEAST - Menampilkan segment values --}}
+                    {{-- Score cards for LEAST - Menampilkan segment values --}}
                     <div class="disc-scores-mini-grid">
                         <div class="disc-score-mini dominance">
                             <span class="dim-label">D</span>
@@ -275,7 +420,75 @@
             </div>
         </div>
 
-        {{-- COMPREHENSIVE PERSONALITY ANALYSIS --}}
+        {{-- COMPREHENSIVE PERSONALITY ANALYSIS - TETAP SAMA --}}
+        @php
+            // Safe array extraction with proper type checking
+            $behavioralInsights = $candidate->disc3DTestResult->behavioral_insights ?? [];
+            
+            // Extract arrays safely from various sources
+            $strengthsArray = [];
+            if (isset($behavioralInsights['strengths']) && is_array($behavioralInsights['strengths'])) {
+                $strengthsArray = $behavioralInsights['strengths'];
+            }
+            
+            $developmentArray = [];
+            if (isset($behavioralInsights['development_areas']) && is_array($behavioralInsights['development_areas'])) {
+                $developmentArray = $behavioralInsights['development_areas'];
+            }
+            
+            $tendenciesArray = [];
+            if (isset($behavioralInsights['tendencies']) && is_array($behavioralInsights['tendencies'])) {
+                $tendenciesArray = $behavioralInsights['tendencies'];
+            }
+            
+            $communicationArray = [];
+            if (isset($behavioralInsights['communication']) && is_array($behavioralInsights['communication'])) {
+                $communicationArray = $behavioralInsights['communication'];
+            } elseif (is_array($candidate->disc3DTestResult->communication_style_most ?? null)) {
+                $communicationArray = $candidate->disc3DTestResult->communication_style_most;
+            }
+            
+            $motivatorsArray = [];
+            if (is_array($candidate->disc3DTestResult->motivators_most ?? null)) {
+                $motivatorsArray = $candidate->disc3DTestResult->motivators_most;
+            } elseif (isset($behavioralInsights['motivators']) && is_array($behavioralInsights['motivators'])) {
+                $motivatorsArray = $behavioralInsights['motivators'];
+            }
+            
+            $stressArray = [];
+            if (is_array($candidate->disc3DTestResult->stress_indicators ?? null)) {
+                $stressArray = $candidate->disc3DTestResult->stress_indicators;
+            }
+            
+            $workEnvArray = [];
+            if (isset($behavioralInsights['work_environment']) && is_array($behavioralInsights['work_environment'])) {
+                $workEnvArray = $behavioralInsights['work_environment'];
+            } elseif (is_array($candidate->disc3DTestResult->work_style_most ?? null)) {
+                $workEnvArray = $candidate->disc3DTestResult->work_style_most;
+            }
+            
+            $decisionArray = [];
+            if (isset($behavioralInsights['decision_making']) && is_array($behavioralInsights['decision_making'])) {
+                $decisionArray = $behavioralInsights['decision_making'];
+            }
+            
+            $leadershipArray = [];
+            if (isset($behavioralInsights['leadership']) && is_array($behavioralInsights['leadership'])) {
+                $leadershipArray = $behavioralInsights['leadership'];
+            }
+            
+            $conflictArray = [];
+            if (isset($behavioralInsights['conflict_resolution']) && is_array($behavioralInsights['conflict_resolution'])) {
+                $conflictArray = $behavioralInsights['conflict_resolution'];
+            }
+            
+            // Check if any analysis data exists
+            $hasAnalysisData = !empty($strengthsArray) || !empty($developmentArray) || !empty($tendenciesArray) || 
+                              !empty($communicationArray) || !empty($motivatorsArray) || !empty($stressArray) || 
+                              !empty($workEnvArray) || !empty($decisionArray) || !empty($leadershipArray) || !empty($conflictArray);
+        @endphp
+
+        @if($hasAnalysisData)
         <div class="disc-comprehensive-analysis">
             <h3 class="disc-analysis-section-title">
                 <i class="fas fa-brain" style="color: #7c3aed;"></i>
@@ -284,119 +497,174 @@
             
             <div class="disc-analysis-mega-grid">
                 
-                {{-- All Strengths --}}
+                {{-- Show only if strengths data exists and is array --}}
+                @if(!empty($strengthsArray))
                 <div class="disc-analysis-card">
                     <h4 class="disc-analysis-title">
                         <i class="fas fa-star" style="color: #059669;"></i>
-                        Semua Kelebihan & Kekuatan
+                        Kelebihan & Kekuatan
                     </h4>
                     <div class="disc-trait-tags" id="discAllStrengthTags">
-                        {{-- Will be populated by JavaScript --}}
+                        @foreach($strengthsArray as $strength)
+                            <span class="disc-trait-tag strength">{{ $strength }}</span>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
-                {{-- All Development Areas --}}
+                {{-- Show only if development areas data exists and is array --}}
+                @if(!empty($developmentArray))
                 <div class="disc-analysis-card">
                     <h4 class="disc-analysis-title">
                         <i class="fas fa-arrow-up" style="color: #dc2626;"></i>
                         Area Pengembangan
                     </h4>
                     <div class="disc-trait-tags" id="discAllDevelopmentTags">
-                        {{-- Will be populated by JavaScript --}}
+                        @foreach($developmentArray as $area)
+                            <span class="disc-trait-tag development">{{ $area }}</span>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
-                {{-- Behavioral Tendencies --}}
+                {{-- Show only if behavioral tendencies data exists and is array --}}
+                @if(!empty($tendenciesArray))
                 <div class="disc-analysis-card">
                     <h4 class="disc-analysis-title">
                         <i class="fas fa-user-cog" style="color: #4f46e5;"></i>
                         Kecenderungan Perilaku
                     </h4>
                     <div class="disc-trait-tags" id="discBehavioralTags">
-                        {{-- Will be populated by JavaScript --}}
+                        @foreach($tendenciesArray as $tendency)
+                            <span class="disc-trait-tag behavioral">{{ $tendency }}</span>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
-                {{-- Communication Preferences --}}
+                {{-- Show only if communication preferences data exists and is array --}}
+                @if(!empty($communicationArray))
                 <div class="disc-analysis-card">
                     <h4 class="disc-analysis-title">
                         <i class="fas fa-comments" style="color: #0891b2;"></i>
                         Preferensi Komunikasi
                     </h4>
                     <div class="disc-trait-tags" id="discCommunicationTags">
-                        {{-- Will be populated by JavaScript --}}
+                        @foreach($communicationArray as $comm)
+                            <span class="disc-trait-tag communication">{{ $comm }}</span>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
-                {{-- Motivators --}}
+                {{-- Show only if motivators data exists and is array --}}
+                @if(!empty($motivatorsArray))
                 <div class="disc-analysis-card">
                     <h4 class="disc-analysis-title">
                         <i class="fas fa-fire" style="color: #ea580c;"></i>
                         Motivator Utama
                     </h4>
                     <div class="disc-trait-tags" id="discMotivatorTags">
-                        {{-- Will be populated by JavaScript --}}
+                        @foreach($motivatorsArray as $motivator)
+                            <span class="disc-trait-tag motivator">{{ $motivator }}</span>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
-                {{-- Stress Indicators --}}
+                {{-- Show only if stress indicators data exists and is array --}}
+                @if(!empty($stressArray))
                 <div class="disc-analysis-card">
                     <h4 class="disc-analysis-title">
                         <i class="fas fa-exclamation-triangle" style="color: #d97706;"></i>
                         Indikator Stres
                     </h4>
                     <div class="disc-trait-tags" id="discStressTags">
-                        {{-- Will be populated by JavaScript --}}
+                        @foreach($stressArray as $stress)
+                            <span class="disc-trait-tag stress">{{ $stress }}</span>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
-                {{-- Work Environment --}}
+                {{-- Show only if work environment data exists and is array --}}
+                @if(!empty($workEnvArray))
                 <div class="disc-analysis-card">
                     <h4 class="disc-analysis-title">
                         <i class="fas fa-building" style="color: #7c2d12;"></i>
                         Lingkungan Kerja Ideal
                     </h4>
                     <div class="disc-trait-tags" id="discEnvironmentTags">
-                        {{-- Will be populated by JavaScript --}}
+                        @foreach($workEnvArray as $env)
+                            <span class="disc-trait-tag environment">{{ $env }}</span>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
-                {{-- Decision Making --}}
+                {{-- Show only if decision making data exists and is array --}}
+                @if(!empty($decisionArray))
                 <div class="disc-analysis-card">
                     <h4 class="disc-analysis-title">
                         <i class="fas fa-lightbulb" style="color: #ca8a04;"></i>
                         Gaya Pengambilan Keputusan
                     </h4>
                     <div class="disc-trait-tags" id="discDecisionTags">
-                        {{-- Will be populated by JavaScript --}}
+                        @foreach($decisionArray as $decision)
+                            <span class="disc-trait-tag decision">{{ $decision }}</span>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
-                {{-- Leadership Style --}}
+                {{-- Show only if leadership data exists and is array --}}
+                @if(!empty($leadershipArray))
                 <div class="disc-analysis-card">
                     <h4 class="disc-analysis-title">
                         <i class="fas fa-crown" style="color: #9333ea;"></i>
                         Gaya Kepemimpinan
                     </h4>
                     <div class="disc-trait-tags" id="discLeadershipTags">
-                        {{-- Will be populated by JavaScript --}}
+                        @foreach($leadershipArray as $leadership)
+                            <span class="disc-trait-tag leadership">{{ $leadership }}</span>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
-                {{-- Conflict Resolution --}}
+                {{-- Show only if conflict resolution data exists and is array --}}
+                @if(!empty($conflictArray))
                 <div class="disc-analysis-card">
                     <h4 class="disc-analysis-title">
                         <i class="fas fa-handshake" style="color: #059669;"></i>
                         Resolusi Konflik
                     </h4>
                     <div class="disc-trait-tags" id="discConflictTags">
-                        {{-- Will be populated by JavaScript --}}
+                        @foreach($conflictArray as $conflict)
+                            <span class="disc-trait-tag conflict">{{ $conflict }}</span>
+                        @endforeach
                     </div>
                 </div>
+                @endif
             </div>
         </div>
+        @endif
 
-        {{-- DETAILED BEHAVIORAL ANALYSIS --}}
+        {{-- DETAILED BEHAVIORAL ANALYSIS - TETAP SAMA --}}
+        @php
+            $workStyleSummary = $candidate->disc3DTestResult->work_style_summary;
+            $communicationSummary = $candidate->disc3DTestResult->communication_summary;
+            $publicSelfSummary = $candidate->disc3DTestResult->public_self_summary;
+            $privateSelfSummary = $candidate->disc3DTestResult->private_self_summary;
+            $adaptationSummary = $candidate->disc3DTestResult->adaptation_summary;
+            $overallProfile = $candidate->disc3DTestResult->overall_profile;
+            $personalityProfile = $candidate->disc3DTestResult->personality_profile;
+            
+            $hasDetailedAnalysis = $workStyleSummary || $communicationSummary || $publicSelfSummary || 
+                                  $privateSelfSummary || $adaptationSummary || $overallProfile || $personalityProfile;
+        @endphp
+
+        @if($hasDetailedAnalysis)
         <div class="disc-detailed-analysis">
             <h3 class="disc-analysis-section-title">
                 <i class="fas fa-search" style="color: #1e40af;"></i>
@@ -404,75 +672,88 @@
             </h3>
             
             <div class="disc-detailed-grid">
-                {{-- Detailed Work Style --}}
+                {{-- Show only if work style summary exists --}}
+                @if($workStyleSummary || $overallProfile)
                 <div class="disc-detailed-card">
                     <h4 class="disc-detailed-title">
                         <i class="fas fa-briefcase"></i>
                         Gaya Kerja Detail
                     </h4>
                     <p class="disc-detailed-content" id="discDetailedWorkStyle">
-                        {{-- Will be populated by JavaScript --}}
+                        {{ $workStyleSummary ?: $overallProfile }}
                     </p>
                 </div>
+                @endif
 
-                {{-- Detailed Communication Style --}}
+                {{-- Show only if communication summary exists --}}
+                @if($communicationSummary || $personalityProfile)
                 <div class="disc-detailed-card">
                     <h4 class="disc-detailed-title">
                         <i class="fas fa-microphone"></i>
                         Gaya Komunikasi Detail
                     </h4>
                     <p class="disc-detailed-content" id="discDetailedCommStyle">
-                        {{-- Will be populated by JavaScript --}}
+                        {{ $communicationSummary ?: $personalityProfile }}
                     </p>
                 </div>
+                @endif
 
-                {{-- Public Self Analysis --}}
+                {{-- Show only if public self analysis exists --}}
+                @if($publicSelfSummary)
                 <div class="disc-detailed-card">
                     <h4 class="disc-detailed-title">
                         <i class="fas fa-mask"></i>
                         Analisis Diri Publik (MOST)
                     </h4>
                     <p class="disc-detailed-content" id="discPublicSelfAnalysis">
-                        {{-- Will be populated by JavaScript --}}
+                        {{ $publicSelfSummary }}
                     </p>
                 </div>
+                @endif
 
-                {{-- Private Self Analysis --}}
+                {{-- Show only if private self analysis exists --}}
+                @if($privateSelfSummary)
                 <div class="disc-detailed-card">
                     <h4 class="disc-detailed-title">
                         <i class="fas fa-heart"></i>
                         Analisis Diri Pribadi (LEAST)
                     </h4>
                     <p class="disc-detailed-content" id="discPrivateSelfAnalysis">
-                        {{-- Will be populated by JavaScript --}}
+                        {{ $privateSelfSummary }}
                     </p>
                 </div>
+                @endif
 
-                {{-- Adaptation Analysis --}}
+                {{-- Show only if adaptation analysis exists --}}
+                @if($adaptationSummary)
                 <div class="disc-detailed-card">
                     <h4 class="disc-detailed-title">
                         <i class="fas fa-exchange-alt"></i>
                         Analisis Adaptasi (CHANGE)
                     </h4>
                     <p class="disc-detailed-content" id="discAdaptationAnalysis">
-                        {{-- Will be populated by JavaScript --}}
+                        {{ $adaptationSummary }}
                     </p>
                 </div>
+                @endif
 
-                {{-- Overall Profile Summary --}}
+                {{-- Show only if overall profile summary exists --}}
+                @if($candidate->disc3DTestResult->summary)
                 <div class="disc-detailed-card">
                     <h4 class="disc-detailed-title">
                         <i class="fas fa-file-alt"></i>
                         Ringkasan Profil Keseluruhan
                     </h4>
                     <p class="disc-detailed-content" id="discProfileSummary">
-                        {{-- Will be populated by JavaScript --}}
+                        {{ $candidate->disc3DTestResult->summary }}
                     </p>
                 </div>
+                @endif
             </div>
         </div>
+        @endif
 
-        {{-- SESSION DETAILS --}}
+        {{-- SESSION DETAILS - TETAP SAMA --}}
         <div class="disc-session-info">
             <h3 class="disc-analysis-section-title">
                 <i class="fas fa-info-circle" style="color: #6b7280;"></i>

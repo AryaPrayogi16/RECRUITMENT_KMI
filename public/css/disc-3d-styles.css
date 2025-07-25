@@ -1,9 +1,9 @@
 /* ============================================
-   ENHANCED DISC 3D RESULTS STYLES - FIXED VERSION
+   ENHANCED DISC 3D RESULTS STYLES WITH PATTERN COMBINATIONS
    ALL GRAPHS DISPLAYED SIMULTANEOUSLY USING SEGMENTS
    ============================================ */
 
-/* Base Styles */
+/* Base Styles - TETAP SAMA */
 .content-section {
     background: white;
     border-radius: 15px;
@@ -30,7 +30,7 @@
 }
 
 /* ============================================
-   DISC HEADER SUMMARY
+   DISC HEADER SUMMARY - TETAP SAMA
    ============================================ */
 
 .disc-header-summary {
@@ -111,7 +111,157 @@
 }
 
 /* ============================================
-   ALL GRAPHS CONTAINER (FIXED LAYOUT)
+   ✅ NEW: PATTERN COMBINATION SECTION
+   ============================================ */
+
+.disc-pattern-combination {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    margin-bottom: 25px;
+    border: 2px solid #8b5cf6;
+    position: relative;
+    overflow: hidden;
+}
+
+.disc-pattern-combination::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #8b5cf6, #3b82f6, #10b981, #f59e0b, #dc2626);
+    z-index: 1;
+}
+
+.disc-pattern-header {
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.disc-pattern-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 200px;
+    height: 200px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    transform: rotate(45deg);
+}
+
+.disc-pattern-info {
+    position: relative;
+    z-index: 2;
+}
+
+.disc-pattern-name {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.disc-pattern-code {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
+.disc-pattern-description {
+    font-size: 1rem;
+    line-height: 1.6;
+    opacity: 0.95;
+    font-weight: 400;
+}
+
+.disc-pattern-analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+/* ============================================
+   ✅ NEW: PATTERN TRAIT TAGS STYLING
+   ============================================ */
+
+.disc-trait-tag.pattern-strength {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+    border: 1px solid #10b981;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.disc-trait-tag.pattern-strength:hover {
+    background: linear-gradient(135deg, #a7f3d0, #6ee7b7);
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.disc-trait-tag.pattern-weakness {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
+.disc-trait-tag.pattern-weakness:hover {
+    background: linear-gradient(135deg, #fde68a, #fcd34d);
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.disc-trait-tag.pattern-environment {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    color: #065f46;
+    border: 1px solid #059669;
+    box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+}
+
+.disc-trait-tag.pattern-environment:hover {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.disc-trait-tag.pattern-communication {
+    background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+    color: #0c4a6e;
+    border: 1px solid #0891b2;
+    box-shadow: 0 2px 4px rgba(8, 145, 178, 0.2);
+}
+
+.disc-trait-tag.pattern-communication:hover {
+    background: linear-gradient(135deg, #bae6fd, #7dd3fc);
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+}
+
+.disc-trait-tag.pattern-career {
+    background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
+    color: #581c87;
+    border: 1px solid #7c3aed;
+    box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);
+}
+
+.disc-trait-tag.pattern-career:hover {
+    background: linear-gradient(135deg, #e9d5ff, #ddd6fe);
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+/* ============================================
+   ALL GRAPHS CONTAINER - TETAP SAMA
    ============================================ */
 
 .disc-comprehensive-graphs {
@@ -190,7 +340,7 @@
 }
 
 /* ============================================
-   MINI SCORE CARDS FOR EACH GRAPH - FIXED FOR SEGMENTS
+   MINI SCORE CARDS - TETAP SAMA
    ============================================ */
 
 .disc-scores-mini-grid {
@@ -207,7 +357,7 @@
     transition: all 0.3s ease;
     background: white;
     position: relative;
-    cursor: help; /* Show that there's tooltip available */
+    cursor: help;
 }
 
 .disc-score-mini:hover {
@@ -215,7 +365,6 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-/* FIXED: Enhanced styling for segment values */
 .disc-score-mini.dominance {
     background: linear-gradient(135deg, #fee2e2, #fecaca);
     border-left-color: #dc2626;
@@ -244,14 +393,12 @@
     text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
-/* FIXED: Enhanced segment value display */
 .disc-score-mini .score-value {
     font-weight: 700;
     font-size: 1.2rem;
     display: block;
     margin-bottom: 2px;
     text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    /* Add gradient text effect for better visibility */
     background: linear-gradient(135deg, #1a202c, #4a5568);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -265,7 +412,6 @@
     font-weight: 500;
 }
 
-/* FIXED: Color variations for segment values */
 .dominance .dim-label,
 .dominance .segment-value { 
     color: #dc2626; 
@@ -286,13 +432,12 @@
     color: #3b82f6; 
 }
 
-/* FIXED: Special styling for CHANGE graph (with negative values) */
+/* Special styling for CHANGE graph (with negative values) */
 .disc-single-graph-container:last-child .disc-score-mini .score-value {
     font-size: 1.1rem;
     font-weight: 600;
 }
 
-/* FIXED: Negative values styling for CHANGE graph */
 .disc-single-graph-container:last-child .disc-score-mini .score-value:not([id*="+"]) {
     color: #dc2626 !important;
     -webkit-text-fill-color: #dc2626 !important;
@@ -303,7 +448,7 @@
     -webkit-text-fill-color: #10b981 !important;
 }
 
-/* FIXED: Tooltip styling for percentage information */
+/* Tooltip styling for percentage information */
 .disc-score-mini[title] {
     position: relative;
 }
@@ -337,7 +482,7 @@
 }
 
 /* ============================================
-   COMPREHENSIVE ANALYSIS SECTION
+   COMPREHENSIVE ANALYSIS SECTION - TETAP SAMA
    ============================================ */
 
 .disc-comprehensive-analysis {
@@ -413,7 +558,7 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-/* Enhanced trait tag colors */
+/* Enhanced trait tag colors - TETAP SAMA */
 .disc-trait-tag.strength {
     background: linear-gradient(135deg, #d1fae5, #a7f3d0);
     color: #065f46;
@@ -475,7 +620,7 @@
 }
 
 /* ============================================
-   DETAILED ANALYSIS SECTION
+   DETAILED ANALYSIS SECTION - TETAP SAMA
    ============================================ */
 
 .disc-detailed-analysis {
@@ -524,7 +669,7 @@
 }
 
 /* ============================================
-   SESSION INFORMATION
+   SESSION INFORMATION - TETAP SAMA
    ============================================ */
 
 .disc-session-info {
@@ -579,7 +724,7 @@
 }
 
 /* ============================================
-   EMPTY STATE
+   EMPTY STATE - TETAP SAMA
    ============================================ */
 
 .empty-state {
@@ -607,7 +752,7 @@
 }
 
 /* ============================================
-   BUTTONS
+   BUTTONS - TETAP SAMA
    ============================================ */
 
 .btn {
@@ -639,44 +784,6 @@
 }
 
 /* ============================================
-   SEGMENT VALUE INDICATORS - NEW
-   ============================================ */
-
-/* FIXED: Add special indicators for segment ranges */
-.disc-score-mini .score-value::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    right: 4px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    opacity: 0.7;
-}
-
-/* FIXED: Segment level indicators */
-.disc-score-mini .score-value[data-segment="1"]::after,
-.disc-score-mini .score-value[data-segment="2"]::after {
-    background: #dc2626; /* Low */
-}
-
-.disc-score-mini .score-value[data-segment="3"]::after,
-.disc-score-mini .score-value[data-segment="4"]::after,
-.disc-score-mini .score-value[data-segment="5"]::after {
-    background: #f59e0b; /* Medium */
-}
-
-.disc-score-mini .score-value[data-segment="6"]::after,
-.disc-score-mini .score-value[data-segment="7"]::after {
-    background: #10b981; /* High */
-}
-
-/* FIXED: Special styling for change values */
-.disc-single-graph-container:last-child .disc-score-mini .score-value::after {
-    display: none; /* No indicators for change graph */
-}
-
-/* ============================================
    RESPONSIVE DESIGN
    ============================================ */
 
@@ -689,6 +796,33 @@
     .disc-single-graph-container {
         max-width: 600px;
         margin: 0 auto;
+    }
+    
+    /* ✅ NEW: Pattern combination responsive */
+    .disc-pattern-combination {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .disc-pattern-header {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .disc-pattern-name {
+        font-size: 1.3rem;
+    }
+    
+    .disc-pattern-analysis-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .disc-pattern-header::before {
+        width: 150px;
+        height: 150px;
+        top: -30%;
+        right: -15%;
     }
 }
 
@@ -743,13 +877,40 @@
         padding: 5px 10px;
     }
     
-    /* FIXED: Mobile styling for segment values */
+    /* Mobile styling for segment values */
     .disc-score-mini .score-value {
         font-size: 1.1rem;
     }
     
     .disc-score-mini .dim-label {
         font-size: 0.9rem;
+    }
+    
+    /* ✅ NEW: Pattern combination mobile styles */
+    .disc-pattern-combination {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .disc-pattern-header {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .disc-pattern-name {
+        font-size: 1.3rem;
+    }
+    
+    .disc-pattern-analysis-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .disc-pattern-header::before {
+        width: 150px;
+        height: 150px;
+        top: -30%;
+        right: -15%;
     }
 }
 
@@ -774,7 +935,7 @@
         font-size: 1.1rem;
     }
     
-    /* FIXED: Extra small screen segment display */
+    /* Extra small screen segment display */
     .disc-score-mini {
         padding: 8px 6px;
     }
@@ -782,6 +943,166 @@
     .disc-score-mini .score-value {
         font-size: 1rem;
     }
+    
+    /* ✅ NEW: Pattern combination extra small screen styles */
+    .disc-pattern-name {
+        font-size: 1.1rem;
+    }
+    
+    .disc-pattern-code {
+        font-size: 0.8rem;
+    }
+    
+    .disc-pattern-description {
+        font-size: 0.9rem;
+    }
+    
+    .disc-trait-tag.pattern-strength,
+    .disc-trait-tag.pattern-weakness,
+    .disc-trait-tag.pattern-environment,
+    .disc-trait-tag.pattern-communication,
+    .disc-trait-tag.pattern-career {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+}
+
+/* ============================================
+   ✅ NEW: PATTERN COMBINATION ANIMATIONS
+   ============================================ */
+
+@keyframes patternFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes patternPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+.disc-pattern-combination {
+    animation: patternFadeIn 0.6s ease-out;
+}
+
+.disc-pattern-header:hover {
+    animation: patternPulse 2s infinite;
+}
+
+.disc-trait-tag.pattern-strength:hover,
+.disc-trait-tag.pattern-weakness:hover,
+.disc-trait-tag.pattern-environment:hover,
+.disc-trait-tag.pattern-communication:hover,
+.disc-trait-tag.pattern-career:hover {
+    animation: none;
+    transform: scale(1.08) translateY(-3px) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   ✅ NEW: PATTERN LOADING STATES
+   ============================================ */
+
+.disc-pattern-loading {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    text-align: center;
+    border: 2px dashed #e2e8f0;
+}
+
+.disc-pattern-loading i {
+    font-size: 2rem;
+    color: #8b5cf6;
+    margin-bottom: 10px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.disc-pattern-loading p {
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* ============================================
+   ✅ NEW: PATTERN HIGHLIGHT EFFECTS
+   ============================================ */
+
+.disc-pattern-highlight {
+    position: relative;
+    overflow: hidden;
+}
+
+.disc-pattern-highlight::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(139, 92, 246, 0.2), 
+        transparent
+    );
+    transition: left 0.6s ease;
+}
+
+.disc-pattern-highlight:hover::after {
+    left: 100%;
+}
+
+/* ============================================
+   ✅ NEW: PATTERN COMPARISON MODES
+   ============================================ */
+
+.disc-pattern-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.disc-pattern-comparison-item {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.disc-pattern-comparison-item:hover {
+    border-color: #8b5cf6;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+}
+
+.disc-pattern-comparison-title {
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.disc-pattern-comparison-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #8b5cf6;
 }
 
 /* ============================================
@@ -792,7 +1113,7 @@
     .disc-header-summary {
         background: #4f46e5 !important;
         -webkit-print-color-adjust: exact;
-
+        color-adjust: exact;
     }
     
     .disc-comprehensive-graphs {
@@ -814,15 +1135,144 @@
         gap: 20px;
     }
     
-    /* FIXED: Print-friendly segment display */
+    /* Print-friendly segment display */
     .disc-score-mini {
         background: white !important;
         border: 1px solid #6b7280 !important;
         -webkit-print-color-adjust: exact;
+        color-adjust: exact;
     }
     
     .disc-score-mini .score-value {
         -webkit-text-fill-color: #1a202c !important;
         color: #1a202c !important;
+    }
+    
+    /* ✅ NEW: Pattern combination print styles */
+    .disc-pattern-combination {
+        background: white !important;
+        border: 2px solid #8b5cf6 !important;
+        break-inside: avoid;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .disc-pattern-header {
+        background: #8b5cf6 !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .disc-trait-tag.pattern-strength,
+    .disc-trait-tag.pattern-weakness,
+    .disc-trait-tag.pattern-environment,
+    .disc-trait-tag.pattern-communication,
+    .disc-trait-tag.pattern-career {
+        background: white !important;
+        border: 1px solid #6b7280 !important;
+        color: #1a202c !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .disc-pattern-header::before {
+        display: none;
+    }
+    
+    .disc-pattern-combination::before {
+        display: none;
+    }
+}
+
+/* ============================================
+   ✅ NEW: DARK MODE SUPPORT (OPTIONAL)
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+    .disc-pattern-combination {
+        background: #1a202c;
+        border-color: #8b5cf6;
+        color: #f7fafc;
+    }
+    
+    .disc-pattern-header {
+        background: linear-gradient(135deg, #6b46c1, #8b5cf6);
+    }
+    
+    .disc-trait-tag.pattern-strength {
+        background: linear-gradient(135deg, #064e3b, #047857);
+        color: #d1fae5;
+    }
+    
+    .disc-trait-tag.pattern-weakness {
+        background: linear-gradient(135deg, #78350f, #92400e);
+        color: #fef3c7;
+    }
+    
+    .disc-trait-tag.pattern-environment {
+        background: linear-gradient(135deg, #064e3b, #065f46);
+        color: #d1fae5;
+    }
+    
+    .disc-trait-tag.pattern-communication {
+        background: linear-gradient(135deg, #0c4a6e, #0891b2);
+        color: #e0f2fe;
+    }
+    
+    .disc-trait-tag.pattern-career {
+        background: linear-gradient(135deg, #581c87, #7c3aed);
+        color: #f3e8ff;
+    }
+}
+
+/* ============================================
+   ✅ NEW: ACCESSIBILITY IMPROVEMENTS
+   ============================================ */
+
+.disc-trait-tag:focus {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+}
+
+.disc-pattern-header:focus-within {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .disc-trait-tag.pattern-strength,
+    .disc-trait-tag.pattern-weakness,
+    .disc-trait-tag.pattern-environment,
+    .disc-trait-tag.pattern-communication,
+    .disc-trait-tag.pattern-career {
+        border-width: 2px;
+        font-weight: 600;
+    }
+    
+    .disc-pattern-combination {
+        border-width: 3px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .disc-pattern-combination,
+    .disc-trait-tag.pattern-strength,
+    .disc-trait-tag.pattern-weakness,
+    .disc-trait-tag.pattern-environment,
+    .disc-trait-tag.pattern-communication,
+    .disc-trait-tag.pattern-career {
+        animation: none;
+        transition: none;
+    }
+    
+    .disc-pattern-header:hover {
+        animation: none;
+    }
+    
+    .disc-trait-tag:hover {
+        transform: none;
     }
 }

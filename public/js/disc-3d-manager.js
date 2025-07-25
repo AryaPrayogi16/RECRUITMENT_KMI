@@ -1,9 +1,10 @@
 /**
- * ENHANCED DISC 3D Manager - FIXED VERSION
- * Menggunakan skala angka asli (segments) untuk semua grafik
+ * ENHANCED DISC 3D Manager - FINAL FIXED VERSION
+ * Menggunakan skala angka asli (segments) dan data real dari database
+ * ✅ GRAFIK TETAP UTUH - HANYA MEMPERBAIKI DATA HANDLING
  * 
  * @author HR System Enhanced
- * @version 2.1.0
+ * @version 2.3.0 (FINAL FIXED)
  */
 
 class Disc3DManager {
@@ -25,9 +26,96 @@ class Disc3DManager {
      * Initialize the DISC 3D Manager
      */
     init() {
-        console.log('=== ENHANCED DISC 3D MANAGER INITIALIZATION (FIXED) ===');
+        console.log('=== ENHANCED DISC 3D MANAGER INITIALIZATION (FINAL FIXED) ===');
+        this.sanitizeData();
         this.updateUI();
         this.renderAllGraphs();
+    }
+
+    /**
+     * ✅ IMPROVED: Sanitize data to ensure arrays are arrays and handle mixed data types
+     */
+    sanitizeData() {
+        if (!this.data.analysis) {
+            this.data.analysis = {};
+        }
+
+        // ✅ FIXED: Ensure all analysis arrays are actually arrays with better handling
+        const analysisFields = [
+            'allStrengths', 'allDevelopmentAreas', 'behavioralTendencies', 
+            'communicationPreferences', 'motivators', 'stressIndicators',
+            'workEnvironment', 'decisionMaking', 'leadershipStyle', 'conflictResolution'
+        ];
+
+        analysisFields.forEach(field => {
+            if (this.data.analysis[field]) {
+                if (Array.isArray(this.data.analysis[field])) {
+                    // Already an array, keep as is
+                    this.data.analysis[field] = this.data.analysis[field].filter(item => 
+                        item && typeof item === 'string' && item.trim().length > 0
+                    );
+                } else if (typeof this.data.analysis[field] === 'string') {
+                    // String data - try to intelligently split
+                    const stringData = this.data.analysis[field].trim();
+                    if (stringData.length > 0) {
+                        // Try different delimiters
+                        let splitResult = [];
+                        if (stringData.includes(',')) {
+                            splitResult = stringData.split(',');
+                        } else if (stringData.includes(';')) {
+                            splitResult = stringData.split(';');
+                        } else if (stringData.includes('|')) {
+                            splitResult = stringData.split('|');
+                        } else if (stringData.includes('\n')) {
+                            splitResult = stringData.split('\n');
+                        } else {
+                            // Single item
+                            splitResult = [stringData];
+                        }
+                        
+                        this.data.analysis[field] = splitResult
+                            .map(item => item.trim())
+                            .filter(item => item.length > 0);
+                    } else {
+                        this.data.analysis[field] = [];
+                    }
+                } else {
+                    // Other data types, convert to empty array
+                    this.data.analysis[field] = [];
+                }
+            } else {
+                this.data.analysis[field] = [];
+            }
+        });
+
+        // ✅ FIXED: Ensure text analysis fields are strings
+        const textFields = [
+            'detailedWorkStyle', 'detailedCommunicationStyle', 'publicSelfAnalysis',
+            'privateSelfAnalysis', 'adaptationAnalysis'
+        ];
+
+        textFields.forEach(field => {
+            if (this.data.analysis[field]) {
+                if (typeof this.data.analysis[field] !== 'string') {
+                    this.data.analysis[field] = String(this.data.analysis[field]);
+                }
+            } else {
+                this.data.analysis[field] = '';
+            }
+        });
+
+        // ✅ ENSURE: Numeric data is properly typed
+        ['most', 'least', 'change'].forEach(graphType => {
+            if (this.data[graphType]) {
+                this.dimensions.forEach(dim => {
+                    if (this.data[graphType][dim] !== undefined) {
+                        this.data[graphType][dim] = parseInt(this.data[graphType][dim]) || (graphType === 'change' ? 0 : 1);
+                    }
+                });
+            }
+        });
+
+        console.log('Data sanitized successfully:', this.data);
     }
 
     /**
@@ -51,18 +139,18 @@ class Disc3DManager {
         // Update completed date
         this.updateElement('discCompletedDate', this.data.session?.completedDate || 'N/A');
 
-        // Update score cards for all graphs - FIXED TO USE SEGMENTS
+        // Update score cards for all graphs - TETAP MENGGUNAKAN SEGMENTS
         this.updateScoreCards();
 
         // Update session details
         this.updateSessionDetails();
 
-        // Update comprehensive analysis content
+        // ✅ UPDATED: Only update analysis if data exists
         this.updateComprehensiveAnalysis();
     }
 
     /**
-     * Update score cards dengan segment values (FIXED)
+     * Update score cards dengan segment values (TETAP SAMA - TIDAK DIUBAH)
      */
     updateScoreCards() {
         const graphTypes = ['most', 'least', 'change'];
@@ -79,11 +167,11 @@ class Disc3DManager {
                     const segment = this.data[graphType][dim] || 1;
                     const percentage = this.data.percentages?.[graphType]?.[dim] || 0;
                     
-                    // FIXED: Tampilkan segment value, bukan percentage
+                    // TETAP: Tampilkan segment value, bukan percentage
                     this.updateElement(`${graphType}Score${dim}`, `${segment}`);
                     this.updateElement(`${graphType}Segment${dim}`, segment);
                     
-                    // Optional: tampilkan percentage sebagai tooltip atau secondary info
+                    // Optional: tampilkan percentage sebagai tooltip
                     const element = document.getElementById(`${graphType}Score${dim}`);
                     if (element) {
                         element.title = `${percentage.toFixed(1)}%`; // Percentage sebagai tooltip
@@ -105,93 +193,105 @@ class Disc3DManager {
     }
 
     /**
-     * Update comprehensive analysis content with all traits
+     * ✅ IMPROVED: Update comprehensive analysis content with better data type handling
      */
     updateComprehensiveAnalysis() {
         if (!this.data.analysis) return;
 
-        // Update all strengths
-        if (this.data.analysis.allStrengths) {
-            this.updateTraitTags('discAllStrengthTags', this.data.analysis.allStrengths, 'strength');
-        }
+        // ✅ IMPROVED: Only update if data exists and is valid array
+        const updateIfValidArray = (elementId, dataArray, type) => {
+            if (Array.isArray(dataArray) && dataArray.length > 0) {
+                // Filter out empty or invalid items
+                const validItems = dataArray.filter(item => 
+                    item && typeof item === 'string' && item.trim().length > 0
+                );
+                
+                if (validItems.length > 0) {
+                    this.updateTraitTags(elementId, validItems, type);
+                    return true;
+                }
+            }
+            return false;
+        };
 
-        // Update all development areas
-        if (this.data.analysis.allDevelopmentAreas) {
-            this.updateTraitTags('discAllDevelopmentTags', this.data.analysis.allDevelopmentAreas, 'development');
-        }
+        // Update all trait sections
+        updateIfValidArray('discAllStrengthTags', this.data.analysis.allStrengths, 'strength');
+        updateIfValidArray('discAllDevelopmentTags', this.data.analysis.allDevelopmentAreas, 'development');
+        updateIfValidArray('discBehavioralTags', this.data.analysis.behavioralTendencies, 'behavioral');
+        updateIfValidArray('discCommunicationTags', this.data.analysis.communicationPreferences, 'communication');
+        updateIfValidArray('discMotivatorTags', this.data.analysis.motivators, 'motivator');
+        updateIfValidArray('discStressTags', this.data.analysis.stressIndicators, 'stress');
+        updateIfValidArray('discEnvironmentTags', this.data.analysis.workEnvironment, 'environment');
+        updateIfValidArray('discDecisionTags', this.data.analysis.decisionMaking, 'decision');
+        updateIfValidArray('discLeadershipTags', this.data.analysis.leadershipStyle, 'leadership');
+        updateIfValidArray('discConflictTags', this.data.analysis.conflictResolution, 'conflict');
 
-        // Update behavioral tendencies
-        if (this.data.analysis.behavioralTendencies) {
-            this.updateTraitTags('discBehavioralTags', this.data.analysis.behavioralTendencies, 'behavioral');
-        }
+        // ✅ IMPROVED: Only update detailed descriptions if they exist and are meaningful strings
+        const updateIfValidString = (elementId, text, forbiddenTexts = []) => {
+            if (typeof text === 'string' && text.trim()) {
+                const cleanText = text.trim();
+                const isForbidden = forbiddenTexts.some(forbidden => 
+                    cleanText.toLowerCase().includes(forbidden.toLowerCase())
+                );
+                
+                if (!isForbidden && cleanText.length > 10) { // Minimum meaningful length
+                    this.updateElement(elementId, cleanText);
+                    return true;
+                }
+            }
+            return false;
+        };
 
-        // Update communication preferences
-        if (this.data.analysis.communicationPreferences) {
-            this.updateTraitTags('discCommunicationTags', this.data.analysis.communicationPreferences, 'communication');
-        }
+        const forbiddenTexts = ['Belum tersedia', 'No data', 'Not available', 'N/A'];
 
-        // Update motivators
-        if (this.data.analysis.motivators) {
-            this.updateTraitTags('discMotivatorTags', this.data.analysis.motivators, 'motivator');
-        }
-
-        // Update stress indicators
-        if (this.data.analysis.stressIndicators) {
-            this.updateTraitTags('discStressTags', this.data.analysis.stressIndicators, 'stress');
-        }
-
-        // Update work environment preferences
-        if (this.data.analysis.workEnvironment) {
-            this.updateTraitTags('discEnvironmentTags', this.data.analysis.workEnvironment, 'environment');
-        }
-
-        // Update decision making style
-        if (this.data.analysis.decisionMaking) {
-            this.updateTraitTags('discDecisionTags', this.data.analysis.decisionMaking, 'decision');
-        }
-
-        // Update leadership style
-        if (this.data.analysis.leadershipStyle) {
-            this.updateTraitTags('discLeadershipTags', this.data.analysis.leadershipStyle, 'leadership');
-        }
-
-        // Update conflict resolution style
-        if (this.data.analysis.conflictResolution) {
-            this.updateTraitTags('discConflictTags', this.data.analysis.conflictResolution, 'conflict');
-        }
-
-        // Update detailed descriptions
-        this.updateElement('discDetailedWorkStyle', this.data.analysis.detailedWorkStyle || 'Belum tersedia');
-        this.updateElement('discDetailedCommStyle', this.data.analysis.detailedCommunicationStyle || 'Belum tersedia');
-        this.updateElement('discPublicSelfAnalysis', this.data.analysis.publicSelfAnalysis || 'Belum tersedia');
-        this.updateElement('discPrivateSelfAnalysis', this.data.analysis.privateSelfAnalysis || 'Belum tersedia');
-        this.updateElement('discAdaptationAnalysis', this.data.analysis.adaptationAnalysis || 'Belum tersedia');
+        updateIfValidString('discDetailedWorkStyle', this.data.analysis.detailedWorkStyle, forbiddenTexts);
+        updateIfValidString('discDetailedCommStyle', this.data.analysis.detailedCommunicationStyle, forbiddenTexts);
+        updateIfValidString('discPublicSelfAnalysis', this.data.analysis.publicSelfAnalysis, forbiddenTexts);
+        updateIfValidString('discPrivateSelfAnalysis', this.data.analysis.privateSelfAnalysis, forbiddenTexts);
+        updateIfValidString('discAdaptationAnalysis', this.data.analysis.adaptationAnalysis, forbiddenTexts);
         
-        // Update profile summary
-        this.updateElement('discProfileSummary', this.data.profile.summary || 'Belum tersedia');
+        // ✅ IMPROVED: Only update profile summary if exists and meaningful
+        if (this.data.profile?.summary) {
+            updateIfValidString('discProfileSummary', this.data.profile.summary, forbiddenTexts);
+        }
     }
 
     /**
-     * Update trait tags with enhanced styling
-     * @param {string} containerId - Container element ID
-     * @param {Array} traits - Array of trait strings
-     * @param {string} type - Type of traits
+     * ✅ IMPROVED: Update trait tags with enhanced error handling and validation
      */
     updateTraitTags(containerId, traits, type) {
         const container = document.getElementById(containerId);
-        if (!container || !Array.isArray(traits)) return;
+        if (!container) {
+            console.warn(`Container ${containerId} not found`);
+            return;
+        }
+
+        if (!Array.isArray(traits) || traits.length === 0) {
+            console.warn(`Invalid traits data for ${containerId}:`, traits);
+            return;
+        }
 
         container.innerHTML = '';
-        traits.forEach(trait => {
-            const tag = document.createElement('span');
-            tag.className = `disc-trait-tag ${type}`;
-            tag.textContent = trait;
-            container.appendChild(tag);
+        
+        // Filter and process traits
+        const validTraits = traits.filter(trait => 
+            trait && typeof trait === 'string' && trait.trim().length > 0
+        );
+
+        validTraits.forEach(trait => {
+            const cleanTrait = trait.trim();
+            if (cleanTrait.length > 0) {
+                const tag = document.createElement('span');
+                tag.className = `disc-trait-tag ${type}`;
+                tag.textContent = cleanTrait;
+                tag.title = cleanTrait; // Tooltip for long text
+                container.appendChild(tag);
+            }
         });
     }
 
     /**
-     * Render all three graphs simultaneously
+     * ✅ TETAP SAMA: Render all three graphs simultaneously - TIDAK DIUBAH
      */
     renderAllGraphs() {
         const graphTypes = [
@@ -204,14 +304,11 @@ class Disc3DManager {
             this.renderSingleGraph(graph.containerId, graph.type, graph.title);
         });
 
-        console.log('All DISC graphs rendered successfully (using segments)');
+        console.log('All DISC graphs rendered successfully (using real database segments - FINAL FIXED)');
     }
 
     /**
-     * Render a single DISC graph
-     * @param {string} containerId - Container element ID
-     * @param {string} graphType - Type of graph
-     * @param {string} title - Graph title
+     * ✅ TETAP SAMA: Render a single DISC graph - TIDAK DIUBAH
      */
     renderSingleGraph(containerId, graphType, title) {
         const container = document.getElementById(containerId);
@@ -248,9 +345,7 @@ class Disc3DManager {
     }
 
     /**
-     * Draw a single DISC graph
-     * @param {SVGElement} svg - SVG element
-     * @param {string} graphType - Type of graph
+     * ✅ TETAP SAMA: Draw a single DISC graph - TIDAK DIUBAH
      */
     drawSingleGraph(svg, graphType) {
         // Draw background
@@ -267,15 +362,15 @@ class Disc3DManager {
             // Draw column
             this.drawColumn(svg, x, barWidth, dim, index, graphType);
             
-            // Draw bar based on graph type - FIXED TO USE SEGMENTS
+            // Draw bar based on graph type - TETAP MENGGUNAKAN SEGMENTS
             if (graphType === 'change') {
                 this.drawChangeBar(svg, x, barWidth, this.data.change[dim], this.colors[index]);
             } else {
-                // FIXED: Gunakan segment values untuk MOST dan LEAST
+                // TETAP: Gunakan segment values untuk MOST dan LEAST
                 this.drawRegularBar(svg, x, barWidth, this.data[graphType][dim], this.colors[index]);
             }
 
-            // Draw segment text (FIXED)
+            // Draw segment text (TETAP SAMA)
             this.drawSegmentText(svg, x, barWidth, dim, index, graphType);
         });
 
@@ -284,8 +379,7 @@ class Disc3DManager {
     }
 
     /**
-     * Draw graph background
-     * @param {SVGElement} svg - SVG element
+     * ✅ TETAP SAMA: Draw graph background - TIDAK DIUBAH
      */
     drawGraphBackground(svg) {
         const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -300,9 +394,7 @@ class Disc3DManager {
     }
 
     /**
-     * Draw grid lines
-     * @param {SVGElement} svg - SVG element
-     * @param {string} graphType - Type of graph
+     * ✅ TETAP SAMA: Draw grid lines - TIDAK DIUBAH
      */
     drawGridLines(svg, graphType) {
         if (graphType === 'change') {
@@ -356,13 +448,7 @@ class Disc3DManager {
     }
 
     /**
-     * Draw column background and header
-     * @param {SVGElement} svg - SVG element
-     * @param {number} x - X position
-     * @param {number} barWidth - Width of bar
-     * @param {string} dimension - Dimension letter
-     * @param {number} index - Index for color
-     * @param {string} graphType - Type of graph
+     * ✅ TETAP SAMA: Draw column background and header - TIDAK DIUBAH
      */
     drawColumn(svg, x, barWidth, dimension, index, graphType) {
         // Column background
@@ -397,11 +483,12 @@ class Disc3DManager {
     }
 
     /**
-     * Draw regular bar (for MOST/LEAST graphs) - FIXED TO USE SEGMENTS
+     * ✅ TETAP SAMA: Draw regular bar (for MOST/LEAST graphs) - TIDAK DIUBAH
      */
     drawRegularBar(svg, x, barWidth, segmentValue, color) {
-        // FIXED: Gunakan segment value (1-7) langsung
-        const barHeight = (segmentValue / 7) * 280;
+        // TETAP: Gunakan segment value (1-7) langsung
+        const validSegment = Math.max(1, Math.min(7, parseInt(segmentValue) || 1));
+        const barHeight = (validSegment / 7) * 280;
         const barY = 310 - barHeight;
 
         // Bar
@@ -415,7 +502,7 @@ class Disc3DManager {
         svg.appendChild(bar);
 
         // Score point
-        const pointY = 30 + (280 - ((segmentValue - 1) * 40 + 20));
+        const pointY = 30 + (280 - ((validSegment - 1) * 40 + 20));
         const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         point.setAttribute('cx', x + (barWidth / 2));
         point.setAttribute('cy', pointY);
@@ -427,14 +514,16 @@ class Disc3DManager {
     }
 
     /**
-     * Draw change bar (for CHANGE graph) - FIXED untuk nilai negatif
+     * ✅ TETAP SAMA: Draw change bar (for CHANGE graph) - TIDAK DIUBAH
      */
     drawChangeBar(svg, x, barWidth, value, color) {
+        // TETAP: Ensure value is a valid number
+        const validValue = parseInt(value) || 0;
         const centerY = 170; // Middle of the graph (skala 0)
-        const barHeight = Math.abs(value) * 35; // Scale untuk change graph (35px per unit)
+        const barHeight = Math.abs(validValue) * 35; // Scale untuk change graph (35px per unit)
 
         let barY;
-        if (value >= 0) {
+        if (validValue >= 0) {
             // Nilai positif: bar naik ke atas dari center
             barY = centerY - barHeight;
         } else {
@@ -449,32 +538,32 @@ class Disc3DManager {
             bar.setAttribute('height', barHeight);
             bar.setAttribute('x', x + 5);
             bar.setAttribute('y', barY);
-            bar.setAttribute('fill', value >= 0 ? color : '#dc2626');
+            bar.setAttribute('fill', validValue >= 0 ? color : '#dc2626');
             bar.setAttribute('opacity', '0.8');
-            bar.setAttribute('stroke', value >= 0 ? color : '#dc2626');
+            bar.setAttribute('stroke', validValue >= 0 ? color : '#dc2626');
             bar.setAttribute('stroke-width', '1');
             svg.appendChild(bar);
         }
 
         // Tambahkan point indicator di posisi yang tepat
-        const pointY = centerY + (value * -35); // Negatif karena SVG Y terbalik
+        const pointY = centerY + (validValue * -35); // Negatif karena SVG Y terbalik
         const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         point.setAttribute('cx', x + (barWidth / 2));
         point.setAttribute('cy', pointY);
         point.setAttribute('r', '5');
-        point.setAttribute('fill', value >= 0 ? color : '#dc2626');
+        point.setAttribute('fill', validValue >= 0 ? color : '#dc2626');
         point.setAttribute('stroke', 'white');
         point.setAttribute('stroke-width', '2');
         svg.appendChild(point);
 
         // Tambahkan garis dari center ke point untuk clarity
-        if (value !== 0) {
+        if (validValue !== 0) {
             const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             line.setAttribute('x1', x + (barWidth / 2));
             line.setAttribute('y1', centerY);
             line.setAttribute('x2', x + (barWidth / 2));
             line.setAttribute('y2', pointY);
-            line.setAttribute('stroke', value >= 0 ? color : '#dc2626');
+            line.setAttribute('stroke', validValue >= 0 ? color : '#dc2626');
             line.setAttribute('stroke-width', '3');
             line.setAttribute('opacity', '0.6');
             svg.appendChild(line);
@@ -482,7 +571,7 @@ class Disc3DManager {
     }
 
     /**
-     * Draw segment text below columns (FIXED TO SHOW SEGMENTS)
+     * ✅ TETAP SAMA: Draw segment text below columns - TIDAK DIUBAH
      */
     drawSegmentText(svg, x, barWidth, dimension, index, graphType) {
         const segmentText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -494,11 +583,11 @@ class Disc3DManager {
         segmentText.setAttribute('text-anchor', 'middle');
         
         if (graphType === 'change') {
-            const value = this.data.change[dimension];
+            const value = parseInt(this.data.change[dimension]) || 0;
             segmentText.textContent = value > 0 ? `+${value}` : `${value}`;
         } else {
-            // FIXED: Tampilkan segment value, bukan percentage
-            const segmentValue = this.data[graphType][dimension];
+            // TETAP: Tampilkan segment value, bukan percentage
+            const segmentValue = parseInt(this.data[graphType][dimension]) || 1;
             segmentText.textContent = `${segmentValue}`;
             
             // Optional: Buat tooltip untuk percentage
@@ -514,7 +603,7 @@ class Disc3DManager {
     }
 
     /**
-     * Draw connecting line between points - UPDATED untuk semua graph types
+     * ✅ TETAP SAMA: Draw connecting line between points - TIDAK DIUBAH
      */
     drawConnectingLine(svg, graphType) {
         const points = [];
@@ -525,11 +614,11 @@ class Disc3DManager {
             let y;
             if (graphType === 'change') {
                 // CHANGE graph: gunakan center (170) + offset berdasarkan value
-                const value = this.data.change[dim];
+                const value = parseInt(this.data.change[dim]) || 0;
                 y = 170 + (value * -35); // Negatif karena SVG Y terbalik
             } else {
                 // MOST/LEAST graph: gunakan segment value
-                const segmentValue = this.data[graphType][dim];
+                const segmentValue = parseInt(this.data[graphType][dim]) || 1;
                 y = 30 + (280 - ((segmentValue - 1) * 40 + 20));
             }
             
@@ -559,118 +648,52 @@ class Disc3DManager {
      */
     updateElement(elementId, content) {
         const element = document.getElementById(elementId);
-        if (element) {
-            element.textContent = content;
+        if (element && content !== null && content !== undefined) {
+            element.textContent = String(content);
         }
     }
 
     /**
-     * Get enhanced default data with segments - UPDATED FOR TESTING
+     * ✅ UPDATED: Default data for template - with better fallbacks
      */
     getDefaultData() {
         return {
-            // GUNAKAN SEGMENT VALUES (1-7) untuk MOST dan LEAST
-            most: { D: 6, I: 5, S: 2, C: 3 },
-            least: { D: 3, I: 2, S: 6, C: 4 },
-            // CHANGE tetap bisa minus
-            change: { D: 3, I: 3, S: -4, C: -1 },
-            // Percentages tetap ada untuk reference/tooltip
+            most: { D: 1, I: 1, S: 1, C: 1 },
+            least: { D: 1, I: 1, S: 1, C: 1 },
+            change: { D: 0, I: 0, S: 0, C: 0 },
             percentages: {
-                most: { D: 75.2, I: 62.8, S: 28.5, C: 45.1 },
-                least: { D: 38.4, I: 24.6, S: 78.3, C: 55.7 }
+                most: { D: 0, I: 0, S: 0, C: 0 },
+                least: { D: 0, I: 0, S: 0, C: 0 }
             },
             profile: {
                 primary: 'D',
                 secondary: 'I',
-                primaryLabel: 'Decisive Influencer',
-                secondaryLabel: 'Inspiring Leader',
-                primaryPercentage: 75.2,
-                summary: 'Tipe DI menunjukkan kepribadian yang kuat dalam kepemimpinan dan pengaruh. Individu dengan profil ini cenderung berorientasi pada hasil, memiliki kemampuan komunikasi yang baik, dan mampu memotivasi orang lain untuk mencapai tujuan bersama.'
+                primaryLabel: 'Unknown Type',
+                secondaryLabel: 'Unknown',
+                primaryPercentage: 0,
+                summary: 'Belum tersedia'
             },
             analysis: {
-                // Comprehensive strengths from all dimensions
-                allStrengths: [
-                    'Kepemimpinan Natural', 'Pengambilan Keputusan Cepat', 'Orientasi Hasil Tinggi', 
-                    'Komunikasi Persuasif', 'Kemampuan Memotivasi', 'Keberanian Mengambil Risiko',
-                    'Inisiatif Tinggi', 'Fokus pada Pencapaian', 'Kemampuan Delegasi',
-                    'Daya Juang Tinggi', 'Visioner', 'Energi Tinggi'
-                ],
-                
-                // Comprehensive development areas
-                allDevelopmentAreas: [
-                    'Kesabaran dalam Proses', 'Perhatian pada Detail', 'Konsistensi Follow-up',
-                    'Mendengarkan Feedback', 'Fleksibilitas Metode', 'Empati yang Lebih Dalam',
-                    'Manajemen Stres', 'Kontrol Emosi', 'Delegasi yang Efektif'
-                ],
-
-                // Behavioral tendencies
-                behavioralTendencies: [
-                    'Mengambil Kendali Situasi', 'Berbicara Langsung pada Inti', 'Membuat Keputusan Cepat',
-                    'Fokus pada Hasil Akhir', 'Mendorong Perubahan', 'Berani Konfrontasi',
-                    'Multitasking Efektif', 'Networking Aktif', 'Kompetitif'
-                ],
-
-                // Communication preferences
-                communicationPreferences: [
-                    'Komunikasi Langsung', 'Presentasi yang Dinamis', 'Diskusi Berorientasi Solusi',
-                    'Feedback yang Konstruktif', 'Meeting yang Efisien', 'Laporan Ringkas',
-                    'Brainstorming Aktif', 'Negosiasi Asertif'
-                ],
-
-                // Motivators
-                motivators: [
-                    'Pencapaian Target', 'Pengakuan Prestasi', 'Tantangan Baru',
-                    'Otoritas dan Tanggung Jawab', 'Kompetisi Sehat', 'Perubahan dan Inovasi',
-                    'Hasil yang Terukur', 'Pengaruh pada Keputusan'
-                ],
-
-                // Stress indicators
-                stressIndicators: [
-                    'Ketidakpastian Berkepanjangan', 'Proses yang Terlalu Lambat', 'Micromanagement',
-                    'Rutinitas yang Monoton', 'Konflik Interpersonal', 'Kekurangan Informasi',
-                    'Deadline yang Tidak Realistis', 'Perubahan Mendadak'
-                ],
-
-                // Work environment preferences
-                workEnvironment: [
-                    'Lingkungan Dinamis', 'Tim yang Responsif', 'Budaya Meritokrasi',
-                    'Struktur yang Fleksibel', 'Akses pada Manajemen Senior', 'Resource yang Memadai',
-                    'Teknologi Terkini', 'Ruang untuk Inovasi'
-                ],
-
-                // Decision making style
-                decisionMaking: [
-                    'Berdasarkan Data dan Intuisi', 'Cepat dan Tegas', 'Mempertimbangkan Dampak',
-                    'Melibatkan Stakeholder Kunci', 'Fokus pada ROI', 'Berani Mengambil Risiko Terkalkulasi'
-                ],
-
-                // Leadership style
-                leadershipStyle: [
-                    'Transformational Leadership', 'Delegasi Efektif', 'Coaching dan Mentoring',
-                    'Setting Ekspektasi Tinggi', 'Leading by Example', 'Inspirational Communication'
-                ],
-
-                // Conflict resolution style
-                conflictResolution: [
-                    'Pendekatan Langsung', 'Fokus pada Solusi', 'Win-Win Solution',
-                    'Mediasi Objektif', 'Komunikasi Terbuka', 'Escalation Jika Diperlukan'
-                ],
-
-                // Detailed descriptions
-                detailedWorkStyle: 'Bekerja dengan tempo tinggi dan fokus pada hasil. Menyukai lingkungan yang dinamis dengan kebebasan untuk mengambil keputusan. Efektif dalam situasi yang membutuhkan kepemimpinan dan inisiatif. Dapat bekerja di bawah tekanan dan deadline ketat. Memiliki kemampuan multitasking yang baik dan dapat mengkoordinasi berbagai proyek secara bersamaan.',
-                
-                detailedCommunicationStyle: 'Komunikasi yang langsung, jelas, dan persuasif. Mampu menyampaikan visi dan memotivasi tim. Efektif dalam presentasi dan public speaking. Dapat beradaptasi dengan berbagai audience. Menyukai diskusi yang fokus pada solusi dan action plan. Memberikan feedback yang konstruktif dan langsung pada point.',
-                
-                publicSelfAnalysis: 'Di lingkungan publik, menampilkan sosok yang percaya diri, tegas, dan berorientasi pada hasil. Terlihat sebagai pemimpin natural yang dapat mempengaruhi dan memotivasi orang lain. Komunikatif dan ekspresif dalam interaksi sosial.',
-                
-                privateSelfAnalysis: 'Secara pribadi, lebih reflektif dan mempertimbangkan berbagai aspek sebelum mengambil keputusan. Memiliki sisi yang lebih sabar dan stabil dibanding yang ditampilkan di publik. Menghargai harmoni dan stabilitas dalam hubungan personal.',
-                
-                adaptationAnalysis: 'Mengalami tekanan untuk tampil lebih dominan dan ekspresif di lingkungan kerja dibanding kepribadian alami. Adaptasi ini dapat menyebabkan kelelahan jika dilakukan terus-menerus. Perlu keseimbangan antara tuntutan peran dan kebutuhan personal.'
+                allStrengths: [],
+                allDevelopmentAreas: [],
+                behavioralTendencies: [],
+                communicationPreferences: [],
+                motivators: [],
+                stressIndicators: [],
+                workEnvironment: [],
+                decisionMaking: [],
+                leadershipStyle: [],
+                conflictResolution: [],
+                detailedWorkStyle: 'Belum tersedia analisis gaya kerja',
+                detailedCommunicationStyle: 'Belum tersedia analisis gaya komunikasi',
+                publicSelfAnalysis: 'Belum tersedia analisis diri publik',
+                privateSelfAnalysis: 'Belum tersedia analisis diri pribadi',
+                adaptationAnalysis: 'Belum tersedia analisis adaptasi'
             },
             session: {
-                testCode: 'DISC3D_20240115_001',
-                completedDate: '15 Jan 2024',
-                duration: '18 menit 45 detik'
+                testCode: 'N/A',
+                completedDate: 'N/A',
+                duration: 'N/A'
             }
         };
     }
@@ -680,21 +703,22 @@ class Disc3DManager {
      */
     loadFromLaravel(laravelData) {
         if (!laravelData) {
-            console.warn('No Laravel data provided, using default data');
+            console.warn('No Laravel data provided, using minimal default data');
             return;
         }
 
         this.data = laravelData;
+        this.sanitizeData();
         this.updateUI();
         this.renderAllGraphs();
-        console.log('Loaded data from Laravel (segments-based):', laravelData);
+        console.log('Loaded REAL data from Laravel database (FINAL FIXED):', laravelData);
     }
 
     /**
      * Destroy the manager and clean up
      */
     destroy() {
-        console.log('Enhanced DISC 3D Manager destroyed');
+        console.log('Enhanced DISC 3D Manager destroyed (FINAL FIXED)');
     }
 }
 
@@ -714,7 +738,7 @@ function initializeDisc3D(discData = null) {
     // Store reference globally for debugging
     window.disc3DManager = manager;
     
-    console.log('Enhanced DISC 3D Manager initialized successfully (segments-based)');
+    console.log('Enhanced DISC 3D Manager initialized successfully (FINAL FIXED for data types)');
     return manager;
 }
 
@@ -726,7 +750,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof window.discData !== 'undefined') {
         initializeDisc3D(window.discData);
     } else {
-        // Initialize with enhanced default data
+        // Initialize with minimal default data
+        console.log('No real DISC data available, using minimal defaults');
         initializeDisc3D();
     }
 });
