@@ -428,6 +428,10 @@
                         <span class="info-value">{{ $candidate->full_name ?? '-' }}</span>
                     </div>
                     <div class="info-item">
+                        <span class="info-label">NIK:</span>
+                        <span class="info-value">{{ $candidate->nik ?? '-' }}</span>
+                    </div>
+                    <div class="info-item">
                         <span class="info-label">Tempat, Tgl Lahir:</span>
                         <span class="info-value">{{ $candidate->birth_place ?? '-' }}, {{ $candidate->birth_date ? \Carbon\Carbon::parse($candidate->birth_date)->format('d/m/Y') : '-' }}</span>
                     </div>
@@ -661,26 +665,30 @@
                     <h3>Kemampuan Komputer</h3>
                     <div class="info-item">
                         <span class="info-label" style="width: 60pt;">Hardware:</span>
-                        <span class="info-value">{{ $candidate->computerSkills->hardware_skills ?? 'Tidak ada' }}</span>
+                        <span class="info-value">{{ $candidate->additionalInfo->hardware_skills ?? 'Tidak ada' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label" style="width: 60pt;">Software:</span>
-                        <span class="info-value">{{ $candidate->computerSkills->software_skills ?? 'Tidak ada' }}</span>
+                        <span class="info-value">{{ $candidate->additionalInfo->software_skills ?? 'Tidak ada' }}</span>
                     </div>
                 </div>
                 <div class="info-col">
                     <h3>Kemampuan Lainnya</h3>
-                    <div class="text-box">{{ $candidate->otherSkills->other_skills ?? 'Tidak ada data' }}</div>
+                    <div class="text-box">{{ $candidate->additionalInfo->other_skills ?? 'Tidak ada data' }}</div>
                 </div>
             </div>
         </div>
 
         <!-- 7. Organisasi & Prestasi -->
-        @if($candidate->socialActivities->count() > 0 || $candidate->achievements->count() > 0)
+        @php
+            $socialActivities = $candidate->activities->where('activity_type', 'social_activity');
+            $achievements = $candidate->activities->where('activity_type', 'achievement');
+        @endphp
+        @if($socialActivities->count() > 0 || $achievements->count() > 0)
         <div class="compact-section">
             <h2>7. Latar Belakang Organisasi & Prestasi</h2>
             
-            @if($candidate->socialActivities->count() > 0)
+            @if($socialActivities->count() > 0)
             <h3>Aktivitas Sosial/Organisasi</h3>
             <table>
                 <thead>
@@ -692,10 +700,10 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($candidate->socialActivities as $activity)
+                    @foreach($socialActivities as $activity)
                     <tr>
-                        <td>{{ $activity->organization_name ?? '-' }}</td>
-                        <td>{{ $activity->field ?? '-' }}</td>
+                        <td>{{ $activity->title ?? '-' }}</td>
+                        <td>{{ $activity->field_or_year ?? '-' }}</td>
                         <td>{{ $activity->period ?? '-' }}</td>
                         <td>{{ $activity->description ?? '-' }}</td>
                     </tr>
@@ -704,7 +712,7 @@
             </table>
             @endif
             
-            @if($candidate->achievements->count() > 0)
+            @if($achievements->count() > 0)
             <h3>Penghargaan/Prestasi</h3>
             <table>
                 <thead>
@@ -715,10 +723,10 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($candidate->achievements as $achievement)
+                    @foreach($achievements as $achievement)
                     <tr>
-                        <td>{{ $achievement->achievement ?? '-' }}</td>
-                        <td>{{ $achievement->year ?? '-' }}</td>
+                        <td>{{ $achievement->title ?? '-' }}</td>
+                        <td>{{ $achievement->field_or_year ?? '-' }}</td>
                         <td>{{ $achievement->description ?? '-' }}</td>
                     </tr>
                     @endforeach
@@ -741,74 +749,74 @@
                 <div class="info-col">
                     <div class="info-item">
                         <span class="info-label">Bersedia Dinas:</span>
-                        <span class="info-value">{{ $candidate->generalInformation && $candidate->generalInformation->willing_to_travel ? 'Ya' : 'Tidak' }}</span>
+                        <span class="info-value">{{ $candidate->additionalInfo && $candidate->additionalInfo->willing_to_travel ? 'Ya' : 'Tidak' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Kendaraan:</span>
-                        <span class="info-value">{{ $candidate->generalInformation && $candidate->generalInformation->has_vehicle ? 'Ya' : 'Tidak' }} 
-                        {{ $candidate->generalInformation && $candidate->generalInformation->vehicle_types ? '(' . $candidate->generalInformation->vehicle_types . ')' : '' }}
+                        <span class="info-value">{{ $candidate->additionalInfo && $candidate->additionalInfo->has_vehicle ? 'Ya' : 'Tidak' }} 
+                        {{ $candidate->additionalInfo && $candidate->additionalInfo->vehicle_types ? '(' . $candidate->additionalInfo->vehicle_types . ')' : '' }}
                         </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Penghasilan Lain:</span>
-                        <span class="info-value">{{ $candidate->generalInformation->other_income ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->additionalInfo->other_income ?? '-' }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Absen/Tahun:</span>
-                        <span class="info-value">{{ $candidate->generalInformation->absence_days ?? '-' }} hari</span>
+                        <span class="info-value">{{ $candidate->additionalInfo->absence_days ?? '-' }} hari</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Mulai Kerja:</span>
-                        <span class="info-value">{{ $candidate->generalInformation && $candidate->generalInformation->start_work_date ? \Carbon\Carbon::parse($candidate->generalInformation->start_work_date)->format('d/m/Y') : '-' }}</span>
+                        <span class="info-value">{{ $candidate->additionalInfo && $candidate->additionalInfo->start_work_date ? \Carbon\Carbon::parse($candidate->additionalInfo->start_work_date)->format('d/m/Y') : '-' }}</span>
                     </div>
                 </div>
                 <div class="info-col">
                     <div class="info-item">
                         <span class="info-label">Catatan Polisi:</span>
-                        <span class="info-value">{{ $candidate->generalInformation && $candidate->generalInformation->has_police_record ? 'Ada' : 'Tidak' }}
-                        {{ $candidate->generalInformation && $candidate->generalInformation->police_record_detail ? '(' . $candidate->generalInformation->police_record_detail . ')' : '' }}
+                        <span class="info-value">{{ $candidate->additionalInfo && $candidate->additionalInfo->has_police_record ? 'Ada' : 'Tidak' }}
+                        {{ $candidate->additionalInfo && $candidate->additionalInfo->police_record_detail ? '(' . $candidate->additionalInfo->police_record_detail . ')' : '' }}
                         </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Riwayat Sakit:</span>
-                        <span class="info-value">{{ $candidate->generalInformation && $candidate->generalInformation->has_serious_illness ? 'Ada' : 'Tidak' }}
-                        {{ $candidate->generalInformation && $candidate->generalInformation->illness_detail ? '(' . $candidate->generalInformation->illness_detail . ')' : '' }}
+                        <span class="info-value">{{ $candidate->additionalInfo && $candidate->additionalInfo->has_serious_illness ? 'Ada' : 'Tidak' }}
+                        {{ $candidate->additionalInfo && $candidate->additionalInfo->illness_detail ? '(' . $candidate->additionalInfo->illness_detail . ')' : '' }}
                         </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Tato/Tindik:</span>
-                        <span class="info-value">{{ $candidate->generalInformation && $candidate->generalInformation->has_tattoo_piercing ? 'Ada' : 'Tidak' }}
-                        {{ $candidate->generalInformation && $candidate->generalInformation->tattoo_piercing_detail ? '(' . $candidate->generalInformation->tattoo_piercing_detail . ')' : '' }}
+                        <span class="info-value">{{ $candidate->additionalInfo && $candidate->additionalInfo->has_tattoo_piercing ? 'Ada' : 'Tidak' }}
+                        {{ $candidate->additionalInfo && $candidate->additionalInfo->tattoo_piercing_detail ? '(' . $candidate->additionalInfo->tattoo_piercing_detail . ')' : '' }}
                         </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Usaha Lain:</span>
-                        <span class="info-value">{{ $candidate->generalInformation && $candidate->generalInformation->has_other_business ? 'Ada' : 'Tidak' }}
-                        {{ $candidate->generalInformation && $candidate->generalInformation->other_business_detail ? '(' . $candidate->generalInformation->other_business_detail . ')' : '' }}
+                        <span class="info-value">{{ $candidate->additionalInfo && $candidate->additionalInfo->has_other_business ? 'Ada' : 'Tidak' }}
+                        {{ $candidate->additionalInfo && $candidate->additionalInfo->other_business_detail ? '(' . $candidate->additionalInfo->other_business_detail . ')' : '' }}
                         </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Sumber Info:</span>
-                        <span class="info-value">{{ $candidate->generalInformation->information_source ?? '-' }}</span>
+                        <span class="info-value">{{ $candidate->additionalInfo->information_source ?? '-' }}</span>
                     </div>
                 </div>
             </div>
             
-            @if($candidate->generalInformation && ($candidate->generalInformation->motivation || $candidate->generalInformation->strengths || $candidate->generalInformation->weaknesses))
+            @if($candidate->additionalInfo && ($candidate->additionalInfo->motivation || $candidate->additionalInfo->strengths || $candidate->additionalInfo->weaknesses))
             <h3>Motivasi, Kelebihan & Kekurangan</h3>
             <table>
                 <tr>
                     <td style="width: 33%; vertical-align: top; padding: 4pt;">
                         <strong style="font-size: 8.5pt;">Motivasi Bergabung:</strong>
-                        <div class="text-box" style="margin-top: 2pt;">{{ $candidate->generalInformation->motivation ?? 'Tidak ada data' }}</div>
+                        <div class="text-box" style="margin-top: 2pt;">{{ $candidate->additionalInfo->motivation ?? 'Tidak ada data' }}</div>
                     </td>
                     <td style="width: 33%; vertical-align: top; padding: 4pt;">
                         <strong style="font-size: 8.5pt;">Kelebihan:</strong>
-                        <div class="text-box" style="margin-top: 2pt;">{{ $candidate->generalInformation->strengths ?? 'Tidak ada data' }}</div>
+                        <div class="text-box" style="margin-top: 2pt;">{{ $candidate->additionalInfo->strengths ?? 'Tidak ada data' }}</div>
                     </td>
                     <td style="width: 34%; vertical-align: top; padding: 4pt;">
                         <strong style="font-size: 8.5pt;">Kekurangan:</strong>
-                        <div class="text-box" style="margin-top: 2pt;">{{ $candidate->generalInformation->weaknesses ?? 'Tidak ada data' }}</div>
+                        <div class="text-box" style="margin-top: 2pt;">{{ $candidate->additionalInfo->weaknesses ?? 'Tidak ada data' }}</div>
                     </td>
                 </tr>
             </table>
@@ -892,8 +900,75 @@
         </div>
         @endif
 
-        <!-- 10. Hasil Tes DISC 3D - FIXED VERSION -->
+        <!-- 10. Hasil Tes DISC 3D  -->
         @if($candidate->disc3DTestResult)
+        @php
+            // Get pattern combination data
+            $patternData = null;
+            if ($candidate->disc3DTestResult && $candidate->disc3DTestResult->most_pattern) {
+                $patternData = \App\Models\Disc3DPatternCombination::where('pattern_code', $candidate->disc3DTestResult->most_pattern)->first();
+            }
+            
+            // Safe array extraction with proper type checking for behavioral insights
+            $behavioralInsights = $candidate->disc3DTestResult->behavioral_insights ?? [];
+            
+            $strengthsArray = [];
+            if (isset($behavioralInsights['strengths']) && is_array($behavioralInsights['strengths'])) {
+                $strengthsArray = $behavioralInsights['strengths'];
+            }
+            
+            $developmentArray = [];
+            if (isset($behavioralInsights['development_areas']) && is_array($behavioralInsights['development_areas'])) {
+                $developmentArray = $behavioralInsights['development_areas'];
+            }
+            
+            $motivatorsArray = [];
+            if (is_array($candidate->disc3DTestResult->motivators_most ?? null)) {
+                $motivatorsArray = $candidate->disc3DTestResult->motivators_most;
+            } elseif (isset($behavioralInsights['motivators']) && is_array($behavioralInsights['motivators'])) {
+                $motivatorsArray = $behavioralInsights['motivators'];
+            }
+            
+            $workEnvArray = [];
+            if (isset($behavioralInsights['work_environment']) && is_array($behavioralInsights['work_environment'])) {
+                $workEnvArray = $behavioralInsights['work_environment'];
+            } elseif (is_array($candidate->disc3DTestResult->work_style_most ?? null)) {
+                $workEnvArray = $candidate->disc3DTestResult->work_style_most;
+            }
+            
+            $communicationArray = [];
+            if (isset($behavioralInsights['communication']) && is_array($behavioralInsights['communication'])) {
+                $communicationArray = $behavioralInsights['communication'];
+            } elseif (is_array($candidate->disc3DTestResult->communication_style_most ?? null)) {
+                $communicationArray = $candidate->disc3DTestResult->communication_style_most;
+            }
+            
+            $stressArray = [];
+            if (is_array($candidate->disc3DTestResult->stress_indicators ?? null)) {
+                $stressArray = $candidate->disc3DTestResult->stress_indicators;
+            }
+            
+            $decisionArray = [];
+            if (isset($behavioralInsights['decision_making']) && is_array($behavioralInsights['decision_making'])) {
+                $decisionArray = $behavioralInsights['decision_making'];
+            }
+            
+            $leadershipArray = [];
+            if (isset($behavioralInsights['leadership']) && is_array($behavioralInsights['leadership'])) {
+                $leadershipArray = $behavioralInsights['leadership'];
+            }
+            
+            $conflictArray = [];
+            if (isset($behavioralInsights['conflict_resolution']) && is_array($behavioralInsights['conflict_resolution'])) {
+                $conflictArray = $behavioralInsights['conflict_resolution'];
+            }
+            
+            $tendenciesArray = [];
+            if (isset($behavioralInsights['tendencies']) && is_array($behavioralInsights['tendencies'])) {
+                $tendenciesArray = $behavioralInsights['tendencies'];
+            }
+        @endphp
+        
         <div class="compact-section">
             <h2>10. Hasil Tes DISC 3D - Analisis Kepribadian</h2>
             
@@ -928,154 +1003,163 @@
                     </div>
                 </div>
             </div>
-            <!-- Interpretasi 3 Grafik -->
-            <h3>Interpretasi Grafik</h3>
-            <table>
-                <tr>
-                    <td style="width: 33%; vertical-align: top; padding: 4pt;">
-                        <strong style="font-size: 8.5pt; color: #4f46e5;">📊 MOST (Topeng/Publik)</strong>
-                        <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
-                            Menampilkan bagaimana Anda berperilaku di depan umum atau dalam situasi kerja formal. Grafik ini menunjukkan adaptasi perilaku sesuai ekspektasi lingkungan.
-                        </div>
-                    </td>
-                    <td style="width: 33%; vertical-align: top; padding: 4pt;">
-                        <strong style="font-size: 8.5pt; color: #4f46e5;">📊 LEAST (Inti/Pribadi)</strong>
-                        <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
-                            Menggambarkan kepribadian alami Anda yang sesungguhnya tanpa pengaruh eksternal. Ini adalah "diri sejati" yang cenderung muncul saat stres atau rileks.
-                        </div>
-                    </td>
-                    <td style="width: 34%; vertical-align: top; padding: 4pt;">
-                        <strong style="font-size: 8.5pt; color: #4f46e5;">📊 CHANGE (Adaptasi)</strong>
-                        <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
-                            Menunjukkan tekanan dan adaptasi yang dialami. Nilai positif (+) = peningkatan, nilai negatif (-) = penurunan dari kondisi natural.
-                        </div>
-                    </td>
-                </tr>
-            </table>
 
-            <!-- Analisis Perilaku Mendalam -->
-            <h3>Analisis Perilaku Mendalam</h3>
-            <table>
-                <tr>
-                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
-                        <div style="margin-bottom: 6pt;">
-                            <strong style="font-size: 8.5pt; color: #4f46e5;">💼 Gaya Kerja Detail</strong>
-                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
-                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->overall_profile ?? 'Bekerja dengan tempo tinggi dan fokus pada hasil. Menyukai lingkungan yang dinamis dengan kebebasan untuk mengambil keputusan.', 180) }}
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 6pt;">
-                            <strong style="font-size: 8.5pt; color: #4f46e5;">🎤 Gaya Komunikasi Detail</strong>
-                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
-                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->personality_profile ?? 'Komunikasi yang langsung, jelas, dan persuasif. Mampu menyampaikan visi dan memotivasi tim.', 180) }}
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 6pt;">
-                            <strong style="font-size: 8.5pt; color: #4f46e5;">🎭 Analisis Diri Publik (MOST)</strong>
-                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
-                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->public_self_summary ?? 'Di lingkungan publik, menampilkan sosok yang percaya diri, tegas, dan berorientasi pada hasil.', 180) }}
-                            </div>
-                        </div>
-                    </td>
-                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
-                        <div style="margin-bottom: 6pt;">
-                            <strong style="font-size: 8.5pt; color: #4f46e5;">❤️ Analisis Diri Pribadi (LEAST)</strong>
-                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
-                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->private_self_summary ?? 'Secara pribadi, lebih reflektif dan mempertimbangkan berbagai aspek sebelum mengambil keputusan.', 180) }}
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 6pt;">
-                            <strong style="font-size: 8.5pt; color: #4f46e5;">🔄 Analisis Adaptasi (CHANGE)</strong>
-                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
-                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->adaptation_summary ?? 'Mengalami tekanan untuk tampil lebih dominan dan ekspresif di lingkungan kerja.', 180) }}
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 6pt;">
-                            <strong style="font-size: 8.5pt; color: #4f46e5;">📄 Ringkasan Profil Keseluruhan</strong>
-                            <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
-                                {{ \Illuminate\Support\Str::limit($candidate->disc3DTestResult->summary ?? $candidate->disc3DTestResult->brief_summary ?? 'Belum tersedia', 180) }}
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-
-            <!-- FIXED: Kelebihan & Area Pengembangan (TANPA Indikator Stres) -->
-            @if($candidate->disc3DTestResult->behavioral_insights)
-            <h3>Kelebihan & Area Pengembangan</h3>
-            <table>
-                <tr>
-                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
-                        <strong style="font-size: 8.5pt; color: #059669;">⭐ Kelebihan & Kekuatan</strong>
-                        <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
-                            @php
-                                $strengths = $candidate->disc3DTestResult->behavioral_insights['strengths'] ?? [
-                                    'Kepemimpinan Natural', 'Pengambilan Keputusan Cepat', 'Orientasi Hasil Tinggi'
-                                ];
-                            @endphp
-                            @if(is_array($strengths))
-                                {{ implode(', ', array_slice($strengths, 0, 8)) }}
-                            @else
-                                {{ $strengths }}
-                            @endif
-                        </div>
-                    </td>
-                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
-                        <strong style="font-size: 8.5pt; color: #dc2626;">📈 Area Pengembangan</strong>
-                        <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
-                            @php
-                                $developmentAreas = $candidate->disc3DTestResult->behavioral_insights['development_areas'] ?? [
-                                    'Kesabaran dalam Proses', 'Perhatian pada Detail', 'Konsistensi Follow-up'
-                                ];
-                            @endphp
-                            @if(is_array($developmentAreas))
-                                {{ implode(', ', array_slice($developmentAreas, 0, 8)) }}
-                            @else
-                                {{ $developmentAreas }}
-                            @endif
-                        </div>
-                    </td>
-                </tr>
-            </table>
-            @endif
-
-            <!-- Motivator Utama (MENGHAPUS Indikator Stres) -->
-            @if($candidate->disc3DTestResult->behavioral_insights)
-            <h3>Motivator Utama</h3>
-            <div class="text-box">
-                <strong style="font-size: 8.5pt; color: #ea580c;">🔥 Motivator:</strong>
-                @php
-                    $motivators = $candidate->disc3DTestResult->behavioral_insights['motivators'] ?? [
-                        'Pencapaian Target', 'Pengakuan Prestasi', 'Tantangan Baru'
-                    ];
-                @endphp
-                @if(is_array($motivators))
-                    {{ implode(', ', array_slice($motivators, 0, 8)) }}
-                @else
-                    {{ $motivators }}
-                @endif
+            <!-- Kombinasi Pola Kepribadian & Analisis Karakter -->
+            @if($patternData)
+            <h3>Kombinasi Pola Kepribadian & Analisis Karakter</h3>
+            
+            <!-- Header Pattern Information -->
+            <div class="text-box" style="background: linear-gradient(135deg, #8b5cf6, #a855f7); border-color: #7c3aed; color: white; padding: 8pt; margin-bottom: 6pt;">
+                <strong style="font-size: 10pt;">{{ $patternData->pattern_name }}</strong><br>
+                <span style="font-size: 8pt; opacity: 0.9;">Kode Pattern: {{ $patternData->pattern_code }}</span><br>
+                <span style="font-size: 8pt; opacity: 0.95;">{{ $patternData->description }}</span>
             </div>
-            @endif
 
-            <!-- Profesi yang Cocok -->
-            @if($candidate->disc3DTestResult->recommended_roles)
-            <h3>Profesi yang Cocok</h3>
-            <div class="text-box">
-                @if(is_array($candidate->disc3DTestResult->recommended_roles))
-                    @foreach(array_slice($candidate->disc3DTestResult->recommended_roles, 0, 8) as $role)
-                        <span style="display: inline-block; background: #e5e7eb; padding: 2pt 6pt; margin: 2pt; border-radius: 3pt; font-size: 8pt;">{{ $role }}</span>
-                    @endforeach
-                @else
-                    {{ $candidate->disc3DTestResult->recommended_roles }}
-                @endif
+            <!-- Ringkasan Karakter -->
+            <div style="margin-bottom: 6pt;">
+                <strong style="font-size: 8.5pt; color: #8b5cf6;">💡 Ringkasan Karakter</strong>
+                <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                    @php
+                        $primaryType = $candidate->disc3DTestResult->primary_type ?? 'D';
+                        $patternName = $patternData->pattern_name;
+                        $mainStrengths = $patternData->strengths ? implode(' dan ', array_slice($patternData->strengths, 0, 2)) : 'berbagai kekuatan';
+                    @endphp
+                    Kandidat menunjukkan karakter <strong>{{ $patternName }}</strong> dengan kecenderungan dimensi <strong>{{ $primaryType }}</strong>. 
+                    Memiliki {{ $mainStrengths }} sebagai kekuatan utama. 
+                    Cocok untuk peran yang membutuhkan {{ $patternData->ideal_environment ? strtolower($patternData->ideal_environment[0] ?? 'fleksibilitas') : 'adaptabilitas' }} dalam bekerja.
+                </div>
             </div>
+
+            <!-- Pattern Analysis Grid -->
+            <table style="margin-bottom: 6pt;">
+                <tr>
+                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
+                        <!-- Kekuatan Pattern -->
+                        @if($patternData->strengths && count($patternData->strengths) > 0)
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #10b981;">💎 Kekuatan Pattern</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
+                                @foreach(array_slice($patternData->strengths, 0, 6) as $strength)
+                                    <span style="display: inline-block; background: #d1fae5; color: #065f46; padding: 1pt 4pt; margin: 1pt; border-radius: 2pt; font-size: 7pt;">{{ $strength }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+
+                        <!-- Lingkungan Ideal -->
+                        @if($patternData->ideal_environment && count($patternData->ideal_environment) > 0)
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #059669;">🌱 Lingkungan Ideal</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
+                                @foreach(array_slice($patternData->ideal_environment, 0, 6) as $environment)
+                                    <span style="display: inline-block; background: #ecfdf5; color: #065f46; padding: 1pt 4pt; margin: 1pt; border-radius: 2pt; font-size: 7pt;">{{ $environment }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+
+                        <!-- Role/Posisi Cocok -->
+                        @if($patternData->career_matches && count($patternData->career_matches) > 0)
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #7c3aed;">💼 Role/Posisi Cocok</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
+                                @foreach(array_slice($patternData->career_matches, 0, 6) as $career)
+                                    <span style="display: inline-block; background: #f3e8ff; color: #581c87; padding: 1pt 4pt; margin: 1pt; border-radius: 2pt; font-size: 7pt;">{{ $career }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+                    </td>
+                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
+                        <!-- Area Perhatian -->
+                        @if($patternData->weaknesses && count($patternData->weaknesses) > 0)
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #f59e0b;">⚠️ Area Perhatian</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
+                                @foreach(array_slice($patternData->weaknesses, 0, 6) as $weakness)
+                                    <span style="display: inline-block; background: #fef3c7; color: #92400e; padding: 1pt 4pt; margin: 1pt; border-radius: 2pt; font-size: 7pt;">{{ $weakness }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+
+                        <!-- Tips Komunikasi -->
+                        @if($patternData->communication_tips && count($patternData->communication_tips) > 0)
+                        <div style="margin-bottom: 6pt;">
+                            <strong style="font-size: 8.5pt; color: #0891b2;">📢 Tips Komunikasi</strong>
+                            <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
+                                @foreach(array_slice($patternData->communication_tips, 0, 6) as $tip)
+                                    <span style="display: inline-block; background: #e0f2fe; color: #0c4a6e; padding: 1pt 4pt; margin: 1pt; border-radius: 2pt; font-size: 7pt;">{{ $tip }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+                    </td>
+                </tr>
+            </table>
             @endif
 
-            <!-- FIXED: DISC CHART with segment values and negative display -->
+            <!-- Additional Behavioral Insights (if available from database) -->
+            @if(!empty($strengthsArray) || !empty($motivatorsArray))
+            <h3>Insight Tambahan dari Database</h3>
+            <table>
+                <tr>
+                    @if(!empty($strengthsArray))
+                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #059669;">⭐ Kelebihan (Database)</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
+                            {{ implode(', ', array_slice($strengthsArray, 0, 6)) }}
+                        </div>
+                    </td>
+                    @endif
+                    @if(!empty($motivatorsArray))
+                    <td style="width: 50%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #ea580c;">🔥 Motivator (Database)</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 7.5pt;">
+                            {{ implode(', ', array_slice($motivatorsArray, 0, 6)) }}
+                        </div>
+                    </td>
+                    @endif
+                </tr>
+            </table>
+            @endif
+
+            <!--  DISC CHART with segment values and negative display -->
             <h3>Grafik DISC 3D (Segment Values)</h3>
             <div class="chart-container">
                 {!! \App\Services\DiscChartGenerator::generateChart($candidate) !!}
             </div>
+            
+            <!-- Informasi Sesi Tes Lengkap -->
+            <h3>Informasi Sesi Tes</h3>
+            <table>
+                <tr>
+                    <td style="width: 25%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #4f46e5;">🔢 Kode Tes</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                            {{ $candidate->latestDisc3DTest->test_code ?? 'N/A' }}
+                        </div>
+                    </td>
+                    <td style="width: 25%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #4f46e5;">📅 Tanggal Tes</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                            {{ $candidate->latestDisc3DTest->completed_at ? $candidate->latestDisc3DTest->completed_at->format('d M Y H:i') : 'N/A' }}
+                        </div>
+                    </td>
+                    <td style="width: 25%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #4f46e5;">⏱️ Durasi</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                            {{ $candidate->latestDisc3DTest->formatted_duration ?? 'N/A' }}
+                        </div>
+                    </td>
+                    <td style="width: 25%; vertical-align: top; padding: 4pt;">
+                        <strong style="font-size: 8.5pt; color: #4f46e5;">✅ Status</strong>
+                        <div class="text-box" style="margin-top: 2pt; font-size: 8pt;">
+                            Selesai
+                        </div>
+                    </td>
+                </tr>
+            </table>
             
             <!-- Note about methodology -->
             <div style="margin-top: 8pt; padding: 4pt; background: #f0f9ff; border: 0.5pt solid #0ea5e9; border-radius: 3pt;">
