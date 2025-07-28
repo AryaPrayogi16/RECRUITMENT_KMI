@@ -355,21 +355,7 @@
                 </div>
                 @endif
 
-                {{-- ✅ NEW: 5. Cara Memotivasi (pindahan dari Analisis Karakter DISC) --}}
-                @if(isset($dominantInterpretation) && $dominantInterpretation->motivators && count($dominantInterpretation->motivators) > 0)
-                <div class="disc-analysis-card">
-                    <h4 class="disc-analysis-title">
-                        <i class="fas fa-rocket" style="color: #ef4444;"></i>
-                        Cara Memotivasi
-                    </h4>
-                    <div class="disc-trait-tags" id="discMotivationTags">
-                        @foreach(array_slice($dominantInterpretation->motivators, 0, 4) as $motivator)
-                            <span class="disc-trait-tag pattern-motivation">{{ $motivator }}</span>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
+               
                 {{-- 6. Role/Posisi Cocok (dari Kombinasi Pola Kepribadian) --}}
                 @if($patternData->career_matches && count($patternData->career_matches) > 0)
                 <div class="disc-analysis-card">
