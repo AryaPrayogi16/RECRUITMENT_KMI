@@ -1059,7 +1059,16 @@
                                 <td>
                                     <div class="candidate-info">
                                         <div class="candidate-avatar">
-                                            {{ substr($candidate->full_name ?? 'N/A', 0, 2) }}
+                                            @php
+                                                $photoDocument = $candidate->documentUploads->where('document_type', 'photo')->first();
+                                            @endphp
+                                            @if($photoDocument)
+                                                <img src="{{ Storage::url($photoDocument->file_path) }}" 
+                                                    alt="Foto {{ $candidate->full_name ?? 'Kandidat' }}" 
+                                                    style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                                            @else
+                                                {{ substr($candidate->full_name ?? 'N/A', 0, 2) }}
+                                            @endif
                                         </div>
                                         <div class="candidate-details">
                                             <div class="candidate-name">
