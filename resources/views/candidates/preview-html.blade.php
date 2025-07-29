@@ -1161,15 +1161,7 @@
                 </tr>
             </table>
             
-            <!-- Note about methodology -->
-            <div style="margin-top: 8pt; padding: 4pt; background: #f0f9ff; border: 0.5pt solid #0ea5e9; border-radius: 3pt;">
-                <strong style="font-size: 7pt; color: #0c4a6e;">📌 Catatan Metodologi:</strong>
-                <span style="font-size: 7pt; color: #0c4a6e;">
-                    Grafik MOST & LEAST menggunakan skala segment 1-7 (bukan persentase). 
-                    Grafik CHANGE menampilkan nilai adaptasi yang dapat positif (+) atau negatif (-). 
-                    Persentase ditampilkan sebagai referensi tambahan.
-                </span>
-            </div>
+            
         </div>
         @else
         <div class="compact-section">
