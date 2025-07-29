@@ -663,7 +663,7 @@
             </div>
 
             <div class="user-info">
-                <div class="user-avatar">
+                <!-- <div class="user-avatar">
                     @if(Auth::user()->role == 'admin')
                         <i class="fas fa-user-crown"></i>
                     @elseif(Auth::user()->role == 'hr')
@@ -671,7 +671,7 @@
                     @else
                         <i class="fas fa-user"></i>
                     @endif
-                </div>
+                </div> -->
                 <div class="user-details">
                     <div class="user-name">{{ Auth::user()->full_name }}</div>
                     <div class="user-role">{{ ucfirst(Auth::user()->role) }}</div>
@@ -679,7 +679,7 @@
             </div>
 
             <nav class="nav-menu">
-                <div class="nav-item">
+                <!-- <div class="nav-item">
                     <a href="{{ route('dashboard') }}" class="nav-link">
                         <i class="fas fa-tachometer-alt"></i>
                         <span>Dashboard</span>
@@ -692,7 +692,7 @@
                             <span>User Management</span>
                         </a>
                     </div>
-                @endif
+                @endif -->
                 @if(in_array(Auth::user()->role, ['admin', 'hr']))
                     <div class="nav-item">
                         <a href="{{ route('candidates.index') }}" class="nav-link">
