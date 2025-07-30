@@ -631,7 +631,7 @@
     }
     
     // Dynamic form functions
-    let familyIndex = 0;
+    let familyIndex = 3;
     let educationIndex = 0;
     let nonFormalEducationIndex = 0;
     let workIndex = 0;
@@ -640,7 +640,7 @@
     let achievementIndex = 0;
 
     // Get default templates
-    function getDefaultFamilyMember(index) {
+        function getDefaultFamilyMember(index) {
         return `
             <div class="dynamic-group" data-index="${index}">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -672,7 +672,7 @@
                         <input type="text" name="family_members[${index}][occupation]" class="form-input" required>
                     </div>
                     <div class="form-group flex items-end">
-                        <button type="button" class="btn-remove" onclick="removeFamilyMember(this)" ${index === 0 ? 'style="display:none"' : ''}>Hapus</button>
+                        <button type="button" class="btn-remove" onclick="removeFamilyMember(this)">Hapus</button>
                     </div>
                 </div>
             </div>
@@ -1247,13 +1247,21 @@
         const container = document.getElementById(containerId);
         const removeButtons = container.querySelectorAll('.btn-remove');
         
-        removeButtons.forEach((button, index) => {
-            if (index === 0 && container.children.length > 1) {
-                button.style.display = 'none';
-            } else if (index > 0) {
+        // For family members, always show remove button since user can delete default fields if not needed
+        if (containerId === 'familyMembers') {
+            removeButtons.forEach(button => {
                 button.style.display = 'inline-block';
-            }
-        });
+            });
+        } else {
+            // Original logic for other containers
+            removeButtons.forEach((button, index) => {
+                if (index === 0 && container.children.length > 1) {
+                    button.style.display = 'none';
+                } else if (index > 0) {
+                    button.style.display = 'inline-block';
+                }
+            });
+        }
     }
 
     // ✅ KEEP: Existing cleanEmptyOptionalFields function
