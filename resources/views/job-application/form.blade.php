@@ -207,23 +207,161 @@
                 </div>
             </div>
 
-            <!-- 🆕 UPDATED: 3. Data Keluarga dengan design yang baru -->
-            <div class="form-section" data-section="3">
-                <h2 class="section-title">📋 Data Keluarga</h2>
-                
-                <!-- 🆕 UPDATED: Container untuk family members (akan di-populate oleh JavaScript) -->
-                <div id="familyMembers">
-                    <!-- 4 kolom default akan di-generate oleh JavaScript -->
+            <!-- 3. Data Keluarga -->
+<div class="form-section" data-section="3">
+    <h2 class="section-title">Data Keluarga <span class="required-star">*</span></h2>
+    
+   
+    
+    <div id="familyMembers">
+        <!-- Ayah - Index 0 -->
+        <div class="dynamic-group" data-index="0">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="form-group">
+                    <label class="form-label">Hubungan Keluarga <span class="required-star">*</span></label>
+                    <select name="family_members[0][relationship]" class="form-input" required>
+                        <option value="">Pilih Hubungan</option>
+                        <option value="Ayah" selected>Ayah</option>
+                        <option value="Ibu">Ibu</option>
+                        <option value="Saudara">Saudara</option>
+                        <option value="Anak">Anak</option>
+
+                    </select>
                 </div>
-                
-                <!-- 🆕 UPDATED: Tombol tambah anggota keluarga -->
-                <div style="margin-top: 16px;">
-                    <button type="button" class="btn-add" onclick="addFamilyMember()">
-                        ➕ Tambah Anggota Keluarga Lainnya
-                    </button>
+                <div class="form-group">
+                    <label class="form-label">Nama <span class="required-star">*</span></label>
+                    <input type="text" name="family_members[0][name]" class="form-input" placeholder="Nama lengkap ayah" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Usia <span class="required-star">*</span></label>
+                    <input type="number" name="family_members[0][age]" class="form-input" min="0" max="120" placeholder="Contoh: 55" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Pendidikan <span class="required-star">*</span></label>
+                    <input type="text" name="family_members[0][education]" class="form-input" placeholder="Contoh: SMA, S1, dll" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Pekerjaan <span class="required-star">*</span></label>
+                    <input type="text" name="family_members[0][occupation]" class="form-input" placeholder="Contoh: Pensiunan, Petani, dll" required>
+                </div>
+                <div class="form-group flex items-end">
+                    <button type="button" class="btn-remove" onclick="removeFamilyMember(this)">Hapus</button>
                 </div>
             </div>
+        </div>
 
+        <!-- Ibu - Index 1 -->
+        <div class="dynamic-group" data-index="1">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="form-group">
+                    <label class="form-label">Hubungan Keluarga <span class="required-star">*</span></label>
+                    <select name="family_members[1][relationship]" class="form-input" required>
+                        <option value="">Pilih Hubungan</option>
+                        <option value="Ayah">Ayah</option>
+                        <option value="Ibu" selected>Ibu</option>
+                        <option value="Pasangan">Pasangan</option>
+                        <option value="Anak">Anak</option>
+                        <option value="Saudara">Saudara</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nama <span class="required-star">*</span></label>
+                    <input type="text" name="family_members[1][name]" class="form-input" placeholder="Nama lengkap ibu" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Usia <span class="required-star">*</span></label>
+                    <input type="number" name="family_members[1][age]" class="form-input" min="0" max="120" placeholder="Contoh: 45" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Pendidikan <span class="required-star">*</span></label>
+                    <input type="text" name="family_members[1][education]" class="form-input" placeholder="Contoh: SMA, S1, dll" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Pekerjaan <span class="required-star">*</span></label>
+                    <input type="text" name="family_members[1][occupation]" class="form-input" placeholder="Contoh: Ibu rumah tangga, Guru, dll" required>
+                </div>
+                <div class="form-group flex items-end">
+                    <button type="button" class="btn-remove" onclick="removeFamilyMember(this)">Hapus</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pasangan - Index 2 -->
+        <div class="dynamic-group" data-index="2">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="form-group">
+                    <label class="form-label">Hubungan Keluarga <span class="required-star">*</span></label>
+                    <select name="family_members[2][relationship]" class="form-input" required>
+                        <option value="">Pilih Hubungan</option>
+                        <option value="Ayah">Ayah</option>
+                        <option value="Ibu">Ibu</option>
+                        <option value="Pasangan" selected>Pasangan</option>
+                        <option value="Anak">Anak</option>
+                        <option value="Saudara">Saudara</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nama <span class="required-star">*</span></label>
+                    <input type="text" name="family_members[2][name]" class="form-input" placeholder="Nama lengkap pasangan (kosongkan jika belum menikah)" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Usia <span class="required-star">*</span></label>
+                    <input type="number" name="family_members[2][age]" class="form-input" min="0" max="120" placeholder="Contoh: 30" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Pendidikan <span class="required-star">*</span></label>
+                    <input type="text" name="family_members[2][education]" class="form-input" placeholder="Contoh: SMA, S1, dll" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Pekerjaan <span class="required-star">*</span></label>
+                    <input type="text" name="family_members[2][occupation]" class="form-input" placeholder="Contoh: Karyawan swasta, Wiraswasta, dll" required>
+                </div>
+                <div class="form-group flex items-end">
+                    <button type="button" class="btn-remove" onclick="removeFamilyMember(this)">Hapus</button>
+                </div>
+            </div>
+        </div>
+
+                    <!-- Anak - Index 3 -->
+                    <div class="dynamic-group" data-index="3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="form-group">
+                                <label class="form-label">Hubungan Keluarga <span class="required-star">*</span></label>
+                                <select name="family_members[3][relationship]" class="form-input" required>
+                                    <option value="">Pilih Hubungan</option>
+                                    <option value="Ayah">Ayah</option>
+                                    <option value="Ibu">Ibu</option>
+                                    <option value="Pasangan">Pasangan</option>
+                                    <option value="Anak" selected>Anak</option>
+                                    <option value="Saudara">Saudara</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Nama <span class="required-star">*</span></label>
+                                <input type="text" name="family_members[3][name]" class="form-input" placeholder="Nama lengkap anak (kosongkan jika belum punya)" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Usia <span class="required-star">*</span></label>
+                                <input type="number" name="family_members[3][age]" class="form-input" min="0" max="120" placeholder="Contoh: 7" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Pendidikan <span class="required-star">*</span></label>
+                                <input type="text" name="family_members[3][education]" class="form-input" placeholder="Contoh: SD, SMP, belum sekolah" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Pekerjaan <span class="required-star">*</span></label>
+                                <input type="text" name="family_members[3][occupation]" class="form-input" placeholder="Contoh: Pelajar, belum bekerja" required>
+                            </div>
+                            <div class="form-group flex items-end">
+                                <button type="button" class="btn-remove" onclick="removeFamilyMember(this)">Hapus</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- UBAH text button menjadi: -->
+                <button type="button" class="btn-add" onclick="addFamilyMember()">+ Tambah Anggota Keluarga Lainnya</button>
+            </div>
             <!-- 4. Pendidikan -->
             <div class="form-section" data-section="4">
                 <h2 class="section-title">Latar Belakang Pendidikan</h2>

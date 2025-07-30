@@ -1066,3 +1066,14 @@
         transform: none;
     }
 }
+
+/* Family hint box styles */
+.family-hint {
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #1e40af;
+}

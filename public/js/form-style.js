@@ -631,7 +631,7 @@
     }
     
     // Dynamic form functions
-    let familyIndex = 0;
+    let familyIndex = 3;
     let educationIndex = 0;
     let nonFormalEducationIndex = 0;
     let workIndex = 0;
@@ -639,12 +639,8 @@
     let socialActivityIndex = 0;
     let achievementIndex = 0;
 
-    // 🆕 UPDATED: Get default family member template with pre-selected relationships
-    function getDefaultFamilyMember(index) {
-        // Default relationship options untuk 4 kolom pertama
-        const defaultRelationships = ['Ayah', 'Ibu', 'Adik', 'Kakak'];
-        const defaultRelationship = defaultRelationships[index] || '';
-        
+    // Get default templates
+        function getDefaultFamilyMember(index) {
         return `
             <div class="dynamic-group" data-index="${index}">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -652,12 +648,10 @@
                         <label class="form-label">Hubungan Keluarga <span class="required-star">*</span></label>
                         <select name="family_members[${index}][relationship]" class="form-input" required>
                             <option value="">Pilih Hubungan</option>
-                            <option value="Ayah" ${defaultRelationship === 'Ayah' ? 'selected' : ''}>Ayah</option>
-                            <option value="Ibu" ${defaultRelationship === 'Ibu' ? 'selected' : ''}>Ibu</option>
-                            <option value="Adik" ${defaultRelationship === 'Adik' ? 'selected' : ''}>Adik</option>
-                            <option value="Kakak" ${defaultRelationship === 'Kakak' ? 'selected' : ''}>Kakak</option>
                             <option value="Pasangan">Pasangan</option>
                             <option value="Anak">Anak</option>
+                            <option value="Ayah">Ayah</option>
+                            <option value="Ibu">Ibu</option>
                             <option value="Saudara">Saudara</option>
                         </select>
                     </div>
@@ -773,15 +767,14 @@
         const container = document.getElementById('familyMembers');
         container.insertAdjacentHTML('beforeend', getDefaultFamilyMember(familyIndex));
         attachEventListeners();
-        updateRemoveButtonsForFamily();
+        updateRemoveButtons('familyMembers');
     };
 
-    // 🆕 UPDATED: Updated removeFamilyMember function untuk memastikan minimal 1 tetap ada
     window.removeFamilyMember = function(button) {
         const container = document.getElementById('familyMembers');
         if (container.children.length > 1) {
             button.closest('.dynamic-group').remove();
-            updateRemoveButtonsForFamily();
+            updateRemoveButtons('familyMembers');
             saveFormData();
         } else {
             showAlert('Minimal harus ada 1 anggota keluarga.', 'warning');
@@ -1254,25 +1247,21 @@
         const container = document.getElementById(containerId);
         const removeButtons = container.querySelectorAll('.btn-remove');
         
-        removeButtons.forEach((button, index) => {
-            if (index === 0 && container.children.length > 1) {
-                button.style.display = 'none';
-            } else if (index > 0) {
+        // For family members, always show remove button since user can delete default fields if not needed
+        if (containerId === 'familyMembers') {
+            removeButtons.forEach(button => {
                 button.style.display = 'inline-block';
-            }
-        });
-    }
-
-    // 🆕 NEW: Update function updateRemoveButtons khusus untuk family
-    function updateRemoveButtonsForFamily() {
-        const container = document.getElementById('familyMembers');
-        const removeButtons = container.querySelectorAll('.btn-remove');
-        
-        // Semua tombol remove bisa digunakan (tidak ada yang disembunyikan)
-        // Tapi pastikan minimal 1 anggota keluarga tetap ada
-        removeButtons.forEach((button) => {
-            button.style.display = 'inline-block';
-        });
+            });
+        } else {
+            // Original logic for other containers
+            removeButtons.forEach((button, index) => {
+                if (index === 0 && container.children.length > 1) {
+                    button.style.display = 'none';
+                } else if (index > 0) {
+                    button.style.display = 'inline-block';
+                }
+            });
+        }
     }
 
     // ✅ KEEP: Existing cleanEmptyOptionalFields function
@@ -1344,25 +1333,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // 🆕 UPDATED: Initialize dengan 4 anggota keluarga default
-        // Reset familyIndex ke 0 dulu
-        familyIndex = 0;
-        
-        // Clear existing content (jika ada)
-        const familyContainer = document.getElementById('familyMembers');
-        if (familyContainer) {
-            familyContainer.innerHTML = '';
-            
-            // Tambahkan 4 anggota keluarga default
-            for (let i = 0; i < 4; i++) {
-                familyContainer.insertAdjacentHTML('beforeend', getDefaultFamilyMember(i));
-                familyIndex = i;
-            }
-            
-            // Update remove button states - semua kolom bisa dihapus
-            updateRemoveButtonsForFamily();
-        }
-
         loadFormData();
         initializeAddressCopy();
         initializeNikField(); // 🆕 NEW: Initialize NIK field properly
@@ -1432,7 +1402,7 @@
         enhanceFormSubmissionValidation();
 
         // Initialize remove button states
-        updateRemoveButtonsForFamily();
+        updateRemoveButtons('familyMembers');
         updateRemoveButtons('formalEducation');
         updateRemoveButtons('languageSkills');
 
