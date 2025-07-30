@@ -207,48 +207,33 @@
                 </div>
             </div>
 
-            <!-- 3. Data Keluarga -->
+            <!-- 🆕 UPDATED: 3. Data Keluarga dengan design yang baru -->
             <div class="form-section" data-section="3">
-                <h2 class="section-title">Data Keluarga <span class="required-star">*</span></h2>
-                <p class="text-sm text-gray-600 mb-4">Minimal harus mengisi 1 anggota keluarga</p>
+                <h2 class="section-title">📋 Data Keluarga</h2>
                 
-                <div id="familyMembers">
-                    <div class="dynamic-group" data-index="0">
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div class="form-group">
-                                <label class="form-label">Hubungan Keluarga <span class="required-star">*</span></label>
-                                <select name="family_members[0][relationship]" class="form-input" required>
-                                    <option value="">Pilih Hubungan</option>
-                                    <option value="Pasangan">Pasangan</option>
-                                    <option value="Anak">Anak</option>
-                                    <option value="Ayah">Ayah</option>
-                                    <option value="Ibu">Ibu</option>
-                                    <option value="Saudara">Saudara</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Nama <span class="required-star">*</span></label>
-                                <input type="text" name="family_members[0][name]" class="form-input" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Usia <span class="required-star">*</span></label>
-                                <input type="number" name="family_members[0][age]" class="form-input" min="0" max="120" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Pendidikan <span class="required-star">*</span></label>
-                                <input type="text" name="family_members[0][education]" class="form-input" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Pekerjaan <span class="required-star">*</span></label>
-                                <input type="text" name="family_members[0][occupation]" class="form-input" required>
-                            </div>
-                            <div class="form-group flex items-end">
-                                <button type="button" class="btn-remove" onclick="removeFamilyMember(this)" style="display:none">Hapus</button>
-                            </div>
-                        </div>
+                <!-- 🆕 NEW: Instruksi untuk user -->
+                <div class="instructions-section" style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                    <div style="color: #0369a1; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                        <span>💡</span>
+                        <span>Petunjuk Pengisian</span>
                     </div>
+                    <p style="color: #075985; font-size: 14px; margin: 0;">
+                        Silakan isi data keluarga Anda. Sudah disiapkan 4 kolom dengan hubungan keluarga default (Ayah, Ibu, Adik, Kakak). 
+                        <strong>Hapus kolom yang tidak sesuai</strong> dengan kondisi keluarga Anda, atau <strong>tambah kolom baru</strong> jika diperlukan.
+                    </p>
                 </div>
-                <button type="button" class="btn-add" onclick="addFamilyMember()">+ Tambah Anggota Keluarga</button>
+                
+                <!-- 🆕 UPDATED: Container untuk family members (akan di-populate oleh JavaScript) -->
+                <div id="familyMembers">
+                    <!-- 4 kolom default akan di-generate oleh JavaScript -->
+                </div>
+                
+                <!-- 🆕 UPDATED: Tombol tambah anggota keluarga -->
+                <div style="margin-top: 16px;">
+                    <button type="button" class="btn-add" onclick="addFamilyMember()">
+                        ➕ Tambah Anggota Keluarga Lainnya
+                    </button>
+                </div>
             </div>
 
             <!-- 4. Pendidikan -->
