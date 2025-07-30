@@ -211,18 +211,6 @@
             <div class="form-section" data-section="3">
                 <h2 class="section-title">📋 Data Keluarga</h2>
                 
-                <!-- 🆕 NEW: Instruksi untuk user -->
-                <div class="instructions-section" style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
-                    <div style="color: #0369a1; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-                        <span>💡</span>
-                        <span>Petunjuk Pengisian</span>
-                    </div>
-                    <p style="color: #075985; font-size: 14px; margin: 0;">
-                        Silakan isi data keluarga Anda. Sudah disiapkan 4 kolom dengan hubungan keluarga default (Ayah, Ibu, Adik, Kakak). 
-                        <strong>Hapus kolom yang tidak sesuai</strong> dengan kondisi keluarga Anda, atau <strong>tambah kolom baru</strong> jika diperlukan.
-                    </p>
-                </div>
-                
                 <!-- 🆕 UPDATED: Container untuk family members (akan di-populate oleh JavaScript) -->
                 <div id="familyMembers">
                     <!-- 4 kolom default akan di-generate oleh JavaScript -->
