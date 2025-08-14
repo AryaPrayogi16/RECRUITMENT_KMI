@@ -1316,19 +1316,7 @@
             nikField.style.color = '';
             nikField.placeholder = 'Masukkan NIK 16 digit atau gunakan scan KTP';
             
-            // Add helpful instruction
-            const instructionDiv = document.createElement('div');
-            instructionDiv.className = 'nik-instruction';
-            instructionDiv.innerHTML = `
-                <div style="margin-top: 4px; padding: 6px 8px; background: #eff6ff; border: 1px solid #3b82f6; 
-                            border-radius: 4px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
-                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span>💡 <strong>Tips:</strong> Gunakan fitur scan KTP untuk pengisian NIK otomatis yang lebih mudah dan akurat</span>
-                </div>
-            `;
-            nikField.parentNode.appendChild(instructionDiv);
+
         }
     }
 

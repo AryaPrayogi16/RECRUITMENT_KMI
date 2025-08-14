@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <link href="{{ asset('css/form-style.css') }}" rel="stylesheet">
-    <link href="{{ asset('css/ktp-ocr.css') }}" rel="stylesheet">
+    <!-- <link href="{{ asset('css/ktp-ocr.css') }}" rel="stylesheet"> -->
 
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -793,6 +793,6 @@
         });
     </script>
     <script src="{{ asset('js/form-style.js') }}"></script>
-    <script src="{{ asset('js/ktp-ocr.js') }}"></script>
+    <!-- <script src="{{ asset('js/ktp-ocr.js') }}"></script> -->
 </body>
 </html>

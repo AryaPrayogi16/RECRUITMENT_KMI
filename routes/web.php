@@ -295,6 +295,8 @@ Route::prefix('api')->middleware(['auth'])->group(function () {
     Route::post('/cleanup-orphaned-folders', [CandidateController::class, 'cleanupOrphanedFolders'])->name('api.cleanup-orphaned-folders');
 });
 
+
+
 // ============================================
 // DEVELOPMENT/STAGING ONLY ROUTES
 // ============================================
@@ -699,3 +701,7 @@ if (app()->environment(['local', 'testing', 'staging'])) {
         
     })->name('debug.form.submit');
 }
+
+Route::get('/healthz', function () {
+    return response()->json(['status' => 'ok']);
+});
