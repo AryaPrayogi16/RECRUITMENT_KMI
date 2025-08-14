@@ -12,6 +12,10 @@ Route::get('/user', function (Request $request) {
 Route::middleware(['throttle:10,1'])->group(function () {
     Route::get('/demo-users', [AuthController::class, 'getDemoUsers']);
 });
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 Route::get('/healthz', function () {
     return response()->json(['status' => 'ok']);
 });

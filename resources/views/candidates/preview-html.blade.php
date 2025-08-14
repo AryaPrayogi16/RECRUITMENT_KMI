@@ -1161,6 +1161,7 @@
                 </tr>
             </table>
             
+           
         </div>
         @else
         <div class="compact-section">

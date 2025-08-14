@@ -955,6 +955,7 @@
         color: #1a202c !important;
     }
     
+    /* ✅ NEW: Pattern combination print styles */
     .disc-pattern-combination {
         background: white !important;
         border: 2px solid #8b5cf6 !important;
@@ -974,16 +975,13 @@
     .disc-trait-tag.pattern-weakness,
     .disc-trait-tag.pattern-environment,
     .disc-trait-tag.pattern-communication,
-    .disc-trait-tag.pattern-career,
-    .disc-trait-tag.pattern-motivation {
+    .disc-trait-tag.pattern-career {
         background: white !important;
         border: 1px solid #6b7280 !important;
         color: #1a202c !important;
         -webkit-print-color-adjust: exact;
         color-adjust: exact;
     }
-    
-
     
     .disc-pattern-header::before {
         display: none;
@@ -995,11 +993,51 @@
 }
 
 /* ============================================
-   ACCESSIBILITY IMPROVEMENTS
+   ✅ NEW: DARK MODE SUPPORT (OPTIONAL)
    ============================================ */
 
-.disc-trait-tag:focus,
-.disc-trait-tag.pattern-motivation:focus {
+@media (prefers-color-scheme: dark) {
+    .disc-pattern-combination {
+        background: #1a202c;
+        border-color: #8b5cf6;
+        color: #f7fafc;
+    }
+    
+    .disc-pattern-header {
+        background: linear-gradient(135deg, #6b46c1, #8b5cf6);
+    }
+    
+    .disc-trait-tag.pattern-strength {
+        background: linear-gradient(135deg, #064e3b, #047857);
+        color: #d1fae5;
+    }
+    
+    .disc-trait-tag.pattern-weakness {
+        background: linear-gradient(135deg, #78350f, #92400e);
+        color: #fef3c7;
+    }
+    
+    .disc-trait-tag.pattern-environment {
+        background: linear-gradient(135deg, #064e3b, #065f46);
+        color: #d1fae5;
+    }
+    
+    .disc-trait-tag.pattern-communication {
+        background: linear-gradient(135deg, #0c4a6e, #0891b2);
+        color: #e0f2fe;
+    }
+    
+    .disc-trait-tag.pattern-career {
+        background: linear-gradient(135deg, #581c87, #7c3aed);
+        color: #f3e8ff;
+    }
+}
+
+/* ============================================
+   ✅ NEW: ACCESSIBILITY IMPROVEMENTS
+   ============================================ */
+
+.disc-trait-tag:focus {
     outline: 2px solid #4f46e5;
     outline-offset: 2px;
 }
@@ -1015,8 +1053,7 @@
     .disc-trait-tag.pattern-weakness,
     .disc-trait-tag.pattern-environment,
     .disc-trait-tag.pattern-communication,
-    .disc-trait-tag.pattern-career,
-    .disc-trait-tag.pattern-motivation {
+    .disc-trait-tag.pattern-career {
         border-width: 2px;
         font-weight: 600;
     }
@@ -1026,36 +1063,361 @@
     }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-    .disc-trait-tag.pattern-motivation {
-        background: linear-gradient(135deg, #7f1d1d, #991b1b);
-        color: #fecaca;
-    }
-    
-    .disc-pattern-combination .disc-character-main {
-        background: #1a202c;
-        border-color: #374151;
-        color: #f7fafc;
-    }
-    
+/* ============================================
+   ✅ NEW: CHARACTER ANALYSIS STYLES
+   ============================================ */
 
+.disc-character-analysis {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    margin-bottom: 25px;
+    border-left: 4px solid #8b5cf6;
+}
+
+.disc-character-main {
+    background: linear-gradient(135deg, #f8fafc, #e0f2fe);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #e2e8f0;
+}
+
+.disc-character-header {
+    margin-bottom: 20px;
+}
+
+.disc-character-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.disc-character-title i {
+    color: #8b5cf6;
+}
+
+.disc-character-description {
+    color: #4a5568;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.disc-character-traits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.disc-character-trait-card {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.disc-character-trait-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.disc-character-trait-card.strengths {
+    border-left: 4px solid #10b981;
+}
+
+.disc-character-trait-card.weaknesses {
+    border-left: 4px solid #f59e0b;
+}
+
+.disc-trait-card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.disc-trait-card-title i {
+    font-size: 0.8rem;
+}
+
+.disc-character-trait-card.strengths .disc-trait-card-title i {
+    color: #10b981;
+}
+
+.disc-character-trait-card.weaknesses .disc-trait-card-title i {
+    color: #f59e0b;
+}
+
+.disc-trait-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.disc-trait-item {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.disc-trait-item.strength {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+    border: 1px solid #10b981;
+}
+
+.disc-trait-item.weakness {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.disc-character-summary {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+}
+
+.summary-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #8b5cf6;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.summary-content {
+    color: #4a5568;
+    line-height: 1.6;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.disc-dominant-dimension {
+    background: linear-gradient(135deg, #fef7cd, #fef3c7);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #fbbf24;
+}
+
+.disc-dimension-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.disc-dimension-detail-card {
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.disc-detail-card-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.disc-detail-card-title i {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.disc-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.disc-detail-item {
+    font-size: 0.8rem;
+    color: #4a5568;
+    padding: 2px 0;
+    border-bottom: 1px dotted #e2e8f0;
+}
+
+.disc-detail-item:last-child {
+    border-bottom: none;
+}
+
+.disc-dimension-insight {
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.insight-content {
+    color: #4a5568;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.insight-content i {
+    color: #6b7280;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.disc-practical-recommendations {
+    background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #c084fc;
+}
+
+.disc-recommendations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.disc-recommendation-card {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.disc-recommendation-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.disc-recommendation-card.communication {
+    border-left: 4px solid #3b82f6;
+}
+
+.disc-recommendation-card.motivation {
+    border-left: 4px solid #ef4444;
+}
+
+.disc-recommendation-card.career {
+    border-left: 4px solid #8b5cf6;
+}
+
+.disc-recommendation-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.disc-recommendation-card.communication .disc-recommendation-title i {
+    color: #3b82f6;
+}
+
+.disc-recommendation-card.motivation .disc-recommendation-title i {
+    color: #ef4444;
+}
+
+.disc-recommendation-card.career .disc-recommendation-title i {
+    color: #8b5cf6;
+}
+
+.disc-recommendation-content {
+    color: #4a5568;
+}
+
+.recommendation-item {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin: 0 0 6px 0;
+}
+
+.recommendation-item:last-child {
+    margin-bottom: 0;
+}
+
+/* ============================================
+   RESPONSIVE - CHARACTER ANALYSIS
+   ============================================ */
+
+@media (max-width: 768px) {
+    .disc-character-traits-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .disc-dimension-details-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .disc-recommendations-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .disc-character-analysis {
+        padding: 20px;
+    }
+    
+    .disc-character-main,
+    .disc-dominant-dimension,
+    .disc-practical-recommendations {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .disc-character-title {
+        font-size: 1rem;
+    }
+    
+    .disc-trait-list {
+        gap: 4px;
+    }
+    
+    .disc-trait-item {
+        font-size: 0.75rem;
+        padding: 3px 6px;
+    }
+    
+    .summary-content,
+    .insight-content {
+        font-size: 0.85rem;
+    }
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-    .disc-trait-tag.pattern-motivation:hover,
-    .disc-trait-tag.pattern-strength:hover,
-    .disc-trait-tag.pattern-weakness:hover,
-    .disc-trait-tag.pattern-environment:hover,
-    .disc-trait-tag.pattern-communication:hover,
-    .disc-trait-tag.pattern-career:hover {
-        transform: none;
-        transition: none;
-    }
-    
-    .disc-pattern-combination {
+    .disc-pattern-combination,
+    .disc-trait-tag.pattern-strength,
+    .disc-trait-tag.pattern-weakness,
+    .disc-trait-tag.pattern-environment,
+    .disc-trait-tag.pattern-communication,
+    .disc-trait-tag.pattern-career {
         animation: none;
+        transition: none;
     }
     
     .disc-pattern-header:hover {

@@ -636,7 +636,7 @@
                 if (data.success) {
                     // Clear localStorage after successful submit
                     localStorage.removeItem('kraeplin_answers_' + SESSION_ID);
-                    alert('Test berhasil diselesaikan!');
+                   
                     window.location.href = data.redirect_url;
                 } else {
                     throw new Error(data.message || 'Unknown error');

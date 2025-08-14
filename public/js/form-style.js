@@ -1525,13 +1525,37 @@
         const ocrValidated = sessionStorage.getItem('nik_locked') === 'true';
         const savedNikValue = sessionStorage.getItem('extracted_nik');
         
-        // Let the KTP OCR system handle the initial state
-        // This function will be called after OCR initialization
-        console.log('NIK field initialization - waiting for OCR system...', {
-            ocrValidated,
-            savedNikValue,
-            fieldState: nikField.readOnly ? 'locked' : 'open'
-        });
+        if (ocrValidated && savedNikValue) {
+            // Restore OCR state
+            nikField.value = savedNikValue;
+            nikField.readOnly = true;
+            nikField.style.backgroundColor = '#ecfdf5';
+            nikField.style.borderColor = '#10b981';
+            nikField.style.color = '#065f46';
+            nikField.classList.add('ocr-filled');
+            addOcrIndicator(nikField);
+            console.log('NIK field restored from OCR session:', savedNikValue);
+        } else {
+            // 🆕 UPDATED: NIK field is now editable by default with helpful placeholder
+            nikField.readOnly = false;
+            nikField.style.backgroundColor = '';
+            nikField.style.color = '';
+            nikField.placeholder = 'Masukkan NIK 16 digit atau gunakan scan KTP';
+            
+            // Add helpful instruction
+            const instructionDiv = document.createElement('div');
+            instructionDiv.className = 'nik-instruction';
+            instructionDiv.innerHTML = `
+                <div style="margin-top: 4px; padding: 6px 8px; background: #eff6ff; border: 1px solid #3b82f6; 
+                            border-radius: 4px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>💡 <strong>Tips:</strong> Gunakan fitur scan KTP untuk pengisian NIK otomatis yang lebih mudah dan akurat</span>
+                </div>
+            `;
+            nikField.parentNode.appendChild(instructionDiv);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function() {

@@ -90,8 +90,15 @@ class DiscController extends Controller
                 'error' => $e->getMessage()
             ]);
             
-            return redirect()->route('job.application.form')
-                ->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi.');
+            return view('disc.instructions', [
+                'candidate' => (object) [
+                    'id' => 1,
+                    'candidate_code' => $candidateCode
+                ],
+                'incompleteSession' => null,
+                'timeLimit' => null,
+                'totalSections' => 24
+            ]);
         }
     }
 
