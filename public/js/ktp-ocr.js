@@ -1,10 +1,10 @@
-// Enhanced KTP OCR Script - Complete Version with Flexible NIK Management
+// Enhanced KTP OCR Script - Minimal Enhancement (Keep Working Base)
 (function() {
     'use strict';
 
-    console.log('🚀 Loading Enhanced KTP OCR Script with Flexible NIK Management...');
+    console.log('🚀 Loading KTP OCR Script - Minimal Enhancement...');
 
-    // ✅ KEEP: Original OCR Configuration (TIDAK DIUBAH)
+    // ✅ KEEP: Original working OCR Configuration
     const OCR_CONFIG = {
         language: 'eng',
         logger: m => {
@@ -19,11 +19,25 @@
         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .:/-()%',
     };
 
-    // ✅ KEEP: Original NIK patterns
+    // 🆕 ENHANCED: Better NIK patterns (keeping simple approach)
     const NIK_PATTERNS = [
+        // Original working patterns first
         /(?:NIK|N\s*I\s*K|N1K|NlK)[\s:]*(\d{16})/gi,
         /\b(\d{16})\b/g,
-        /(\d{4})\s*(\d{4})\s*(\d{4})\s*(\d{4})/g
+        /(\d{4})\s*(\d{4})\s*(\d{4})\s*(\d{4})/g,
+        
+        // Additional patterns for better recognition
+        /NIK\s*:?\s*(\d{16})/gi,
+        /N\s*I\s*K\s*:?\s*(\d{16})/gi,
+        /NlK\s*:?\s*(\d{16})/gi,
+        /N1K\s*:?\s*(\d{16})/gi,
+        
+        // Spaced versions
+        /NIK\s*:?\s*(\d{4}\s+\d{4}\s+\d{4}\s+\d{4})/gi,
+        /N\s*I\s*K\s*:?\s*(\d{4}\s+\d{4}\s+\d{4}\s+\d{4})/gi,
+        
+        // Line-based patterns
+        /^.*NIK.*?(\d{16}).*$/gmi,
     ];
 
     let ocrWorker = null;
@@ -31,9 +45,9 @@
     let currentImageFile = null;
     let processingAttempts = 0;
     const maxAttempts = 3;
-    let nikLocked = false; // Track NIK lock status
+    let nikLocked = true;
 
-    // ✅ KEEP: Original OCR initialization
+    // ✅ KEEP: Original working OCR initialization
     async function initializeOCR() {
         try {
             console.log('🔄 Initializing OCR (optimized for NIK)...');
@@ -76,131 +90,135 @@
         }
     }
 
-    // 🆕 UPDATED: Enhanced NIK field locking - more user-friendly
-    function lockNikField(nik) {
+    function lockNikFieldDefault() {
         const nikField = document.getElementById('nik');
         if (nikField) {
-            // Remove any existing instruction
-            const existingInstruction = nikField.parentNode.querySelector('.nik-instruction');
-            if (existingInstruction) {
-                existingInstruction.remove();
-            }
+            nikField.value = '';
+            nikField.readOnly = true;
+            nikField.style.backgroundColor = '#f9fafb';
+            nikField.style.borderColor = '#d1d5db';
+            nikField.style.color = '#9ca3af';
+            nikField.placeholder = 'Gunakan scan KTP untuk mengisi NIK';
+            nikField.classList.add('nik-locked');
+            
+            const existingIndicators = nikField.parentNode.querySelectorAll('.nik-instruction, .ocr-indicator, .nik-locked-indicator');
+            existingIndicators.forEach(indicator => indicator.remove());
+            
+            addScanInstructions(nikField);
+            
+            nikLocked = true;
+            console.log('🔒 NIK field locked - scan required for input');
+        }
+    }
+
+    function addScanInstructions(nikField) {
+        const instructions = document.createElement('div');
+        instructions.className = 'nik-scan-instructions';
+        nikField.parentNode.appendChild(instructions);
+    }
+
+    function startScanProcess() {
+        const fileInput = document.getElementById('ktp-image-input');
+        if (fileInput) {
+            fileInput.click();
+        } else {
+            showOCRMessage('⚠️ Fitur scan KTP belum siap. Silakan refresh halaman dan coba lagi.', 'warning');
+        }
+    }
+
+    function lockNikFieldWithOCR(nik) {
+        const nikField = document.getElementById('nik');
+        if (nikField) {
+            const existingInstructions = nikField.parentNode.querySelectorAll('.nik-scan-instructions, .nik-success-indicator');
+            existingInstructions.forEach(instruction => instruction.remove());
             
             nikField.value = nik;
             nikField.readOnly = true;
             nikField.style.backgroundColor = '#ecfdf5';
             nikField.style.borderColor = '#10b981';
             nikField.style.color = '#065f46';
+            nikField.classList.remove('nik-locked');
             nikField.classList.add('ocr-filled');
             
-            // Add enhanced lock icon with more options
-            addEnhancedLockIcon(nikField);
+            addOCRSuccessIndicator(nikField, nik);
             
             nikLocked = true;
-            console.log('🔒 NIK field locked with value:', nik);
+            console.log('🔒 NIK field locked with OCR value:', nik);
             
-            // Trigger form events untuk integration dengan form validation
+            sessionStorage.setItem('nik_locked', 'true');
+            sessionStorage.setItem('extracted_nik', nik);
+            
             nikField.dispatchEvent(new Event('input', { bubbles: true }));
             nikField.dispatchEvent(new Event('change', { bubbles: true }));
         }
     }
 
-    // 🆕 UPDATED: More user-friendly unlock function
-    function unlockNikField() {
-        const nikField = document.getElementById('nik');
-        if (!nikField) return;
+    function addOCRSuccessIndicator(nikField, nik) {
+        const indicator = document.createElement('div');
+        indicator.className = 'nik-success-indicator';
+        indicator.innerHTML = `
+            <div style="margin-top: 4px; padding: 8px 12px; background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); 
+                        border: 1px solid #10b981; border-radius: 6px; font-size: 12px; color: #065f46;">
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span><strong>✅ Success!</strong></span>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.7); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px;">
+                    <strong>NIK:</strong> ${nik}
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <button type="button" onclick="window.KTPOcr.retryScan()" 
+                            style="flex: 1; padding: 4px 8px; background: #3b82f6; color: white; border: none; 
+                                   border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 500;">
+                        🔄 Scan Ulang
+                    </button>
+                    <button type="button" onclick="window.KTPOcr.resetScan()" 
+                            style="flex: 1; padding: 4px 8px; background: #6b7280; color: white; border: none; 
+                                   border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 500;">
+                        🔄 Reset
+                    </button>
+                </div>
+            </div>
+        `;
+        nikField.parentNode.appendChild(indicator);
+    }
 
-        // Show confirmation before unlocking
+    function retryScan() {
         const userConfirmed = confirm(
-            'Apakah Anda yakin ingin membatalkan hasil scan KTP?\n\n' +
-            'Setelah dibatalkan, Anda harus mengisi NIK secara manual atau scan ulang KTP.'
+            'Scan KTP ulang?\n\n' +
+            'NIK yang sudah tersimpan akan diganti dengan hasil scan yang baru.\n\n' +
+            'Pastikan foto KTP Anda jelas dan fokus.'
         );
         
         if (!userConfirmed) return;
+        
+        processingAttempts = 0;
+        currentImageFile = null;
+        startScanProcess();
+        showOCRMessage('💡 Silakan pilih foto KTP yang baru atau ambil foto ulang.', 'info');
+    }
 
-        nikField.readOnly = false;
-        nikField.style.backgroundColor = '';
-        nikField.style.borderColor = '';
-        nikField.style.color = '';
-        nikField.classList.remove('ocr-filled');
-        nikField.value = '';
-        nikField.placeholder = 'Masukkan NIK 16 digit atau gunakan scan KTP';
+    function resetScan() {
+        const userConfirmed = confirm(
+            'Reset scan KTP?\n\n' +
+            'NIK yang sudah tersimpan akan dihapus dan Anda perlu scan ulang dari awal.'
+        );
         
-        // Remove lock icon
-        removeLockIcon(nikField);
+        if (!userConfirmed) return;
         
-        // Add back helpful instruction
-        addHelpfulInstruction(nikField);
+        processingAttempts = 0;
+        currentImageFile = null;
+        isOcrProcessing = false;
         
-        nikLocked = false;
-        console.log('🔓 NIK field unlocked by user request');
-        
-        // Clear OCR session data
         sessionStorage.removeItem('nik_locked');
         sessionStorage.removeItem('extracted_nik');
-        sessionStorage.removeItem('ktpFileData');
         
-        // Focus on the field for immediate editing
-        nikField.focus();
-        
-        showOCRMessage('✅ NIK field telah dibuka untuk pengeditan manual. Anda dapat mengisi NIK secara manual atau scan ulang KTP.', 'info');
+        lockNikFieldDefault();
     }
 
-    // 🆕 NEW: Add helpful instruction to NIK field
-    function addHelpfulInstruction(nikField) {
-        // Remove existing instruction first
-        const existing = nikField.parentNode.querySelector('.nik-instruction');
-        if (existing) existing.remove();
-        
-        const instructionDiv = document.createElement('div');
-        instructionDiv.className = 'nik-instruction';
-        instructionDiv.innerHTML = `
-            <div style="margin-top: 4px; padding: 6px 8px; background: #eff6ff; border: 1px solid #3b82f6; 
-                        border-radius: 4px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
-                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span>💡 <strong>Tips:</strong> Gunakan fitur scan KTP untuk pengisian NIK otomatis yang lebih mudah dan akurat</span>
-            </div>
-        `;
-        nikField.parentNode.appendChild(instructionDiv);
-    }
-
-    // 🆕 UPDATED: Enhanced lock icon with better UX
-    function addEnhancedLockIcon(nikField) {
-        // Remove existing icon
-        removeLockIcon(nikField);
-        
-        const lockIcon = document.createElement('div');
-        lockIcon.className = 'nik-lock-icon';
-        lockIcon.innerHTML = `
-            <div style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); 
-                        display: flex; align-items: center; gap: 6px; color: #10b981; font-size: 12px; font-weight: 500; z-index: 10;">
-                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
-                </svg>
-                <span style="font-weight: 600;">KTP Scan</span>
-                <button type="button" onclick="window.KTPOcr.unlockField()" 
-                        style="margin-left: 4px; padding: 2px 6px; background: #ef4444; color: white; 
-                               border: none; border-radius: 3px; font-size: 10px; cursor: pointer; font-weight: 500;"
-                        title="Batal dan isi manual">
-                    ✕ Batal
-                </button>
-            </div>
-        `;
-        
-        nikField.parentNode.style.position = 'relative';
-        nikField.parentNode.appendChild(lockIcon);
-    }
-
-    function removeLockIcon(nikField) {
-        const existingIcon = nikField.parentNode.querySelector('.nik-lock-icon');
-        if (existingIcon) {
-            existingIcon.remove();
-        }
-    }
-
-    // ✅ KEEP: Original validation functions
+    // ✅ KEEP: Original working validation
     function isValidNIKPattern(nik) {
         if (!nik || nik.length !== 16 || !/^\d{16}$/.test(nik)) {
             return false;
@@ -217,10 +235,10 @@
         return true;
     }
 
-    // 🆕 UPDATED: Enhanced image processing function
+    // ✅ KEEP: Original working process function (with minimal enhancement)
     async function processKTPImage(imageFile) {
         if (isOcrProcessing) {
-            showOCRWarning('OCR sedang berjalan. Mohon tunggu...');
+            showOCRWarning('Scan sedang berlangsung. Mohon tunggu...');
             return;
         }
 
@@ -229,7 +247,6 @@
             return;
         }
 
-        // Enhanced validation
         const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
         if (!validTypes.includes(imageFile.type)) {
             showOCRError('Format file harus JPG, PNG, atau WebP');
@@ -247,7 +264,7 @@
             processingAttempts++;
             currentImageFile = imageFile;
             
-            showOCRProgress('Memproses gambar KTP...', 0);
+            showOCRProgress('Memproses foto KTP...', 0);
             updateProcessingState(true);
 
             const worker = await initializeOCR();
@@ -272,34 +289,22 @@
             if (extractedNIK) {
                 console.log('🎯 NIK Found:', extractedNIK);
                 
-                // Lock the NIK field with extracted value
-                lockNikField(extractedNIK);
+                lockNikFieldWithOCR(extractedNIK);
+                await storeNIKInSession(extractedNIK);
                 
-                // Store with OCR session
-                storeKTPFileForUpload(imageFile, extractedNIK);
-                
-                showOCRSuccess(`✅ NIK berhasil terdeteksi dan diisi otomatis: ${extractedNIK}`);
+                showOCRSuccess(`✅ NIK berhasil diekstrak: ${extractedNIK}`);
                 resetProcessingAttempts();
                 
             } else {
                 if (processingAttempts < maxAttempts) {
-                    showOCRWarning(`⚠️ NIK tidak terdeteksi (Percobaan ${processingAttempts}/${maxAttempts}). Mencoba lagi...`);
+                    showOCRWarning(`⚠️ NIK tidak terdeteksi (Percobaan ${processingAttempts}/${maxAttempts}). Mencoba dengan metode lain...`);
                     setTimeout(() => {
                         retryWithSimpleNIK();
                     }, 2000);
                 } else {
-                    showOCRError('❌ NIK tidak dapat terdeteksi setelah 3 percobaan. Anda dapat mengisi NIK secara manual.');
+                    showOCRError(`❌ NIK tidak dapat terdeteksi setelah ${maxAttempts} percobaan. Silakan coba dengan foto KTP yang lebih jelas.`);
                     resetProcessingAttempts();
-                    
-                    // 🆕 NEW: Automatically guide to manual input after failed OCR
-                    setTimeout(() => {
-                        const nikField = document.getElementById('nik');
-                        if (nikField && !nikField.readOnly) {
-                            nikField.focus();
-                            addHelpfulInstruction(nikField);
-                            showOCRMessage('💡 Silakan isi NIK secara manual pada field yang tersedia.', 'info');
-                        }
-                    }, 2000);
+                    setTimeout(() => showScanTips(), 2000);
                 }
             }
 
@@ -315,17 +320,9 @@
                     retryWithSimpleNIK();
                 }, 3000);
             } else {
-                showOCRError(`❌ OCR gagal: ${error.message}. Anda dapat mengisi NIK secara manual.`);
+                showOCRError(`❌ Scan gagal: ${error.message}. Silakan coba dengan foto yang lebih jelas.`);
                 resetProcessingAttempts();
-                
-                // 🆕 NEW: Focus on manual input after error
-                setTimeout(() => {
-                    const nikField = document.getElementById('nik');
-                    if (nikField && !nikField.readOnly) {
-                        nikField.focus();
-                        addHelpfulInstruction(nikField);
-                    }
-                }, 2000);
+                setTimeout(() => showScanTips(), 2000);
             }
         } finally {
             if (processingAttempts >= maxAttempts) {
@@ -336,68 +333,49 @@
         }
     }
 
-    // Enhanced file storage function
-    function storeKTPFileForUpload(imageFile, extractedNIK) {
-        try {
-            // Create FormData for server upload
-            const formData = new FormData();
-            formData.append('ktp_image', imageFile);
-            formData.append('extracted_nik', extractedNIK);
-            
-            // Upload to server
-            uploadKtpToServer(formData);
-            
-            console.log('📄 KTP file uploading to server', {
-                size: imageFile.size,
-                nik: extractedNIK,
-                name: imageFile.name
-            });
-        } catch (error) {
-            console.error('Error storing KTP file:', error);
-            showOCRError('Gagal menyimpan file KTP: ' + error.message);
-        }
+    function showScanTips() {
+        showOCRMessage(`
+            💡 <strong>Tips untuk foto KTP yang lebih baik:</strong><br>
+            • Pastikan NIK terlihat jelas dan tidak buram<br>
+            • Hindari bayangan atau pantulan cahaya<br>
+            • Ambil foto dari jarak yang tepat<br>
+            • Pastikan pencahayaan cukup dan merata
+        `, 'info');
     }
 
-    // Enhanced server upload function
-    async function uploadKtpToServer(formData) {
+    async function storeNIKInSession(extractedNIK) {
         try {
-            console.log('📤 Uploading KTP to server...', {
-                has_ktp_image: formData.has('ktp_image'),
-                has_extracted_nik: formData.has('extracted_nik'),
-                nik_value: formData.get('extracted_nik')
-            });
-
-            const response = await fetch('/upload-ktp-ocr', {
+            console.log('📝 Storing NIK in session only', { nik: extractedNIK });
+            
+            const response = await fetch('/ktp-ocr/upload', {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'application/json'
                 },
-                body: formData
+                body: JSON.stringify({
+                    extracted_nik: extractedNIK,
+                    ktp_image: null
+                })
             });
             
             const result = await response.json();
-            
-            console.log('📤 Server response:', result);
+            console.log('📝 Server response for NIK storage:', result);
             
             if (result.success) {
-                console.log('✅ KTP uploaded to server successfully', {
-                    nik: result.data?.nik
-                });
-                
-                showOCRMessage('✅ File KTP berhasil diproses dan tersimpan.', 'success');
+                console.log('✅ NIK stored in session successfully');
             } else {
-                console.error('❌ KTP upload failed:', result.message);
-                showOCRError('Gagal memproses file KTP: ' + result.message);
+                console.error('❌ NIK storage failed:', result.message);
+                showOCRError('Gagal menyimpan NIK: ' + result.message);
             }
             
         } catch (error) {
-            console.error('❌ Error uploading KTP:', error);
-            showOCRError('Gagal memproses file KTP. Silakan coba lagi.');
+            console.error('❌ Error storing NIK:', error);
         }
     }
 
-    // Enhanced text processing functions
+    // ✅ KEEP: Original working text preprocessing
     function preprocessText(text) {
         let cleaned = text
             .replace(/[^\w\s\/:.,()-]/g, ' ')
@@ -419,36 +397,51 @@
         return cleaned;
     }
 
+    // 🆕 ENHANCED: Better NIK extraction (keeping original logic but more patterns)
     function extractNIKFromText(cleanedText, originalText) {
         const fullText = cleanedText.replace(/\n/g, ' ').replace(/\s+/g, ' ');
         
-        console.log('Processing text for NIK extraction:', fullText);
+        console.log('🔍 Processing text for NIK extraction:', fullText);
 
-        const nikPatterns = [
-            /(?:NIK|N\s*I\s*K|N1K)[\s:]*(\d{16})/i,
-            /\b(\d{16})\b/g,
-            /(?:NIK|N\s*I\s*K)[\s:]*(\d{4}\s*\d{4}\s*\d{4}\s*\d{4})/i
-        ];
-        
-        for (const pattern of nikPatterns) {
-            if (pattern.global) {
-                const matches = [...fullText.matchAll(pattern)];
-                for (const match of matches) {
-                    const nik = match[0].replace(/\s/g, '');
-                    if (nik.length === 16 && /^\d{16}$/.test(nik)) {
-                        console.log('✅ NIK found via global pattern:', nik);
-                        return nik;
+        // Try all patterns
+        for (const pattern of NIK_PATTERNS) {
+            try {
+                if (pattern.global) {
+                    const matches = [...fullText.matchAll(pattern)];
+                    for (const match of matches) {
+                        let nik;
+                        if (match[1]) {
+                            // Has capture group
+                            nik = match[1].replace(/[\s\-\.]/g, '');
+                        } else {
+                            // No capture group, use full match
+                            nik = match[0].replace(/[\s\-\.]/g, '').replace(/[^\d]/g, '');
+                        }
+                        
+                        if (nik.length === 16 && /^\d{16}$/.test(nik) && isValidNIKPattern(nik)) {
+                            console.log('✅ NIK found via pattern:', nik);
+                            return nik;
+                        }
+                    }
+                } else {
+                    const match = fullText.match(pattern);
+                    if (match) {
+                        let nik;
+                        if (match[1]) {
+                            nik = match[1].replace(/[\s\-\.]/g, '');
+                        } else {
+                            nik = match[0].replace(/[\s\-\.]/g, '').replace(/[^\d]/g, '');
+                        }
+                        
+                        if (nik.length === 16 && /^\d{16}$/.test(nik) && isValidNIKPattern(nik)) {
+                            console.log('✅ NIK found via pattern:', nik);
+                            return nik;
+                        }
                     }
                 }
-            } else {
-                const match = fullText.match(pattern);
-                if (match) {
-                    const nik = match[1].replace(/\s/g, '');
-                    if (nik.length === 16) {
-                        console.log('✅ NIK found via pattern:', nik);
-                        return nik;
-                    }
-                }
+            } catch (e) {
+                console.warn('Pattern error:', e);
+                continue;
             }
         }
 
@@ -456,14 +449,14 @@
         return null;
     }
 
-    // Enhanced retry function
+    // ✅ KEEP: Original working retry function
     async function retryWithSimpleNIK() {
         if (!currentImageFile || processingAttempts >= maxAttempts) {
             return;
         }
 
         try {
-            showOCRProgress(`Percobaan ${processingAttempts + 1}/${maxAttempts} (fokus NIK)...`, 0);
+            showOCRProgress(`Percobaan ${processingAttempts + 1}/${maxAttempts} (mode angka saja)...`, 0);
             
             const worker = await Tesseract.createWorker('eng', 1, {
                 logger: m => console.log('Simple NIK OCR:', m.status)
@@ -474,7 +467,7 @@
                 'tessedit_pageseg_mode': Tesseract.PSM.AUTO
             });
             
-            showOCRProgress('Mencari NIK dengan mode khusus angka...', 50);
+            showOCRProgress('Mencari NIK dengan fokus angka...', 50);
             
             const { data: { text } } = await worker.recognize(currentImageFile);
             console.log('Simple NIK OCR result:', text);
@@ -482,27 +475,19 @@
             const extractedNIK = extractNIKFromText('', text);
             
             if (extractedNIK) {
-                lockNikField(extractedNIK);
-                storeKTPFileForUpload(currentImageFile, extractedNIK);
+                lockNikFieldWithOCR(extractedNIK);
+                await storeNIKInSession(extractedNIK);
                 
-                showOCRSuccess(`✅ NIK terdeteksi dan diisi otomatis (Mode angka): ${extractedNIK}`);
+                showOCRSuccess(`✅ NIK berhasil diambil (Mode angka): ${extractedNIK}`);
                 resetProcessingAttempts();
             } else {
                 processingAttempts++;
                 if (processingAttempts < maxAttempts) {
                     setTimeout(() => retryWithSimpleNIK(), 2000);
                 } else {
-                    showOCRError(`❌ NIK tidak terdeteksi setelah ${maxAttempts} percobaan. Anda dapat mengisi NIK secara manual.`);
+                    showOCRError(`❌ NIK tidak terdeteksi setelah ${maxAttempts} percobaan. Silakan coba dengan foto yang lebih jelas.`);
                     resetProcessingAttempts();
-                    
-                    // Guide user to manual input
-                    setTimeout(() => {
-                        const nikField = document.getElementById('nik');
-                        if (nikField && !nikField.readOnly) {
-                            nikField.focus();
-                            addHelpfulInstruction(nikField);
-                        }
-                    }, 2000);
+                    setTimeout(() => showScanTips(), 2000);
                 }
             }
             
@@ -514,22 +499,14 @@
             if (processingAttempts < maxAttempts) {
                 setTimeout(() => retryWithSimpleNIK(), 3000);
             } else {
-                showOCRError('❌ OCR gagal. Anda dapat mengisi NIK secara manual.');
+                showOCRError('❌ Scan gagal. Silakan coba dengan foto KTP yang lebih jelas.');
                 resetProcessingAttempts();
-                
-                // Guide to manual input
-                setTimeout(() => {
-                    const nikField = document.getElementById('nik');
-                    if (nikField && !nikField.readOnly) {
-                        nikField.focus();
-                        addHelpfulInstruction(nikField);
-                    }
-                }, 2000);
+                setTimeout(() => showScanTips(), 2000);
             }
         }
     }
 
-    // UI Progress and State Functions
+    // ✅ KEEP: All original UI functions unchanged
     function updateProgress(progress, status) {
         const progressBar = document.getElementById('ocr-progress')?.querySelector('.ocr-progress-bar');
         const statusText = document.getElementById('ocr-progress')?.querySelector('.ocr-progress-text');
@@ -562,7 +539,6 @@
         }
     }
 
-    // Message and Progress UI Functions
     function showOCRProgress(message, percentage) {
         percentage = percentage || 0;
         let progressElement = document.getElementById('ocr-progress');
@@ -606,7 +582,7 @@
         progressElement.innerHTML = `
             <div class="ocr-progress-content">
                 <div class="ocr-progress-spinner"></div>
-                <div class="ocr-progress-text">Memproses gambar KTP...</div>
+                <div class="ocr-progress-text">Memproses foto KTP...</div>
                 <div class="ocr-progress-track">
                     <div class="ocr-progress-bar"></div>
                 </div>
@@ -677,9 +653,8 @@
         return icons[type] || icons.info;
     }
 
-    // 🆕 UPDATED: Enhanced initialization with flexible NIK field management
     function initializeKTPOCR() {
-        console.log('🚀 Initializing Enhanced KTP OCR functionality...');
+        console.log('🚀 Initializing KTP OCR - Minimal Enhancement...');
 
         if (typeof Tesseract === 'undefined') {
             console.error('❌ Tesseract.js not loaded');
@@ -689,33 +664,21 @@
 
         createOCRUploadArea();
         
-        // Check for previous OCR session but don't force lock
         const savedNikLocked = sessionStorage.getItem('nik_locked');
         const savedNikValue = sessionStorage.getItem('extracted_nik');
         
         if (savedNikLocked === 'true' && savedNikValue) {
-            lockNikField(savedNikValue);
+            lockNikFieldWithOCR(savedNikValue);
             showOCRMessage(`✅ NIK dari sesi sebelumnya: ${savedNikValue}`, 'info');
         } else {
-            // 🆕 NEW: Don't lock NIK field by default - make it user-friendly
-            const nikField = document.getElementById('nik');
-            if (nikField) {
-                nikField.readOnly = false;
-                nikField.style.backgroundColor = '';
-                nikField.style.color = '';
-                nikField.placeholder = 'Masukkan NIK 16 digit atau gunakan scan KTP';
-                
-                // Add helpful instruction instead of warning
-                addHelpfulInstruction(nikField);
-            }
+            lockNikFieldDefault();
         }
         
-        console.log('✅ Enhanced KTP OCR ready with flexible NIK management');
+        console.log('✅ KTP OCR initialized - Minimal Enhancement ready');
     }
 
-    // 🆕 UPDATED: More user-friendly upload area
     function createOCRUploadArea() {
-        console.log('🔧 Creating user-friendly OCR upload area...');
+        console.log('🔧 Creating OCR upload area...');
         const nikField = document.getElementById('nik');
         
         if (!nikField) {
@@ -733,26 +696,19 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
-                    <span class="ocr-upload-text">
-                        <strong>📱 Scan KTP untuk NIK Otomatis</strong><br>
-                        <small>Klik untuk ambil foto atau pilih file gambar KTP</small>
-                    </span>
+                    <div class="ocr-upload-text">
+                        <strong>📷 Scan KTP untuk NIK</strong>
+                        <small>Tap untuk mengambil foto atau pilih dari galeri</small>
+                    </div>
                 </label>
                 <div class="ocr-tips">
-                    💡 <strong>Tips:</strong> Pastikan foto KTP jelas dan fokus pada bagian NIK. Jika scan gagal, Anda tetap dapat mengisi NIK secara manual.
+                    💡 <strong>Tips:</strong> Pastikan foto KTP jelas, pencahayaan cukup, dan NIK terlihat dengan jelas untuk hasil scan yang optimal.
                 </div>
-            </div>
-            <div class="ocr-controls" style="margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                <button type="button" id="ocr-try-again-btn" class="btn-secondary" style="display: none;">
-                    🔄 Coba Lagi
-                </button>
-                <small class="text-gray-500">Scan KTP untuk kemudahan, atau isi manual jika diperlukan</small>
             </div>
         `;
 
         nikField.parentNode.insertBefore(ocrContainer, nikField.nextSibling);
 
-        // Event listeners
         const fileInput = document.getElementById('ktp-image-input');
         const tryAgainBtn = document.getElementById('ocr-try-again-btn');
 
@@ -775,12 +731,12 @@
                     processingAttempts = 0;
                     processKTPImage(currentImageFile);
                 } else {
-                    showOCRMessage('Tidak ada gambar untuk diproses ulang. Silakan pilih gambar KTP terlebih dahulu.', 'warning');
+                    showOCRMessage('Tidak ada foto untuk diproses ulang. Silakan pilih foto KTP terlebih dahulu.', 'warning');
                 }
             });
         }
         
-        console.log('✅ User-friendly OCR upload area created successfully');
+        console.log('✅ OCR upload area created successfully');
     }
 
     function cleanupEnhancedOCR() {
@@ -802,24 +758,24 @@
 
     window.addEventListener('beforeunload', cleanupEnhancedOCR);
 
-    // 🆕 UPDATED: Enhanced exports with comprehensive functionality
+    // Exports
     window.KTPOcr = {
         processImage: processKTPImage,
         cleanup: cleanupEnhancedOCR,
         isProcessing: () => isOcrProcessing,
         isLocked: () => nikLocked,
-        unlockField: unlockNikField,
+        startScanProcess: startScanProcess,
+        retryScan: retryScan,
+        resetScan: resetScan,
         retryLast: () => {
             if (currentImageFile && !isOcrProcessing) {
                 processingAttempts = 0;
                 processKTPImage(currentImageFile);
             } else {
-                showOCRMessage('Tidak ada gambar untuk diproses ulang. Silakan pilih gambar KTP terlebih dahulu.', 'warning');
+                showOCRMessage('Tidak ada foto untuk diproses ulang. Silakan pilih foto KTP terlebih dahulu.', 'warning');
             }
         },
-        // 🆕 NEW: Additional helper functions
-        canManualInput: () => !nikLocked,
-        getNikSource: () => nikLocked ? 'ocr' : 'manual',
+        getNikSource: () => 'minimal_enhanced',
         getCurrentNik: () => {
             const nikField = document.getElementById('nik');
             return nikField ? nikField.value : '';
@@ -831,11 +787,12 @@
             hideOCRProgress();
             updateProcessingState(false);
             
-            // Clear any existing messages
             const messages = document.querySelectorAll('.ocr-message');
             messages.forEach(msg => msg.remove());
             
-            console.log('OCR state reset');
+            lockNikFieldDefault();
+            
+            console.log('OCR reset - Minimal Enhancement');
         }
     };
 

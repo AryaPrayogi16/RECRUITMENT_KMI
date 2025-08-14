@@ -42,16 +42,10 @@ Route::get('/job-application-success', [JobApplicationController::class, 'succes
 // Get available positions for dropdown
 Route::get('/api/positions', [JobApplicationController::class, 'getPositions'])->name('api.positions');
 
-// ✅ NEW: KTP OCR Routes (Public - for job applicants)
+// ✅ UPDATED: KTP OCR Routes (Public - for NIK extraction only)
 Route::prefix('ktp-ocr')->name('ktp.ocr.')->group(function () {
     Route::post('/upload', [JobApplicationController::class, 'uploadKtpOcr'])->name('upload');
     Route::post('/clear-temp', [JobApplicationController::class, 'clearKtpTemp'])->name('clear.temp');
-    
-    // Debug routes for KTP processing
-    Route::get('/debug-status', [JobApplicationController::class, 'debugKtpStatus'])->name('debug.status');
-    Route::post('/clean-temp-files', [JobApplicationController::class, 'cleanTempKtpFiles'])->name('clean.temp.files');
-    Route::get('/verify-integrity/{candidateCode?}', [JobApplicationController::class, 'verifyKtpIntegrity'])->name('verify.integrity');
-    Route::post('/force-process', [JobApplicationController::class, 'forceProcessKtpFromSession'])->name('force.process');
 });
 
 // Additional routes for job application form validation
@@ -265,7 +259,7 @@ Route::middleware('auth')->group(function () {
 Route::prefix('api')->middleware(['throttle:10,1'])->group(function () {
     Route::get('/demo-users', [AuthController::class, 'getDemoUsers'])->name('api.demo-users');
     
-    // ✅ NEW: Job Application Test Status API
+    // Job Application Test Status API
     Route::get('/test-status/{candidateCode}', [JobApplicationController::class, 'getTestStatus'])->name('api.test-status');
     Route::get('/candidate-summary/{candidateCode}', [JobApplicationController::class, 'getCandidateSummary'])->name('api.candidate-summary');
     
@@ -414,6 +408,10 @@ if (app()->environment(['local', 'testing', 'staging'])) {
             })->name('database.status');
         });
     });
+
+    Route::get('/healthz', function () {
+    return response()->json(['status' => 'ok']);
+});
 
     // ====== DISC 3D DEBUGGING ROUTES (TEMPORARY) ======
     Route::get('/debug-disc-complete/{candidateCode}', function($candidateCode) {
@@ -699,3 +697,4 @@ if (app()->environment(['local', 'testing', 'staging'])) {
         
     })->name('debug.form.submit');
 }
+

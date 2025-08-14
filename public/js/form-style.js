@@ -1,4 +1,4 @@
-// Form Application Script - Updated with Fixed NIK Handling
+// Form Application Script - Enhanced with Default NIK Lock Support
 (function() {
     'use strict';
 
@@ -35,13 +35,41 @@
         }
     };
 
-    // Enhanced file validation function
+    // 🆕 NEW: Browser detection function
+    function getBrowserInfo() {
+        const userAgent = navigator.userAgent;
+        
+        const isChrome = /Chrome/.test(userAgent) && !/Edge|Edg/.test(userAgent);
+        const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
+        const isEdge = /Edge|Edg/.test(userAgent);
+        const isFirefox = /Firefox/.test(userAgent);
+        const isMobile = /Mobile|Android|iPhone|iPad/.test(userAgent);
+        
+        let browserName = 'Unknown';
+        if (isChrome) browserName = 'Chrome';
+        else if (isSafari) browserName = 'Safari';
+        else if (isEdge) browserName = 'Edge';
+        else if (isFirefox) browserName = 'Firefox';
+        
+        return {
+            name: browserName,
+            isChrome,
+            isSafari,
+            isEdge,
+            isFirefox,
+            isMobile,
+            userAgent
+        };
+    }
+
+    // 🔧 CRITICAL FIX: Enhanced file validation function - CHROME/SAFARI OPTIMIZED
     async function validateFile(file, validation) {
-        console.log('Validating file:', {
+        console.log('🔍 Validating file for Chrome/Safari:', {
             name: file.name,
             type: file.type,
             size: file.size,
-            lastModified: file.lastModified
+            lastModified: file.lastModified,
+            browser: getBrowserInfo()
         });
 
         // Check if file is valid
@@ -52,7 +80,7 @@
         // Get file extension
         const extension = file.name.toLowerCase().split('.').pop();
         
-        // Check file extension first
+        // Check file extension first (PRIORITY for Chrome/Safari)
         if (!validation.extensions.includes(extension)) {
             const allowedExtensions = validation.extensions.join(', ').toUpperCase();
             return { valid: false, error: `Format file harus ${allowedExtensions}. File Anda: ${extension.toUpperCase()}` };
@@ -63,12 +91,24 @@
             return { valid: false, error: 'Ukuran file maksimal 2MB' };
         }
 
-        // For photo files, do additional image validation
+        // 🆕 CRITICAL: For photo files, use Chrome/Safari optimized validation
         if (validation.extensions.includes('jpg') || validation.extensions.includes('jpeg') || validation.extensions.includes('png')) {
-            return await validateImageFile(file, validation);
+            return await validateImageFileForBrowsers(file, validation);
         }
 
-        // Check MIME type for non-image files
+        // 🆕 RELAXED: For non-image files, be more flexible with MIME types
+        const browserInfo = getBrowserInfo();
+        if (browserInfo.isChrome || browserInfo.isSafari) {
+            console.log(`📝 ${browserInfo.name}: Using relaxed MIME validation for non-image files`);
+            
+            // For Chrome/Safari, if extension is correct, don't fail on MIME type
+            if (validation.extensions.includes(extension)) {
+                console.log(`✅ ${browserInfo.name}: Accepting file based on extension:`, extension);
+                return { valid: true };
+            }
+        }
+
+        // Standard MIME type check for other browsers
         if (!validation.types.includes(file.type)) {
             console.warn('MIME type mismatch:', {
                 detected: file.type,
@@ -81,20 +121,110 @@
         return { valid: true };
     }
 
-    // Enhanced image validation function
-    function validateImageFile(file, validation) {
+    // 🔧 CRITICAL FIX: Enhanced image validation for Chrome/Safari
+    function validateImageFileForBrowsers(file, validation) {
         return new Promise((resolve) => {
-            // Check MIME type first, but be more lenient for images
             const extension = file.name.toLowerCase().split('.').pop();
+            const browserInfo = getBrowserInfo();
             
+            console.log(`📷 Image validation for ${browserInfo.name}:`, {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                extension: extension,
+                browser: browserInfo.name,
+                is_mobile: browserInfo.isMobile
+            });
+            
+            // Extension check first (CRITICAL for Chrome/Safari)
+            if (!validation.extensions.includes(extension)) {
+                resolve({ valid: false, error: `Format file harus JPG atau PNG. File Anda: ${extension.toUpperCase()}` });
+                return;
+            }
+
+            // 🆕 CHROME/SAFARI SPECIFIC: Very relaxed MIME type handling
+            if (browserInfo.isChrome || browserInfo.isSafari) {
+                console.log(`📷 ${browserInfo.name}: Using browser-optimized image validation`);
+                
+                // Size check
+                const maxSize = validation.maxSize || (2 * 1024 * 1024);
+                if (file.size > maxSize) {
+                    resolve({ valid: false, error: 'Ukuran file terlalu besar (maksimal 2MB)' });
+                    return;
+                }
+                
+                if (file.size === 0) {
+                    resolve({ valid: false, error: 'File kosong atau corrupt' });
+                    return;
+                }
+                
+                // 🔧 CRITICAL: Accept ANY MIME type for Chrome/Safari if extension is correct
+                const chromeAllowedMimeTypes = [
+                    'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+                    'image/pjpeg', 'image/x-png', 'image/heic', 'image/heif',
+                    'application/octet-stream', // Chrome sometimes uses this
+                    'binary/octet-stream',     // Safari sometimes uses this
+                    '', // Empty MIME type
+                    null, // Null MIME type
+                    undefined // Undefined MIME type
+                ];
+                
+                // For Chrome/Safari, MIME type is not critical if extension is correct
+                if (file.type && !chromeAllowedMimeTypes.includes(file.type)) {
+                    console.warn(`📷 ${browserInfo.name}: Unexpected MIME type (${file.type}), but accepting based on extension`);
+                }
+                
+                // 🆕 OPTIONAL: Try image validation, but don't fail if it doesn't work
+                if (window.FileReader && !browserInfo.isMobile) {
+                    try {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = new Image();
+                            img.onload = function() {
+                                console.log(`✅ ${browserInfo.name}: Image validation successful`, {
+                                    width: img.width,
+                                    height: img.height,
+                                    file_size: file.size
+                                });
+                                resolve({ valid: true });
+                            };
+                            img.onerror = function() {
+                                console.warn(`📷 ${browserInfo.name}: Image load failed, but accepting based on extension and size`);
+                                // Don't fail - accept based on extension for Chrome/Safari
+                                resolve({ valid: true });
+                            };
+                            img.src = e.target.result;
+                        };
+                        reader.onerror = function() {
+                            console.warn(`📷 ${browserInfo.name}: FileReader failed, but accepting based on extension and size`);
+                            // Don't fail - accept based on extension for Chrome/Safari
+                            resolve({ valid: true });
+                        };
+                        reader.readAsDataURL(file);
+                    } catch (error) {
+                        console.warn(`📷 ${browserInfo.name}: Image validation exception, but accepting:`, error.message);
+                        resolve({ valid: true });
+                    }
+                } else {
+                    // For mobile or when FileReader is not available
+                    console.log(`📷 ${browserInfo.name}: Skipping image validation, accepting based on extension and size`);
+                    resolve({ valid: true });
+                }
+                
+                return;
+            }
+
+            // 🔧 STANDARD: For other browsers (Firefox, Edge, etc.)
+            console.log(`📷 ${browserInfo.name}: Using standard image validation`);
+            
+            // Check MIME type for non-Chrome/Safari browsers
             if (!validation.types.includes(file.type)) {
-                console.warn('MIME type mismatch for image:', {
+                console.warn(`📷 ${browserInfo.name}: MIME type mismatch:`, {
                     detected: file.type,
-                    allowed: validation.types,
-                    extension: extension
+                    allowed: validation.types
                 });
                 
-                // If extension is correct but MIME type is wrong, try to validate as image anyway
+                // If extension is correct but MIME type is wrong, try to validate anyway
                 if (!validation.extensions.includes(extension)) {
                     resolve({ valid: false, error: `Format file harus JPG atau PNG. Tipe file terdeteksi: ${file.type}` });
                     return;
@@ -108,7 +238,7 @@
                 const img = new Image();
                 
                 img.onload = function() {
-                    console.log('Image validation successful:', {
+                    console.log(`✅ ${browserInfo.name}: Standard image validation successful:`, {
                         width: img.width,
                         height: img.height,
                         size: file.size,
@@ -118,7 +248,7 @@
                 };
                 
                 img.onerror = function() {
-                    console.error('Image validation failed - not a valid image');
+                    console.error(`❌ ${browserInfo.name}: Image validation failed - not a valid image`);
                     resolve({ valid: false, error: 'File bukan gambar yang valid atau file rusak' });
                 };
                 
@@ -126,7 +256,7 @@
             };
             
             reader.onerror = function() {
-                console.error('FileReader error');
+                console.error(`❌ ${browserInfo.name}: FileReader error`);
                 resolve({ valid: false, error: 'Tidak dapat membaca file. File mungkin rusak.' });
             };
             
@@ -448,12 +578,12 @@
         'information_source', 'cv', 'photo', 'transcript'
     ];
     
-    // 🆕 UPDATED: Save form data dengan OCR status preservation
+    // 🆕 UPDATED: Save form data with improved NIK handling
     function saveFormData() {
         const formData = new FormData(form);
         const data = {};
         
-        // Handle regular inputs (existing code tetap sama)
+        // Handle regular inputs
         for (let [key, value] of formData.entries()) {
             if (!key.includes('cv') && !key.includes('photo') && !key.includes('transcript') && !key.includes('certificates')) {
                 if (data[key]) {
@@ -467,21 +597,39 @@
             }
         }
 
-        // Handle salary formatting (existing code tetap sama)
+        // Handle salary formatting
         const salaryInput = document.getElementById('expected_salary');
         if (salaryInput && data.expected_salary) {
             data.expected_salary = getRawSalaryValue(salaryInput);
         }
         
-        // 🆕 PRESERVE OCR status di localStorage
+        // 🆕 NEW: Preserve NIK field state for form consistency
         const nikField = document.getElementById('nik');
-        if (nikField && nikField.readOnly && nikField.classList.contains('ocr-filled')) {
-            data.ocr_nik_locked = 'true';
-            data.ocr_nik_value = nikField.value;
-            console.log('Preserving OCR NIK status in localStorage');
+        if (nikField) {
+            // Check if field is locked (any type)
+            if (nikField.readOnly) {
+                data.nik_field_locked = 'true';
+                data.nik_field_source = 'locked';
+                
+                // Check if it's OCR or manual lock
+                if (nikField.classList.contains('ocr-filled')) {
+                    data.nik_field_source = 'ocr';
+                } else if (nikField.classList.contains('manual-input')) {
+                    data.nik_field_source = 'manual';
+                }
+                
+                console.log('Preserving NIK locked state in localStorage:', {
+                    locked: true,
+                    source: data.nik_field_source,
+                    value: nikField.value
+                });
+            } else {
+                data.nik_field_locked = 'false';
+                data.nik_field_source = 'open';
+            }
         }
 
-        // Handle checkboxes (existing code tetap sama)
+        // Handle checkboxes
         const checkboxes = form.querySelectorAll('input[type="checkbox"]');
         checkboxes.forEach(checkbox => {
             if (!checkbox.name.includes('[]')) {
@@ -493,7 +641,7 @@
         showSaveIndicator();
     }
     
-    // 🆕 UPDATED: Load form data dengan OCR state restoration
+    // 🆕 UPDATED: Load form data with NIK field state restoration
     function loadFormData() {
         const savedData = localStorage.getItem(STORAGE_KEY);
         if (!savedData) return;
@@ -501,8 +649,11 @@
         try {
             const data = JSON.parse(savedData);
             
-            // Restore regular inputs (existing code tetap sama)
+            // Restore regular inputs
             Object.keys(data).forEach(key => {
+                // Skip NIK field state keys during regular restoration
+                if (key.startsWith('nik_field_')) return;
+                
                 const elements = form.querySelectorAll(`[name="${key}"]`);
                 
                 elements.forEach((element, index) => {
@@ -524,7 +675,7 @@
                 });
             });
 
-            // Handle salary formatting (existing code tetap sama)
+            // Handle salary formatting
             const salaryInput = document.getElementById('expected_salary');
             if (salaryInput && salaryInput.value) {
                 const rawValue = salaryInput.value.replace(/\./g, '');
@@ -532,31 +683,27 @@
                 formatSalary(salaryInput);
             }
 
-            // 🆕 RESTORE OCR NIK state jika ada
-            if (data.ocr_nik_locked === 'true' && data.ocr_nik_value) {
-                const nikField = document.getElementById('nik');
-                if (nikField) {
-                    nikField.value = data.ocr_nik_value;
-                    nikField.readOnly = true;
-                    nikField.style.backgroundColor = '#ecfdf5';
-                    nikField.style.borderColor = '#10b981';
-                    nikField.style.color = '#065f46';
-                    nikField.classList.add('ocr-filled');
+            // 🆕 NEW: Handle NIK field state restoration (but respect current OCR state)
+            const nikField = document.getElementById('nik');
+            if (nikField && data.nik_field_locked && data.nik_field_source) {
+                // Only restore if no active OCR session exists
+                const hasActiveOCRSession = sessionStorage.getItem('nik_locked') === 'true' || 
+                                          sessionStorage.getItem('extracted_nik');
+                
+                if (!hasActiveOCRSession) {
+                    console.log('Restoring NIK field state from localStorage:', {
+                        locked: data.nik_field_locked,
+                        source: data.nik_field_source
+                    });
                     
-                    console.log('Restored OCR NIK from localStorage:', data.ocr_nik_value);
-                    
-                    // Remove instruction if exists
-                    const existingInstruction = nikField.parentNode.querySelector('.nik-instruction');
-                    if (existingInstruction) {
-                        existingInstruction.remove();
-                    }
-
-                    // Add OCR indicator
-                    addOcrIndicator(nikField);
+                    // The NIK field will be handled by KTP OCR initialization
+                    // We don't override OCR state here
+                } else {
+                    console.log('OCR session active - skipping localStorage NIK state restoration');
                 }
             }
 
-            // Handle checkbox arrays (existing code tetap sama)
+            // Handle checkbox arrays
             const checkboxArrays = ['driving_licenses'];
             checkboxArrays.forEach(name => {
                 if (data[name + '[]'] && Array.isArray(data[name + '[]'])) {
@@ -570,28 +717,6 @@
         } catch (e) {
             console.error('Error loading form data:', e);
         }
-    }
-
-    // 🆕 NEW: Add OCR indicator to NIK field
-    function addOcrIndicator(nikField) {
-        // Remove existing indicator
-        const existing = nikField.parentNode.querySelector('.ocr-indicator');
-        if (existing) {
-            existing.remove();
-        }
-        
-        const indicator = document.createElement('div');
-        indicator.className = 'ocr-indicator';
-        indicator.innerHTML = `
-            <div style="margin-top: 4px; padding: 4px 8px; background: #ecfdf5; border: 1px solid #10b981; 
-                        border-radius: 4px; font-size: 12px; color: #065f46; display: flex; align-items: center; gap: 6px;">
-                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span>NIK terisi otomatis dari scan KTP</span>
-            </div>
-        `;
-        nikField.parentNode.appendChild(indicator);
     }
     
     // Show save indicator
@@ -640,7 +765,7 @@
     let achievementIndex = 0;
 
     // Get default templates
-        function getDefaultFamilyMember(index) {
+    function getDefaultFamilyMember(index) {
         return `
             <div class="dynamic-group" data-index="${index}">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1059,7 +1184,7 @@
         return input.value.replace(/\./g, '');
     }
 
-    // Enhanced duplicate checking system
+    // 🆕 ENHANCED: Duplicate checking system with real-time validation
     const duplicateChecker = {
         email: {
             timeout: null,
@@ -1073,15 +1198,25 @@
         }
     };
 
-    // Debounced duplicate check function
+    // 🆕 ENHANCED: Better duplicate check function with error handling
     function checkDuplicate(fieldType, value, callback) {
         const checker = duplicateChecker[fieldType];
         if (checker.timeout) clearTimeout(checker.timeout);
         if (checker.lastChecked === value) return;
+        
         checker.timeout = setTimeout(async () => {
             if (checker.isChecking) return;
+            
             checker.isChecking = true;
             checker.lastChecked = value;
+            
+            // Show checking state
+            const input = document.getElementById(fieldType);
+            if (input) {
+                input.classList.add('checking-duplicate');
+                showDuplicateStatus(fieldType, { exists: false, message: 'Memeriksa...' }, false, 'checking');
+            }
+            
             try {
                 const response = await fetch(`/check-${fieldType}`, {
                     method: 'POST',
@@ -1091,24 +1226,65 @@
                     },
                     body: JSON.stringify({ [fieldType]: value })
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const result = await response.json();
+                
+                // Remove checking state
+                if (input) {
+                    input.classList.remove('checking-duplicate');
+                }
+                
                 callback(result);
+                
             } catch (error) {
                 console.error(`Error checking ${fieldType}:`, error);
-                callback({ exists: false, message: 'Debug result:0' });
+                
+                // Remove checking state
+                if (input) {
+                    input.classList.remove('checking-duplicate');
+                }
+                
+                // Show connection error
+                callback({ 
+                    exists: false, 
+                    message: 'Error koneksi. Pastikan internet stabil dan coba lagi.',
+                    error: true
+                });
             } finally {
                 checker.isChecking = false;
             }
-        }, 1000);
+        }, 800); // Reduced delay for better UX
     }
 
-    function showDuplicateStatus(fieldId, result, isValid = true) {
+    // 🆕 ENHANCED: Better status display with different states
+    function showDuplicateStatus(fieldId, result, isValid = true, state = 'normal') {
         const input = document.getElementById(fieldId);
         const existingStatus = input.parentNode.querySelector('.duplicate-status');
         if (existingStatus) existingStatus.remove();
+        
         const statusElement = document.createElement('div');
         statusElement.className = 'duplicate-status text-xs mt-1 flex items-center';
-        if (result.exists) {
+        
+        if (state === 'checking') {
+            statusElement.className += ' text-yellow-600';
+            statusElement.innerHTML = `
+                <div class="loading-spinner mr-1" style="width: 12px; height: 12px;"></div>
+                ${result.message}
+            `;
+        } else if (result.error) {
+            statusElement.className += ' text-red-600';
+            statusElement.innerHTML = `
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+                ${result.message}
+            `;
+            input.classList.add('error');
+        } else if (result.exists) {
             statusElement.className += ' text-red-600';
             statusElement.innerHTML = `
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1131,31 +1307,36 @@
             statusElement.innerHTML = result.message;
             input.classList.remove('error');
         }
+        
         input.parentNode.appendChild(statusElement);
     }
 
     function enhanceEmailValidation() {
         const emailInput = document.getElementById('email');
         if (!emailInput) return;
+        
         emailInput.addEventListener('input', function(e) {
             const email = e.target.value.trim();
             e.target.classList.remove('error');
+            
             if (email.length === 0) {
                 const status = e.target.parentNode.querySelector('.duplicate-status');
                 if (status) status.remove();
                 return;
             }
+            
             if (!isValidEmail(email)) {
                 showDuplicateStatus('email', { exists: false, message: 'Format email tidak valid' }, false);
                 return;
             }
+            
             checkDuplicate('email', email, (result) => {
                 showDuplicateStatus('email', result, true);
             });
         });
     }
 
-    // 🆕 UPDATED: Enhanced NIK validation - less restrictive but still secure
+    // 🆕 UPDATED: NIK validation with support for locked fields
     function enhanceNikValidation() {
         const nikInput = document.getElementById('nik');
         if (!nikInput) return;
@@ -1166,18 +1347,48 @@
             const existingError = e.target.parentNode.querySelector('.nik-error');
             if (existingError) existingError.remove();
 
+            // Skip validation if field is locked (OCR or manual lock)
+            if (nikInput.readOnly) {
+                console.log('NIK field is locked, skipping input validation');
+                return;
+            }
+
             if (nik.length === 0) {
                 const status = e.target.parentNode.querySelector('.duplicate-status');
                 if (status) status.remove();
                 return;
             }
 
-            if (nik.length !== 16 || !/^[0-9]{16}$/.test(nik)) {
-                showDuplicateStatus('nik', { exists: false, message: 'NIK harus 16 digit angka' }, false);
+            // Enhanced NIK validation
+            if (nik.length !== 16) {
+                showDuplicateStatus('nik', { exists: false, message: `NIK harus 16 digit (saat ini: ${nik.length} digit)` }, false);
+                return;
+            }
+            
+            if (!/^[0-9]{16}$/.test(nik)) {
+                showDuplicateStatus('nik', { exists: false, message: 'NIK hanya boleh berisi angka' }, false);
                 return;
             }
 
-            // 🆕 UPDATED: Only check duplicates, don't require OCR validation
+            // Check for obvious invalid patterns
+            if (/^(\d)\1{15}$/.test(nik)) {
+                showDuplicateStatus('nik', { exists: false, message: 'NIK tidak valid (semua digit sama)' }, false);
+                return;
+            }
+            
+            if (nik.startsWith('00')) {
+                showDuplicateStatus('nik', { exists: false, message: 'NIK tidak valid (dimulai dengan 00)' }, false);
+                return;
+            }
+
+            // Basic province code validation
+            const provinceCode = parseInt(nik.substring(0, 2));
+            if (provinceCode < 11 || provinceCode > 94) {
+                showDuplicateStatus('nik', { exists: false, message: 'Kode provinsi NIK tidak valid' }, false);
+                return;
+            }
+
+            // Check for duplicates
             checkDuplicate('nik', nik, (result) => {
                 showDuplicateStatus('nik', result, true);
             });
@@ -1189,38 +1400,53 @@
         return emailRegex.test(email);
     }
 
+    // 🆕 ENHANCED: Better form submission validation
     function enhanceFormSubmissionValidation() {
         const form = document.getElementById('applicationForm');
         if (!form) return;
-        const originalHandler = form.onsubmit;
+        
         form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Check for duplicate validation errors
             const emailDuplicateStatus = document.querySelector('#email').parentNode.querySelector('.duplicate-status');
             const nikDuplicateStatus = document.querySelector('#nik').parentNode.querySelector('.duplicate-status');
+            
             let hasDuplicates = false;
             let duplicateErrors = [];
+            
             if (emailDuplicateStatus && emailDuplicateStatus.classList.contains('text-red-600')) {
                 hasDuplicates = true;
                 duplicateErrors.push('Email sudah terdaftar dalam sistem');
             }
+            
             if (nikDuplicateStatus && nikDuplicateStatus.classList.contains('text-red-600')) {
                 hasDuplicates = true;
                 duplicateErrors.push('NIK sudah terdaftar dalam sistem');
             }
+            
+            // Check if still checking duplicates
+            const isStillChecking = document.querySelector('.checking-duplicate');
+            if (isStillChecking) {
+                showAlert('Mohon tunggu, sistem sedang memeriksa duplikasi data...', 'warning');
+                return false;
+            }
+            
             if (hasDuplicates) {
-                e.preventDefault();
                 showAlert(
                     'Tidak dapat mengirim lamaran:<br>' + duplicateErrors.join('<br>'),
                     'error'
                 );
+                
                 const firstError = document.querySelector('.duplicate-status.text-red-600');
                 if (firstError) {
                     firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
                 return false;
             }
-            if (originalHandler) {
-                return originalHandler.call(this, e);
-            }
+            
+            // Continue with normal form submission
+            this.submit();
         });
     }
 
@@ -1290,52 +1516,33 @@
         });
     }
 
-    // 🆕 UPDATED: NIK field initialization - no longer locked by default
+    // 🆕 UPDATED: NIK field initialization - respects OCR lock state
     function initializeNikField() {
         const nikField = document.getElementById('nik');
         if (!nikField) return;
 
-        // Check if OCR data exists from session
+        // Check if there's an active OCR session
         const ocrValidated = sessionStorage.getItem('nik_locked') === 'true';
         const savedNikValue = sessionStorage.getItem('extracted_nik');
         
-        if (ocrValidated && savedNikValue) {
-            // Restore OCR state
-            nikField.value = savedNikValue;
-            nikField.readOnly = true;
-            nikField.style.backgroundColor = '#ecfdf5';
-            nikField.style.borderColor = '#10b981';
-            nikField.style.color = '#065f46';
-            nikField.classList.add('ocr-filled');
-            addOcrIndicator(nikField);
-            console.log('NIK field restored from OCR session:', savedNikValue);
-        } else {
-            // 🆕 UPDATED: NIK field is now editable by default with helpful placeholder
-            nikField.readOnly = false;
-            nikField.style.backgroundColor = '';
-            nikField.style.color = '';
-            nikField.placeholder = 'Masukkan NIK 16 digit atau gunakan scan KTP';
-            
-            // Add helpful instruction
-            const instructionDiv = document.createElement('div');
-            instructionDiv.className = 'nik-instruction';
-            instructionDiv.innerHTML = `
-                <div style="margin-top: 4px; padding: 6px 8px; background: #eff6ff; border: 1px solid #3b82f6; 
-                            border-radius: 4px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
-                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span>💡 <strong>Tips:</strong> Gunakan fitur scan KTP untuk pengisian NIK otomatis yang lebih mudah dan akurat</span>
-                </div>
-            `;
-            nikField.parentNode.appendChild(instructionDiv);
-        }
+        // Let the KTP OCR system handle the initial state
+        // This function will be called after OCR initialization
+        console.log('NIK field initialization - waiting for OCR system...', {
+            ocrValidated,
+            savedNikValue,
+            fieldState: nikField.readOnly ? 'locked' : 'open'
+        });
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Load form data first
         loadFormData();
+        
+        // Initialize other components
         initializeAddressCopy();
-        initializeNikField(); // 🆕 NEW: Initialize NIK field properly
+        
+        // Initialize NIK field (will be overridden by OCR if needed)
+        initializeNikField();
         
         // Add event listeners for auto-save
         const inputs = form.querySelectorAll('input:not([type="file"]), select, textarea');
@@ -1365,7 +1572,7 @@
             handleMultipleFileUpload(e, 'certificates');
         });
 
-        // Initialize salary formatting - PERBAIKAN UTAMA
+        // Initialize salary formatting
         const salaryInput = document.getElementById('expected_salary');
         if (salaryInput) {
             // Event listener untuk formatting real-time
@@ -1384,7 +1591,7 @@
                 formatSalary(salaryInput);
             }
             
-            // PENTING: Event listener untuk form submission
+            // Event listener untuk form submission
             salaryInput.form.addEventListener('submit', function(e) {
                 // Unformat salary sebelum submit
                 const rawValue = getRawSalaryValue(salaryInput);
@@ -1410,7 +1617,7 @@
         document.getElementById('applicationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            // PERBAIKAN: Unformat salary sebelum validation dan submission
+            // Unformat salary sebelum validation dan submission
             const salaryInput = document.getElementById('expected_salary');
             if (salaryInput) {
                 const rawValue = getRawSalaryValue(salaryInput);
@@ -1441,6 +1648,40 @@
                     errors.push(`${input.previousElementSibling.textContent.replace(' *', '')} harus diisi`);
                 }
             });
+
+            // 🆕 UPDATED: Enhanced NIK validation for locked/unlocked states
+            const nikField = document.getElementById('nik');
+            if (nikField) {
+                const nikValue = nikField.value.trim();
+                
+                // Basic NIK presence check
+                if (!nikValue) {
+                    hasError = true;
+                    nikField.classList.add('error');
+                    errors.push('NIK harus diisi');
+                } else {
+                    // Additional validation for unlocked fields (manual input)
+                    if (!nikField.readOnly) {
+                        // More strict validation for manual input
+                        if (nikValue.length !== 16) {
+                            hasError = true;
+                            nikField.classList.add('error');
+                            errors.push(`NIK harus 16 digit (saat ini: ${nikValue.length} digit)`);
+                        } else if (!/^[0-9]{16}$/.test(nikValue)) {
+                            hasError = true;
+                            nikField.classList.add('error');
+                            errors.push('NIK harus berupa 16 digit angka');
+                        }
+                    }
+                    
+                    console.log('NIK validation in form submission:', {
+                        value: nikValue,
+                        readOnly: nikField.readOnly,
+                        source: nikField.classList.contains('ocr-filled') ? 'OCR' : 
+                               nikField.classList.contains('manual-input') ? 'manual' : 'unknown'
+                    });
+                }
+            }
             
             // Enhanced date validation dengan explicit parsing
             const startWorkDate = document.getElementById('start_work_date');

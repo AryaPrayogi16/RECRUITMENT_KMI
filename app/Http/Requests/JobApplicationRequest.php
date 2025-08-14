@@ -31,8 +31,7 @@ class JobApplicationRequest extends FormRequest
             'form_nik' => $formNik,
             'ocr_validated' => $ocrValidated,
             'session_id' => session()->getId(),
-            'has_ocr_ktp_path' => session()->has('ocr_ktp_path'),
-            'ocr_ktp_path' => session('ocr_ktp_path'),
+            'has_ocr_session_data' => session()->has('ocr_nik'),
             'ocr_timestamp' => session('ocr_timestamp'),
         ]);
 
@@ -70,14 +69,15 @@ class JobApplicationRequest extends FormRequest
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:candidates,email',
             
-            // 🆕 UPDATED: Simplified NIK validation - less restrictive but still secure
+            // 🆕 FIXED: Enhanced NIK validation with proper duplicate checking
             'nik' => [
                 'required',
                 'string',
                 'size:16',
                 'regex:/^[0-9]{16}$/',
+                'unique:candidates,nik', // ✅ ADD: Laravel's built-in unique validation
                 function ($attribute, $value, $fail) {
-                    \Log::info('=== NIK CUSTOM VALIDATION (Simplified) ===', [
+                    \Log::info('=== NIK CUSTOM VALIDATION (Enhanced) ===', [
                         'attribute' => $attribute,
                         'provided_value' => $value,
                         'value_length' => strlen($value ?? ''),
@@ -91,26 +91,29 @@ class JobApplicationRequest extends FormRequest
                         return;
                     }
 
-                    // Check if NIK already exists in database
+                    // 🆕 ENHANCED: Double-check NIK uniqueness with detailed logging
                     $existingCandidate = \App\Models\Candidate::where('nik', $value)
                                                            ->whereNull('deleted_at')
                                                            ->first();
                     if ($existingCandidate) {
-                        \Log::warning('❌ NIK already exists in database', [
+                        \Log::warning('❌ NIK already exists in database (custom validation)', [
                             'nik' => $value,
                             'existing_candidate_id' => $existingCandidate->id,
-                            'existing_created_at' => $existingCandidate->created_at
+                            'existing_candidate_code' => $existingCandidate->candidate_code,
+                            'existing_created_at' => $existingCandidate->created_at,
+                            'existing_position' => $existingCandidate->position_applied,
+                            'existing_email' => $existingCandidate->email
                         ]);
                         $fail("NIK sudah terdaftar dalam sistem pada tanggal " . 
                               $existingCandidate->created_at->format('d/m/Y') . 
-                              " untuk posisi " . $existingCandidate->position_applied . ".");
+                              " untuk posisi " . $existingCandidate->position_applied .".");
                         return;
                     }
 
                     // 🆕 SIMPLIFIED SECURITY: Only require OCR validation if OCR session exists
                     $ocrValidated = session('ocr_validated', false);
                     $ocrNik = session('ocr_nik');
-                    $hasOcrData = session()->has('ocr_ktp_path') || session()->has('ocr_timestamp');
+                    $hasOcrData = session()->has('ocr_nik') || session()->has('ocr_timestamp');
                     
                     \Log::info('=== NIK SECURITY VALIDATION (Simplified) ===', [
                         'provided_nik' => $value,
@@ -522,10 +525,11 @@ class JobApplicationRequest extends FormRequest
             'certificates.*.mimes' => 'Sertifikat harus berformat PDF.',
             'certificates.*.max' => 'Ukuran sertifikat maksimal 2MB.',
 
-            // 🆕 UPDATED: Improved NIK validation messages
-            'nik.required' => 'NIK harus diisi. Gunakan fitur scan KTP untuk pengisian otomatis.',
+            // 🆕 ENHANCED: Improved NIK validation messages
+            'nik.required' => 'NIK harus diisi. Upload KTP.',
             'nik.size' => 'NIK harus terdiri dari 16 digit angka.',
             'nik.regex' => 'NIK harus berupa 16 digit angka tanpa spasi atau karakter lain.',
+           
         ];
     }
 
